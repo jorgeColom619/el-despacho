@@ -1,0 +1,289 @@
+extends Node
+## Acceso a datos estáticos y generadores procedurales de contenido.
+
+const W := preload("res://scripts/data/world_data.gd")
+const E := preload("res://scripts/data/events_data.gd")
+const P := preload("res://scripts/data/press_data.gd")
+
+var events_by_id := {}
+var world_map_info := {}
+var region_info := {}
+
+const DOMESTIC := {
+	"sindicato": {"pers": "paciente", "power": 55.0, "topics": {
+		"profes": {"id": "profes", "name": "Salarios de los docentes", "desc": "Los sindicatos de enseñanza quieren una subida salarial y más plantilla.", "term": ["Subida salarial", 9.0, 2.0, "%"], "fx_min": {"money": -2200, "jovenes": 5, "trabajadores": 5}, "fx_max": {"money": -600, "jovenes": 2, "trabajadores": 1}, "nodeal": {"trabajadores": -5, "jovenes": -4, "estabilidad": -2}},
+		"salarios": {"id": "salarios", "name": "Pacto salarial", "desc": "Los sindicatos exigen subidas salariales generalizadas.", "term": ["Subida salarial pactada", 8.0, 2.5, "%"], "fx_min": {"trabajadores": 8, "empresarios": -6, "economia": -1}, "fx_max": {"trabajadores": 3, "empresarios": 1}, "nodeal": {"trabajadores": -6, "crisis": "huelga_general"}},
+	}},
+	"patronal": {"pers": "pragmatico", "power": 62.0, "topics": {
+		"sociedades": {"id": "sociedades", "name": "Rebaja del Impuesto de Sociedades", "desc": "La patronal exige una rebaja fiscal para seguir invirtiendo.", "term": ["Rebaja de Sociedades", 8.0, 1.0, " puntos"], "fx_min": {"tax": {"sociedades": -8.0}, "empresarios": 10, "trabajadores": -3}, "fx_max": {"tax": {"sociedades": -1.0}, "empresarios": 3}, "nodeal": {"empresarios": -6, "economia": -2}},
+	}},
+	"islas": {"pers": "orgulloso", "power": 35.0, "topics": {
+		"autonomia": {"id": "autonomia", "name": "Autogobierno de las Islas", "desc": "Quintana quiere más competencias para las Islas Cordales.", "term": ["Competencias transferidas", 90.0, 20.0, "%"], "fx_min": {"party": {"CR": 15}, "estabilidad": 4, "militares": -4, "clase_media": -3}, "fx_max": {"party": {"CR": 5}, "estabilidad": 2}, "nodeal": {"flag": "islas_tension", "party": {"CR": -10}, "chain": {"id": "islas_referendum", "delay": 60}}},
+	}},
+	"opo": {"pers": "orgulloso", "power": 60.0, "topics": {
+		"pacto": {"id": "pacto", "name": "Pacto de Estado de las pensiones", "desc": "La oposición ofrece apoyo parlamentario a cambio de subir las pensiones.", "term": ["Revalorización anual", 4.0, 1.0, "%"], "fx_min": {"jubilados": 8, "monthly": -600, "estabilidad": 6}, "fx_max": {"jubilados": 3, "monthly": -100, "estabilidad": 6}, "nodeal": {"estabilidad": -3}},
+	}},
+}
+
+const BILLS := [
+	{"t": "Ley de Protección de Datos Digitales", "fx": {"jovenes": 2, "empresarios": -1}},
+	{"t": "Ley de Caza y Pesca", "fx": {"jubilados": 1, "ambiente": -2, "jovenes": -1}},
+	{"t": "Ley de Horarios Comerciales", "fx": {"empresarios": 2, "trabajadores": -2}},
+	{"t": "Ley del Deporte", "fx": {"jovenes": 1, "money": -40}},
+	{"t": "Ley de Patrimonio Histórico", "fx": {"prestigio": 1, "money": -60}},
+	{"t": "Ley de Seguridad Vial", "fx": {"seguridad": 1, "jovenes": -1}},
+	{"t": "Ley de Cooperativas Agrarias", "fx": {"trabajadores": 1, "jubilados": 1}},
+	{"t": "Ley de Startups", "fx": {"empresarios": 2, "jovenes": 1, "monthly": -30}},
+	{"t": "Ley de Desconexión Digital", "fx": {"trabajadores": 2, "empresarios": -1}},
+	{"t": "Ley de Envases y Plásticos", "fx": {"ambiente": 2, "empresarios": -1}},
+	{"t": "Ley de Símbolos Nacionales", "fx": {"militares": 1, "jovenes": -1}},
+	{"t": "Ley de Televisión Pública", "fx": {"estabilidad": 1, "jovenes": -1}},
+	{"t": "Ley de Lenguas Regionales", "fx": {"party": {"CR": 5}, "militares": -1, "clase_media": -1}},
+	{"t": "Ley de Aguas", "fx": {"ambiente": 1, "trabajadores": 1}},
+	{"t": "Ley de Teletrabajo", "fx": {"jovenes": 2, "clase_media": 1, "empresarios": -1}},
+	{"t": "Ley de Propiedad Horizontal", "fx": {"clase_media": 1}},
+	{"t": "Ley del Cine y el Audiovisual", "fx": {"jovenes": 1, "money": -30}},
+	{"t": "Ley de Montes y Bosques", "fx": {"ambiente": 2, "trabajadores": -1}},
+]
+
+const RIDERS := [
+	{"t": "Disp. adicional 7ª: exención fiscal para los clubes de golf.", "fx": {"empresarios": 1, "clase_media": -2, "corr": 1}},
+	{"t": "Disp. final 3ª: los diputados podrán jubilarse con pensión máxima a los 7 años.", "fx": {"clase_media": -3, "trabajadores": -2}},
+	{"t": "Anexo II: se autoriza la construcción de un hotel en la playa protegida de Calablanca.", "fx": {"ambiente": -3, "empresarios": 1, "corr": 2}},
+	{"t": "Disp. adicional 2ª: 200 M€ para un aeropuerto en Vallegrande, localidad de 4.000 habitantes.", "fx": {"money": -200, "corr": 1}},
+	{"t": "Art. 31 bis: se reduce el plazo de prescripción de los delitos fiscales.", "fx": {"corr": 3, "empresarios": 1, "clase_media": -1}},
+	{"t": "Disp. transitoria 1ª: las eléctricas quedan exentas de la tasa medioambiental.", "fx": {"ambiente": -2, "empresarios": 1}},
+]
+
+const LETTERS := [
+	{"from": "Marisa, enfermera de Puerto Alba", "t": "Llevo tres años encadenando contratos de un mes. Somos las que sostuvimos el país en la pandemia. ¿Nadie se acuerda de nosotras?", "fx_yes": {"trabajadores": 1, "bienestar": 1, "money": -20}, "yes": "AYUDAR"},
+	{"from": "Joaquín, pequeño empresario de Ferrosa", "t": "Tengo un taller con ocho empleados. Entre impuestos y papeleo, dedico más tiempo a la burocracia que a trabajar. Por favor, simplifiquen.", "fx_yes": {"empresarios": 1, "clase_media": 1, "pc": -2}, "yes": "RESPONDER"},
+	{"from": "Clase de 4º B del colegio Miramar", "t": "Hemos estudiado la Constitución y queremos invitarle a nuestro colegio para hacerle preguntas. Prometemos portarnos bien. Casi todos.", "fx_yes": {"jovenes": 1, "clase_media": 1, "stress": -3}, "yes": "ACEPTAR"},
+	{"from": "Asociación de vecinos de San Blas", "t": "Nuestro barrio lleva dos años esperando el autobús nocturno prometido. Las mujeres vuelven a casa andando por descampados.", "fx_yes": {"seguridad": 1, "trabajadores": 1, "money": -15}, "yes": "FINANCIAR"},
+	{"from": "Rogelio, agricultor de Rioseco", "t": "La presa de Sarvenia nos ha dejado sin agua. Tengo 64 años y mi campo se muere. No sé a quién más escribir.", "fx_yes": {"jubilados": 1, "trabajadores": 1, "money": -25}, "yes": "AYUDAR"},
+	{"from": "Nadia, estudiante de Medicina", "t": "Voy a terminar la carrera y todos mis compañeros se van a Norland. Allí cobran el triple. ¿Por qué deberíamos quedarnos?", "fx_yes": {"jovenes": 1, "pc": -2}, "yes": "RESPONDER"},
+	{"from": "Don Evaristo, 91 años", "t": "Señor presidente: le escribo para decirle que lo está haciendo usted regular, pero que me cae simpático. Siga así, pero mejor.", "fx_yes": {"jubilados": 1, "stress": -4}, "yes": "RESPONDER"},
+	{"from": "Protectora de animales Huellas", "t": "Necesitamos ayuda: acogemos a 300 perros abandonados y no llegamos a pagar el pienso de este mes.", "fx_yes": {"jovenes": 1, "money": -2}, "yes": "DONAR"},
+]
+
+const CRIMES := [
+	{"c": "Robo con fuerza en una joyería", "y": 5, "note": "Tiene tres hijos y participa en un programa de reinserción.", "fx_yes": {"seguridad": -1, "clase_media": -1}, "fx_no": {}},
+	{"c": "Tráfico de drogas a pequeña escala", "y": 4, "note": "Fue captado por una red criminal con 17 años.", "fx_yes": {"jovenes": 1, "seguridad": -1, "jubilados": -1}, "fx_no": {}},
+	{"c": "Desórdenes públicos en una manifestación", "y": 2, "note": "El vídeo de la detención muestra una actuación policial desproporcionada.", "fx_yes": {"jovenes": 2, "seguridad": -1}, "fx_no": {"jovenes": -1}},
+	{"c": "Malversación de fondos públicos como alcalde", "y": 6, "note": "Es militante de su partido y amigo personal del secretario de organización.", "fx_yes": {"clase_media": -3, "corr": 4}, "fx_no": {"clase_media": 1}},
+	{"c": "Homicidio imprudente en accidente de tráfico", "y": 3, "note": "Conducía ebrio. La familia de la víctima se opone al indulto.", "fx_yes": {"clase_media": -2}, "fx_no": {"clase_media": 1}},
+	{"c": "Fraude fiscal de 2 millones de euros", "y": 3, "note": "Ha devuelto el dinero íntegramente con intereses.", "fx_yes": {"empresarios": 1, "trabajadores": -1}, "fx_no": {}},
+	{"c": "Ocupación de una vivienda de un banco", "y": 1, "note": "Madre soltera desahuciada con dos hijos pequeños.", "fx_yes": {"jovenes": 1, "trabajadores": 1, "clase_media": -1}, "fx_no": {"trabajadores": -1}},
+]
+
+const BID_NOTES := [
+	{"t": "Empresa con 15 años de obra pública sin incidencias.", "fx": {}},
+	{"t": "Su consejero delegado es el cuñado de un alto cargo del partido.", "fx": {"corr": 5, "clase_media": -1}},
+	{"t": "Prevé 'modificados' del 45% sobre el precio de adjudicación.", "fx": {"money_pct": 0.45}},
+	{"t": "Capital 100% de Tsaing. Trabajadores traídos de su país.", "fx": {"rel": {"tsaing": 4}, "trabajadores": -2}},
+	{"t": "Sancionada dos veces por incumplir normativa laboral.", "fx": {"trabajadores": -2}},
+	{"t": "Compromiso de contratar un 60% de mano de obra local.", "fx": {"trabajadores": 2}},
+	{"t": "Donó 50.000 € a la fundación de su partido el año pasado.", "fx": {"corr": 3}},
+	{"t": "Filial de Norland Dynamics con sede fiscal en Qadar.", "fx": {"rel": {"norland": 3}, "corr": 1}},
+]
+
+
+func _ready() -> void:
+	for e in E.EVENTS:
+		events_by_id[e["id"]] = e
+	world_map_info = _load_json("res://art/maps/world.json")
+	region_info = _load_json("res://art/maps/valdoria.json")
+
+
+func _load_json(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var txt := FileAccess.get_file_as_string(path)
+	var d = JSON.parse_string(txt)
+	if d is Dictionary:
+		return d
+	return {}
+
+
+func event(id: String) -> Dictionary:
+	return events_by_id.get(id, {})
+
+
+func character(who: String) -> Dictionary:
+	# Devuelve {name, role, look, country?}
+	if who == "opo":
+		var opp: String = W.PLAYER_PARTIES[GS.pres["party"]]["opp"]
+		var c: Dictionary = W.CHARACTERS.get("opo_" + opp, W.CHARACTERS["opo_AR"])
+		return c
+	if GS.ministers.has(who):
+		return GS.ministers[who]
+	if W.CHARACTERS.has(who):
+		return W.CHARACTERS[who]
+	if W.COUNTRIES.has(who):
+		var c2: Dictionary = W.COUNTRIES[who]
+		return {"name": c2["leader"], "role": "%s de %s" % [c2["title"], c2["name"]], "look": c2["look"], "country": who}
+	return {"name": "Desconocido", "role": "", "look": {}}
+
+
+func topic(who: String, topic_id: String) -> Dictionary:
+	if W.TOPICS.has(who):
+		for t in W.TOPICS[who]:
+			if t["id"] == topic_id:
+				return t
+	if DOMESTIC.has(who) and DOMESTIC[who]["topics"].has(topic_id):
+		return DOMESTIC[who]["topics"][topic_id]
+	return {}
+
+
+func counterpart(who: String) -> Dictionary:
+	# Datos para negociar: personalidad, poder y relación (-100..100)
+	if W.COUNTRIES.has(who):
+		var c: Dictionary = W.COUNTRIES[who]
+		return {"pers": c["pers"], "power": c["power"], "rel": GS.countries[who]["rel"], "country": who}
+	if DOMESTIC.has(who):
+		var d: Dictionary = DOMESTIC[who]
+		var rel := 0.0
+		match who:
+			"sindicato":
+				rel = (GS.fac["trabajadores"] - 50.0) * 1.2
+			"patronal":
+				rel = (GS.fac["empresarios"] - 50.0) * 1.2
+			"islas":
+				rel = (GS.parties["CR"]["rel"] - 50.0) * 1.5
+			"opo":
+				rel = (GS.parties[W.PLAYER_PARTIES[GS.pres["party"]]["opp"]]["rel"] - 50.0) * 1.5
+		return {"pers": d["pers"], "power": d["power"], "rel": rel}
+	return {"pers": "pragmatico", "power": 50.0, "rel": 0.0}
+
+
+# ------------------------------------------------------------------ generadores
+
+func rand_name(g: String = "") -> String:
+	if g == "":
+		g = "m" if randf() < 0.5 else "f"
+	var first: String = W.NAMES_M.pick_random() if g == "m" else W.NAMES_F.pick_random()
+	return "%s %s" % [first, W.SURNAMES.pick_random()]
+
+
+func rand_look(g: String = "") -> Dictionary:
+	if g == "":
+		g = "m" if randf() < 0.5 else "f"
+	var styles_m := ["short", "side", "slick", "bald", "balding", "buzz", "wavy", "curly"]
+	var styles_f := ["bob", "long", "bun", "curly", "wavy", "ponytail"]
+	var suits := ["1d2b4a", "2a2c30", "3a3d44", "15171b", "243653", "4a3b2a", "2e4a5a", "5a1f2a"]
+	var ties := ["7a1f2b", "2d5a9e", "b08a3e", "1aa39a", "22262b", "8c1c1c", ""]
+	var age := randi_range(0, 2)
+	var hc := randi_range(0, 4)
+	if age == 2 and randf() < 0.6:
+		hc = randi_range(5, 6)
+	var look := {"g": g, "skin": randi_range(0, 5), "hair": (styles_m if g == "m" else styles_f).pick_random(), "hc": hc,
+		"glasses": randi_range(0, 2) if randf() < 0.35 else 0, "suit": suits.pick_random(), "shirt": ["f4f4f4", "e8eef5", "f3ece2"].pick_random(),
+		"tie": ties.pick_random() if g == "m" else "", "age": age, "eyes": ["3b2a20", "2a1c14", "4d6a80", "5a4632", "3f5f3a"].pick_random()}
+	if g == "m" and randf() < 0.35:
+		look["beard"] = ["stubble", "mustache", "full", "goatee"].pick_random()
+	return look
+
+
+func gen_doc() -> Dictionary:
+	var r := randf()
+	if r < 0.34:
+		return _gen_bill()
+	elif r < 0.56:
+		return _gen_contract()
+	elif r < 0.76:
+		return _gen_pardon()
+	return _gen_letter()
+
+
+func _gen_bill() -> Dictionary:
+	var b: Dictionary = BILLS.pick_random()
+	var fx: Dictionary = b["fx"].duplicate(true)
+	var veto := {"estabilidad": -1}
+	for k in fx.keys():
+		if k in ["money", "monthly", "party"]:
+			continue
+		veto[k] = -int(round(float(fx[k]) * 0.5))
+	var doc := {"id": "gen_bill", "type": "doc", "kind": "ley", "gen": true, "title": b["t"],
+		"text": "Proyecto aprobado por el Congreso de los Diputados y remitido a la Presidencia para su sanción y promulgación. Entrará en vigor al día siguiente de su publicación en el Boletín Oficial.",
+		"choices": [{"t": "Aprobar", "fx": fx}, {"t": "Vetar", "fx": veto}], "default": 0, "small": []}
+	if randf() < 0.45:
+		var rider: Dictionary = RIDERS.pick_random()
+		doc["small"] = [rider["t"]]
+		doc["choices"][0]["hidden"] = rider["fx"].duplicate(true)
+	return doc
+
+
+func _gen_contract() -> Dictionary:
+	var p: Dictionary = W.PROJECTS.pick_random()
+	var reg: Dictionary = W.REGIONS[randi_range(1, 8)]
+	var title: String = p["t"] % reg["name"] if "%s" in p["t"] else p["t"]
+	var base: float = p["cost"]
+	var companies: Array = W.COMPANIES.duplicate()
+	companies.shuffle()
+	var notes: Array = BID_NOTES.duplicate()
+	notes.shuffle()
+	var options := []
+	var meter := "economia"
+	match p["kind"]:
+		"sanidad":
+			meter = "bienestar"
+		"ambiente":
+			meter = "ambiente"
+		"seguridad":
+			meter = "seguridad"
+		"educacion":
+			meter = "bienestar"
+	for i in 3:
+		var q := randi_range(2, 5)
+		var price := base * randf_range(0.7, 1.3) * (0.8 + q * 0.08)
+		var note: Dictionary = notes[i]
+		var fx := {"money": -round(price), meter: 1 + int(q >= 4) + int(q >= 5), "trabajadores": 1}
+		for k in note["fx"].keys():
+			if k == "money_pct":
+				fx["money"] = -round(price * (1.0 + float(note["fx"][k])))
+			elif k == "rel":
+				fx["rel"] = note["fx"][k]
+			else:
+				fx[k] = fx.get(k, 0) + note["fx"][k]
+		if q <= 2:
+			fx[meter] = 0
+			fx["clase_media"] = fx.get("clase_media", 0) - 1
+		var stars := ""
+		for s in 5:
+			stars += "★" if s < q else "☆"
+		options.append({"name": companies[i], "lines": ["Precio: %s" % UI.money(price), "Calidad técnica: %s" % stars, "Plazo: %d meses" % randi_range(14, 40)], "small": note["t"], "fx": fx})
+	return {"id": "gen_contract", "type": "doc", "kind": "contrato", "gen": true, "title": title,
+		"text": "Concurso público de adjudicación. Se han presentado tres ofertas que cumplen los requisitos técnicos. Selle la oferta ganadora.",
+		"options": options}
+
+
+func _gen_pardon() -> Dictionary:
+	var c: Dictionary = CRIMES.pick_random()
+	var g := "m" if randf() < 0.65 else "f"
+	var nm := rand_name(g)
+	var look := rand_look(g)
+	return {"id": "gen_pardon", "type": "doc", "kind": "indulto", "gen": true, "title": "Solicitud de indulto: %s" % nm,
+		"text": "%s, condenado/a a %d años por: %s. Ha cumplido parte de la condena y solicita el indulto alegando arrepentimiento y arraigo familiar." % [nm, c["y"], c["c"].to_lower()],
+		"prisoner": look, "small": [c["note"]],
+		"choices": [{"t": "Conceder", "fx": c["fx_yes"].duplicate(true)}, {"t": "Denegar", "fx": c["fx_no"].duplicate(true)}], "default": 1}
+
+
+func _gen_letter() -> Dictionary:
+	var l: Dictionary = LETTERS.pick_random()
+	return {"id": "gen_letter", "type": "doc", "kind": "carta", "gen": true, "title": "Carta de %s" % l["from"],
+		"text": l["t"], "stamps": [l["yes"], "ARCHIVAR"],
+		"choices": [{"t": l["yes"].capitalize(), "fx": l["fx_yes"].duplicate(true)}, {"t": "Archivar", "fx": {}}], "default": 1}
+
+
+func press_questions(n: int) -> Array:
+	var pool := []
+	for q in P.QUESTIONS:
+		if GS.check(q.get("cond", {})):
+			pool.append(q)
+	pool.shuffle()
+	var out := []
+	for q in pool:
+		if out.size() >= n:
+			break
+		out.append(q)
+	return out
