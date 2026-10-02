@@ -8,7 +8,10 @@ const OVERLAYS := {
 	"doc": "res://scripts/overlays/doc_overlay.gd",
 	"advisor": "res://scripts/overlays/advisor_overlay.gd",
 	"call": "res://scripts/overlays/call_overlay.gd",
-	"nego": "res://scripts/overlays/call_overlay.gd",
+	"nego": "res://scripts/overlays/nego_overlay.gd",
+	"summit": "res://scripts/overlays/nego_overlay.gd",
+	"control": "res://scripts/overlays/control_overlay.gd",
+	"campaign": "res://scripts/overlays/campaign_overlay.gd",
 	"phonebook": "res://scripts/overlays/phonebook_overlay.gd",
 	"crisis": "res://scripts/overlays/crisis_overlay.gd",
 	"vote": "res://scripts/overlays/vote_overlay.gd",
@@ -109,6 +112,8 @@ func _ready() -> void:
 	GS.deltas.connect(_on_deltas)
 	GS.game_over.connect(_on_game_over)
 	GS.result_text.connect(func(t): GS.toast.emit(t, "info", "info"))
+	Perfil.earned.connect(_on_earned)
+	Perfil.achievement.connect(_on_achievement)
 	if "--fps" in args:
 		var tm := Timer.new()
 		tm.wait_time = 2.0
@@ -161,6 +166,23 @@ func show_menu() -> void:
 	change_screen(m)
 	office = null
 	Sfx.music("music_menu")
+
+
+func show_shop() -> void:
+	var SH = load("res://scripts/screens/shop.gd")
+	var s = SH.new()
+	s.main = self
+	transition(func(): change_screen(s))
+
+
+func _on_earned(amount: int, reason: String) -> void:
+	toasts.push("+%d Laureles · %s" % [amount, reason], "good", "laurel")
+
+
+func _on_achievement(id: String) -> void:
+	var a: Dictionary = Perfil.S.ACHIEVEMENTS[id]
+	toasts.push("¡Logro desbloqueado! %s · +%d Laureles" % [a["name"], int(a["reward"])], "good", "trofeo")
+	Sfx.play("success", -2.0)
 
 
 func show_new_game() -> void:
@@ -389,6 +411,9 @@ func _debug_start() -> void:
 	if debug_shot == "menu":
 		show_menu()
 		return
+	if debug_shot == "shop":
+		show_shop()
+		return
 	if debug_shot == "start":
 		start_new({"name": "Alejandro Ríos", "party": "MP", "difficulty": 1, "years": 2, "look": {"g": "m", "skin": 1, "hair": "side", "hc": 1}})
 		return
@@ -425,6 +450,22 @@ func _debug_start() -> void:
 			open_overlay("call", {"item": GS.calls[0]})
 		"nego":
 			open_overlay("nego", {"who": "norland", "topic": "comercio"})
+		"summit":
+			open_overlay("summit", {"summit": "clima"})
+		"campaign":
+			GS.campaign = true
+			GS.campaign_acts = 4
+			GS.add_region_boost(3, 2.5)
+			open_overlay("campaign", {})
+		"control":
+			open_overlay("control", {})
+		"controlrun":
+			open_overlay("control", {})
+			current_overlay.intro.queue_free()
+			current_overlay._next()
+		"hire":
+			open_overlay("cabinet", {})
+			current_overlay._open_picker("economia", GS.gen_candidates("economia"))
 		"crisis":
 			GS.spawn(DB.event("crisis_incendios"))
 			open_overlay("crisis", {"item": GS.alerts[0]})

@@ -349,6 +349,7 @@ func _conclude() -> void:
 				GS.push_news("La moción de censura triunfa: cae el Gobierno de %s" % GS.pres["name"], 3)
 			else:
 				GS.apply_fx({"estabilidad": 8, "pc": 5}, "Moción de censura")
+				Perfil.unlock("superviviente")
 				GS.push_news("El Gobierno sobrevive a la moción de censura", 3)
 		"budget":
 			good = passed

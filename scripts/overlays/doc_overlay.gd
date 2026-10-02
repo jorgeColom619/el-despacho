@@ -50,8 +50,19 @@ class Stamp extends Control:
 class Impression extends Control:
 	var label := ""
 	var col := Color.RED
+	var wax := false
 
 	func _draw() -> void:
+		if wax:
+			var pts := PackedVector2Array()
+			for i in 36:
+				var a := TAU * i / 36.0
+				pts.append(Vector2(cos(a), sin(a)) * (62.0 + sin(i * 2.7) * 4.0))
+			draw_colored_polygon(pts, Color(col, 1.0))
+			draw_arc(Vector2.ZERO, 46, 0, TAU, 48, Color(col.lightened(0.25), 0.9), 3.0, true)
+			draw_circle(Vector2(-18, -20), 14, Color(1, 1, 1, 0.12))
+			draw_string(UI.f_cond_b, Vector2(-60, 8), label, HORIZONTAL_ALIGNMENT_CENTER, 120, 18 if label.length() < 10 else 14, col.lightened(0.45))
+			return
 		var fs := 46
 		var tw := UI.f_cond_b.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var r := Rect2(-tw / 2.0 - 22, -38, tw + 44, 76)
@@ -218,6 +229,8 @@ func _on_revealed() -> void:
 	revealed = true
 	Sfx.play("notify", -4.0, 0.9)
 	GS.toast.emit("Ha descubierto una cláusula oculta", "warn", "lupa")
+	if Perfil.add_stat("clausulas") >= 5:
+		Perfil.unlock("lupa")
 	_rebuild_effects()
 
 
@@ -546,7 +559,8 @@ func _build_stamps() -> void:
 		_add_stamp(st, Vector2(175, 470))
 	else:
 		var labels := _stamp_labels()
-		var cols := [Color("2e8b57"), Color("b3261e")]
+		var ink: Dictionary = Perfil.equipped_data("tinta")
+		var cols := [Color(ink.get("ok", "2e8b57")), Color(ink.get("no", "b3261e"))]
 		for i in mini(2, ev["choices"].size()):
 			var st2 := Stamp.new()
 			st2.label = labels[i]
@@ -604,10 +618,12 @@ func _commit(st: Stamp, target, at: Vector2) -> void:
 	var imp := Impression.new()
 	imp.label = st.label
 	imp.col = Color(st.col, 0.85)
-	var im := ShaderMaterial.new()
-	im.shader = load("res://shaders/ink.gdshader")
-	im.set_shader_parameter("seed", randf() * 100.0)
-	imp.material = im
+	imp.wax = Perfil.equipped_data("tinta").get("wax", false) and st.idx >= 0
+	if not imp.wax:
+		var im := ShaderMaterial.new()
+		im.shader = load("res://shaders/ink.gdshader")
+		im.set_shader_parameter("seed", randf() * 100.0)
+		imp.material = im
 	imp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	paper.add_child(imp)
 	imp.position = paper.get_global_transform().affine_inverse() * at

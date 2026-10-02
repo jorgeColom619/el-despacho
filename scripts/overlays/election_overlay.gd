@@ -154,6 +154,9 @@ func _conclude() -> void:
 		if res.get("minority", false):
 			sub.text = "%s gana con %d escaños. La oposición no suma una mayoría alternativa: %s gobernará en minoría." % [W.PARTIES[own]["name"], own_seats, GS.pres["name"]]
 		Sfx.play("cheer", -2.0)
+		Perfil.unlock("reelegido")
+		if own_seats >= 176:
+			Perfil.unlock("rodillo")
 		Sfx.play("sting_win", -4.0)
 	else:
 		var first: String = res["first"]

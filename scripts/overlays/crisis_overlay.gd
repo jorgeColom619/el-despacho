@@ -126,7 +126,7 @@ func build() -> void:
 	right.add_child(roster)
 	for u in cr["units"]:
 		var ud: Dictionary = u.duplicate(true)
-		ud["left"] = int(u["n"])
+		ud["left"] = int(u["n"]) + (1 if GS.has_trait("veterano") else 0)
 		units.append(ud)
 	_build_roster()
 	right.add_child(Widgets.section("Medidas extraordinarias"))

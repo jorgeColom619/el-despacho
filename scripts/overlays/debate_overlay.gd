@@ -237,6 +237,9 @@ func _finish() -> void:
 	var out := GS.apply_fx(fx, "Debate")
 	GS.push_news(("%s gana el debate frente a %s" % [GS.pres["name"], opp_ch["name"]]) if won else ("%s se impone en el debate a %s" % [opp_ch["name"], GS.pres["name"]]), 3)
 	GS.log_history("Debate televisado", "Victoria" if won else "Derrota")
+	if won:
+		Perfil.earn(Perfil.S.EARN["debate"], "Debate ganado")
+		Perfil.unlock("orador")
 	var p := UI.panel(Color(0.03, 0.05, 0.09, 0.97), 12, Color(UI.GOLD, 0.6), 30)
 	p.position = Vector2(560, 360)
 	p.custom_minimum_size = Vector2(800, 0)

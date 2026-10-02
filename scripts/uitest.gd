@@ -31,6 +31,14 @@ func run(m: Node) -> void:
 		await _wait(0.3)
 		print("== partido ", party)
 		await _suite()
+	# tienda (sin guardar el perfil real)
+	main.show_shop()
+	await _wait(1.5)
+	var shop = main.screen
+	for tab in ["escaparate", "lingotes", "coleccion", "logros"]:
+		shop._show(tab)
+		await _wait(0.3)
+	print("OK tienda · artículos hoy: ", Perfil.shop_today())
 	print("UITEST COMPLETADO")
 	get_tree().quit()
 
@@ -75,23 +83,78 @@ func _suite() -> void:
 	await _wait(0.6)
 	await _close_current()
 	# negociaciones: país y doméstica
-	for spec in [["norland", "comercio"], ["kharovia", "gas"], ["sindicato", "salarios"], ["opo", "pacto"]]:
+	for spec in [["norland", "comercio"], ["kharovia", "gas"], ["sindicato", "salarios"], ["opo", "pacto"], ["patronal", "sociedades"]]:
 		o = await _open("nego", {"who": spec[0], "topic": spec[1]})
-		for t in ["argumentar", "halagar", "presionar", "argumentar"]:
-			if o.ended:
-				break
-			o.busy = false
-			o._tactic(t)
-			await _wait(1.6)
+		if o == null or o.closing:
+			print("AVISO negociación sin tema ", spec)
+			continue
+		o._wildcard("halagar")
+		o._wildcard("presionar")
+		o._wildcard("regalo")
+		o.offer = 95.0
+		o._propose()
+		await _wait(0.4)
 		if not o.ended:
-			o.busy = false
-			o._tactic("cerrar")
-			await _wait(1.6)
+			o.offer = 60.0
+			o._propose()
+			await _wait(0.4)
 		if not o.ended:
-			o._end(true, "Trato hecho.")
-		await _wait(0.3)
-		print("OK negociación ", spec)
+			o._accept_safe()
+		await _wait(0.4)
+		print("OK negociación ", spec, " oferta final ", o.offer)
 		await _close_current()
+	# cumbres con varios líderes
+	for sid in DB.SUMMITS.keys():
+		o = await _open("summit", {"summit": sid})
+		o.sel = 1
+		o._wildcard("halagar")
+		o._refresh()
+		o.offer = 30.0
+		o._propose()
+		await _wait(0.3)
+		if not o.ended:
+			o._accept_safe()
+		await _wait(0.3)
+		print("OK cumbre ", sid)
+		await _close_current()
+	# sesión de control
+	o = await _open("control", {})
+	o.intro.queue_free()
+	o._next()
+	for i in o.ROUNDS:
+		await _wait(0.3)
+		if i % 2 == 0 and o.replies.get_child_count() > 0:
+			o._answer(DB.P.DEBATE_REPLIES[i % DB.P.DEBATE_REPLIES.size()])
+		else:
+			o._answer(null)
+		await _wait(2.1)
+	await _wait(0.5)
+	print("OK sesión de control (combo ", o.best_combo, ")")
+	await _close_current()
+	# campaña por regiones
+	GS.campaign = true
+	GS.campaign_acts = 5
+	o = await _open("campaign", {"intro": true})
+	for rid in range(1, 9):
+		o._select(rid)
+	o._do("visita")
+	o._do("anuncio")
+	o._do("spot")
+	print("OK campaña · actos restantes ", GS.campaign_acts, " · bonus región ", GS.region_boost(o.sel))
+	o._do("mitin")
+	await _wait(0.8)
+	print("OK mitin abre: ", main.current_overlay.get_script().resource_path if main.current_overlay != null else "nada")
+	await _close_current()
+	GS.campaign = false
+	# fichajes del gabinete
+	GS.pc = 50
+	o = await _open("cabinet", {})
+	var cands: Array = GS.gen_candidates("economia")
+	o._open_picker("economia", cands)
+	await _wait(0.3)
+	o._hire("economia", cands[0])
+	print("OK fichaje: ", GS.ministers["economia"]["name"], " rasgos ", GS.ministers["economia"]["traits"])
+	await _close_current()
 	# crisis de varios tipos
 	for cid in ["incendios", "terrorismo", "migrantes"]:
 		GS.spawn({"id": "t_" + cid, "type": "crisis", "crisis": cid, "title": cid, "text": "", "gen": true})

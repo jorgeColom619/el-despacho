@@ -90,6 +90,16 @@ func _ready() -> void:
 	gv.add_child(UI.lbl("%d días en el cargo" % GS.day, UI.f_sans_m, 18, UI.DIM))
 	gh.add_child(gv)
 	right.add_child(gh)
+	var reward := int(score * 1.5) + (100 if good else 0)
+	Perfil.earn(reward, "Fin de la legislatura")
+	Perfil.unlock("primera_partida")
+	Perfil.add_stat("partidas")
+	if good:
+		Perfil.add_stat("victorias")
+	var rw := UI.hbox(10)
+	rw.add_child(UI.icon_rect("laurel", 28, UI.GOLD_L))
+	rw.add_child(UI.lbl("+%d Laureles para la Tienda del Palacio" % reward, UI.f_sans_b, 20, UI.GOLD_L))
+	right.add_child(rw)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 40)

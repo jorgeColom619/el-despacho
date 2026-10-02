@@ -8,8 +8,10 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 | | |
 |---|---|
 | ![Asesor](docs/capturas/asesor.png) | ![Negociación](docs/capturas/negociacion.png) |
+| ![Cumbre internacional](docs/capturas/cumbre.png) | ![Sesión de control](docs/capturas/control.png) |
+| ![Campaña por regiones](docs/capturas/campana.png) | ![Fichajes del Gobierno](docs/capturas/fichajes.png) |
 | ![Gabinete de crisis](docs/capturas/crisis.png) | ![Congreso](docs/capturas/congreso.png) |
-| ![Documentos](docs/capturas/documentos.png) | ![Periódico](docs/capturas/periodico.png) |
+| ![Documentos](docs/capturas/documentos.png) | ![Tienda del Palacio](docs/capturas/tienda.png) |
 
 ## Cómo jugar
 
@@ -24,12 +26,13 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 | Objeto | Qué hace |
 |---|---|
 | Bandeja de entrada | Leyes, decretos, indultos, contratos y cartas. Arrastra el **sello** para decidir. Usa la **lupa (L)** para leer la letra pequeña: esconde trampas y corrupción. |
-| Puerta | Tus ministros llaman a la puerta con dilemas urgentes (algunos con cuenta atrás). Sin visitas, convoca al Consejo de Ministros para un informe. |
+| Puerta | Tus ministros llaman a la puerta con dilemas urgentes (algunos con cuenta atrás). Sin visitas, convoca al Consejo de Ministros: informe, rasgos de cada ministro y **ceses y fichajes**. |
 | Teléfono | Llamadas de líderes mundiales y sindicatos. Sin llamada entrante, abre tu agenda para **negociar**. |
 | Teléfono rojo | Crisis: abre el **Gabinete de Crisis** (despliegue de unidades en tiempo real sobre el mapa). |
 | Ordenador (SIGEP) | Datos, grupos sociales, **agenda legislativa** (presentar leyes), Congreso (reunirse con los partidos), agenda y gabinete. |
 | Globo | Mapa diplomático: tratados, visitas de Estado, ayudas, sanciones. |
-| Micrófono | Discurso a la nación / mitin de campaña (minijuego de ritmo con el teleprompter). |
+| Micrófono | Discurso a la nación (minijuego de ritmo con el teleprompter). En campaña abre el **mapa de campaña por regiones**. |
+| Mascota | Si has comprado una en la tienda (gato, perro, loro o pez), haz clic para bajar el estrés. |
 | Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. |
 | Periódico, TV, calendario, reloj, café | Noticias, encuestas, agenda... y un café para el estrés. |
 | Ventana | Refleja el estado del país: manifestaciones, disturbios, fuegos artificiales, clima. |
@@ -37,11 +40,38 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 ## Minijuegos
 
 - **Mesa de firmas**: sellos físicos, lupa de revelado, expedientes de presos y concursos públicos.
-- **Negociación**: medidor de acuerdo, ánimo y paciencia del interlocutor, 6 tácticas y contraofertas.
+- **Negociación**: arrastra tu oferta sobre una barra de colores. Verde: la aceptarán; ámbar: su
+  límite está en esa franja; rojo: la rechazarán. Tienes 3 intentos y 3 comodines de un solo uso
+  (halagar, presionar, ofrecer algo a cambio). Si no quieres arriesgar, acepta su propuesta.
+- **Cumbres internacionales**: la misma negociación, pero con tres líderes a la vez. El acuerdo
+  solo se firma si convence a todos (clima, fronteras, energía y libre comercio).
+- **Sesión de control**: cada mes o dos, cara a cara con el líder de la oposición en el Congreso.
+  5 preguntas, réplica contrarreloj y combos de aciertos.
 - **Gabinete de Crisis**: incendios, pateras, huelgas, pandemia, terrorismo, apagones, golpe de Estado, guerra...
 - **Congreso**: hemiciclo de 350 escaños, negociación de apoyos y votación escaño a escaño.
 - **Rueda de prensa / entrevista**, **discurso** con teleprompter, **debate electoral** cara a cara.
+- **Campaña por regiones**: en los últimos 60 días repartes actos (mitin, visita, anuncio de
+  inversión, spot de TV) por las 8 regiones del mapa. Cada región suma a su resultado electoral.
 - **Noche electoral** con escrutinio región a región.
+
+## Tu Gobierno
+
+Cada ministro tiene rasgos (Negociador, Austero, Tecnócrata, Veterano, Polémico, Derrochador...)
+que cambian la partida: más dinero cada mes, más tiempo en la sesión de control, unidades extra
+en las crisis, etc. Puedes cesar a un ministro (cuesta capital político y estabilidad) y elegir
+a su sustituto entre tres candidatos.
+
+## Tienda del Palacio
+
+- Ganas **Laureles** jugando: leyes aprobadas, crisis bien resueltas, acuerdos, debates, cumbres,
+  logros y una recompensa al final de cada legislatura.
+- El escaparate cambia **cada día**, con un artículo destacado rebajado un 30 %.
+- Personaliza: bandera nacional, estilo del despacho, madera del escritorio, teléfono rojo,
+  globo, lámpara, traje, corbata, accesorios (pin, banda, medalla), tinta de los sellos y mascota.
+- **Lingotes** (moneda premium): ahora mismo funcionan en **modo de prueba**, sin cobros reales.
+  `scripts/autoload/payments.gd` explica cómo conectar Steam o Stripe cuando se publique el juego
+  (los cobros reales deben validarse siempre en un servidor, nunca solo en el cliente).
+- 18 logros con recompensa. El perfil se guarda aparte de la partida (`user://perfil.json`).
 
 ## Consejos
 
@@ -53,8 +83,9 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 
 ## Archivos del proyecto
 
-- `scripts/autoload/` — estado del juego, simulación, datos, audio e interfaz.
-- `scripts/data/` — eventos, países, leyes, crisis, preguntas de prensa y discursos.
+- `scripts/autoload/` — estado del juego, simulación, datos, audio, interfaz, perfil del jugador y pagos.
+- `scripts/data/` — eventos, países, leyes, crisis, preguntas de prensa, discursos y catálogo de la tienda.
+- `scripts/screens/` — menú, nueva partida, tienda y pantalla final.
 - `scripts/office/` — el despacho (arte vectorial generado por código, ventana, TV, HUD).
 - `scripts/overlays/` — cada minijuego y panel.
 - `tools/gen_audio.gd` y `tools/gen_maps.gd` — generan la música, los efectos y los mapas.

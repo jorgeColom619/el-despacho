@@ -86,6 +86,11 @@ var ringing_time := 0.0
 var budget_year_done := -1
 var elections_result := {}
 var wear := 0.0
+var _trait_sums := {}
+var region_bonus := {}
+var campaign_acts := 0
+var acts_done := 0
+var _campaign_days := 0
 
 
 func _ready() -> void:
@@ -96,7 +101,7 @@ func _ready() -> void:
 # ================================================================== nueva partida
 
 func new_game(opts: Dictionary) -> void:
-	pres = {"name": opts.get("name", "Alejandro Ríos"), "party": opts.get("party", "MP"), "look": opts.get("look", {})}
+	pres = {"name": opts.get("name", "Alejandro Ríos"), "party": opts.get("party", "MP"), "look": Perfil.apply_outfit(opts.get("look", {}))}
 	difficulty = opts.get("difficulty", 1)
 	term_days = int(opts.get("years", 2)) * 365
 	day = 0
@@ -159,6 +164,11 @@ func new_game(opts: Dictionary) -> void:
 	ministers = {}
 	for k in ["jefa", "economia", "interior", "exteriores", "defensa", "sanidad"]:
 		ministers[k] = W.CHARACTERS[k].duplicate(true)
+		ministers[k]["traits"] = W.INITIAL_TRAITS.get(k, []).duplicate()
+	_recalc_traits()
+	region_bonus = {}
+	campaign_acts = 0
+	acts_done = 0
 	corruption = 0.0
 	fortune = 0.0
 	stat_hist = {"approval": [], "economia": [], "bienestar": [], "seguridad": [], "estabilidad": [], "prestigio": [], "ambiente": [], "debt": [], "balance": []}
@@ -177,7 +187,7 @@ func new_game(opts: Dictionary) -> void:
 	elections_result = {}
 	wear = 0.0
 	var mult: float = [1.25, 1.0, 0.8][difficulty]
-	timers = {"doc": 2, "advisor": 9, "call": 6, "crisis": int(55 * mult), "press": int(50 * mult), "news": 3}
+	timers = {"doc": 2, "advisor": 9, "call": 6, "crisis": int(55 * mult), "press": int(50 * mult), "news": 3, "control": 35, "summit": 110}
 	_recalc_mods()
 	_update_targets()
 	_update_approval()
@@ -249,6 +259,24 @@ func advance_day() -> void:
 		wear -= step
 		for f in ["trabajadores", "empresarios", "clase_media", "jovenes", "jubilados"]:
 			add_mod(f, -step, -1)
+	if approval >= 70.0:
+		Perfil.unlock("idolo")
+	if debt_ratio() < 80.0:
+		Perfil.unlock("cuentas")
+	_campaign_tick()
+	if timers.has("control") and not campaign and day > 30:
+		timers["control"] -= 1
+		if timers["control"] <= 0:
+			timers["control"] = rng.randi_range(40, 60)
+			open_request.emit("control", {})
+	if timers.has("summit") and day > 90:
+		timers["summit"] -= 1
+		if timers["summit"] <= 0:
+			timers["summit"] = rng.randi_range(130, 190)
+			var sid: String = DB.SUMMITS.keys().pick_random()
+			spawn({"id": "cumbre_" + sid, "type": "advisor", "who": "exteriores", "gen": true, "title": "Invitación a una cumbre",
+				"text": DB.SUMMITS[sid]["invite"],
+				"choices": [{"t": "Asistiré personalmente.", "fx": {"summit": sid}, "rec": "exteriores"}, {"t": "Enviar al ministro de Exteriores.", "fx": {"prestigio": -2}}], "default": 1})
 	day_passed.emit()
 	stats_changed.emit()
 	_check_end()
@@ -294,7 +322,7 @@ func interest() -> float:
 
 
 func monthly_balance() -> float:
-	return revenue() - spending() - interest() + monthly_adj
+	return revenue() - spending() - interest() + monthly_adj + float(_trait_sums.get("_monthly", 0.0))
 
 
 func _economy_daily() -> void:
@@ -374,11 +402,74 @@ func _update_approval() -> void:
 		s += fac[f] * w
 		ws += w
 	var honeymoon := 10.0 * maxf(0.0, 1.0 - day / 120.0)
-	approval = clampf(s / ws + honeymoon + approval_bonus, 0.0, 100.0)
+	approval = clampf(s / ws + honeymoon + approval_bonus + float(_trait_sums.get("_approval", 0.0)), 0.0, 100.0)
 
 
 func modsum(k: String) -> float:
-	return _mod_sums.get(k, 0.0)
+	return float(_mod_sums.get(k, 0.0)) + float(_trait_sums.get(k, 0.0))
+
+
+# ================================================================== gabinete (rasgos y fichajes)
+
+func _recalc_traits() -> void:
+	_trait_sums = {}
+	for k in ministers.keys():
+		for t in ministers[k].get("traits", []):
+			var td: Dictionary = W.TRAITS.get(t, {})
+			for mk in td.get("mods", {}).keys():
+				_trait_sums[mk] = float(_trait_sums.get(mk, 0.0)) + float(td["mods"][mk])
+			if td.has("monthly"):
+				_trait_sums["_monthly"] = float(_trait_sums.get("_monthly", 0.0)) + float(td["monthly"])
+			if td.has("approval"):
+				_trait_sums["_approval"] = float(_trait_sums.get("_approval", 0.0)) + float(td["approval"])
+			if td.has("area") and W.MINISTRY_AREA.has(k):
+				var area: String = W.MINISTRY_AREA[k]
+				_trait_sums[area] = float(_trait_sums.get(area, 0.0)) + float(td["area"])
+
+
+func has_trait(t: String) -> bool:
+	for k in ministers.keys():
+		if t in ministers[k].get("traits", []):
+			return true
+	return false
+
+
+func gen_candidates(key: String) -> Array:
+	var out := []
+	var good := []
+	var bad := []
+	for t in W.TRAITS.keys():
+		if W.TRAITS[t].get("good", true):
+			good.append(t)
+		else:
+			bad.append(t)
+	for i in 3:
+		var g := "m" if rng.randf() < 0.5 else "f"
+		var tr := [good.pick_random()]
+		var r := rng.randf()
+		if r < 0.45:
+			var t2: String = good.pick_random()
+			if not (t2 in tr):
+				tr.append(t2)
+		elif r < 0.8:
+			tr.append(bad.pick_random())
+		var role: String = ministers[key]["role"]
+		role = role.replace("Ministro", "Ministra") if g == "f" else role.replace("Ministra", "Ministro")
+		if key == "jefa":
+			role = "Jefa de Gabinete" if g == "f" else "Jefe de Gabinete"
+		out.append({"name": DB.rand_name(g), "role": role, "look": DB.rand_look(g), "traits": tr})
+	return out
+
+
+func hire_minister(key: String, cand: Dictionary) -> void:
+	var old: String = ministers[key]["name"]
+	ministers[key] = cand.duplicate(true)
+	_recalc_traits()
+	_update_targets()
+	push_news("%s sustituye a %s como %s" % [cand["name"], old, String(cand["role"]).to_lower()], 2)
+	log_history("Cambio en el Gobierno", "%s, nuevo/a %s" % [cand["name"], String(cand["role"]).to_lower()])
+	Perfil.unlock("fichaje")
+	stats_changed.emit()
 
 
 func add_mod(k: String, v: float, dur: int) -> void:
@@ -839,6 +930,12 @@ func resolve_crisis(item: Dictionary, score: float, unit_fx: Dictionary, cost: f
 	fx["stress"] = 8.0
 	var out := apply_fx(fx, cr["title"])
 	log_history(cr["title"], "Crisis gestionada (%d%%)" % int(score * 100))
+	if score >= 0.62:
+		Perfil.earn(Perfil.S.EARN["crisis"], "Crisis superada")
+		if cr.get("fatal", false):
+			Perfil.unlock("democracia")
+	if score >= 0.9:
+		Perfil.unlock("crisis_perfecta")
 	return out
 
 
@@ -976,6 +1073,8 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				spawn(cev)
 			"nego":
 				open_request.emit("nego", v)
+			"summit":
+				open_request.emit("summit", {"summit": str(v)})
 			"speech":
 				open_request.emit("speech", {"occasion": v})
 			"debate":
@@ -1035,7 +1134,9 @@ func _fire_minister(key: String) -> void:
 		role = role.replace("Ministro", "Ministra")
 	else:
 		role = role.replace("Ministra", "Ministro")
-	ministers[key] = {"name": nm, "role": role, "look": DB.rand_look(g)}
+	var traits := [W.TRAITS.keys().pick_random()]
+	ministers[key] = {"name": nm, "role": role, "look": DB.rand_look(g), "traits": traits}
+	_recalc_traits()
 	push_news("%s sustituye a %s como %s" % [nm, old, role.to_lower()], 2)
 
 
@@ -1095,6 +1196,10 @@ func enact_law(id: String) -> Array:
 	var law: Dictionary = W.LAWS[id]
 	policies.append(id)
 	last_law = id
+	Perfil.earn(Perfil.S.EARN["ley"], "Ley aprobada")
+	Perfil.unlock("primera_ley")
+	if policies.size() >= 5:
+		Perfil.unlock("cinco_leyes")
 	flags.erase("law_pending_" + id)
 	var fx: Dictionary = law.get("fx", {}).duplicate(true)
 	var out := apply_fx(fx, law["name"])
@@ -1153,9 +1258,12 @@ func _check_end() -> void:
 	if left == 60 and not campaign:
 		campaign = true
 		flags["campana"] = day
-		toast.emit("¡Comienza la campaña electoral! Quedan 60 días para las elecciones.", "info", "votar")
+		campaign_acts = 3
+		_campaign_days = 0
+		toast.emit("¡Comienza la campaña electoral! Use el micrófono para organizar actos por las regiones.", "info", "votar")
 		push_news("Arranca la campaña electoral", 3)
 		Sfx.music("music_campaign")
+		open_request.emit("campaign", {"intro": true})
 	if left == 14 and not debate_done:
 		debate_done = true
 		open_request.emit("debate", {"electoral": true})
@@ -1210,6 +1318,7 @@ func compute_election() -> Dictionary:
 		var local := 0.0
 		for f in r["demo"].keys():
 			local += (fac[f] - approval) * float(r["demo"][f]) * 0.35
+		local += region_boost(rid)
 		var rsum := 0.0
 		for p in shares.keys():
 			var s: float = shares[p]
@@ -1268,6 +1377,44 @@ func compute_election() -> Dictionary:
 	return elections_result
 
 
+func region_boost(rid: int) -> float:
+	return float(region_bonus.get(str(rid), 0.0))
+
+
+func add_region_boost(rid: int, v: float) -> void:
+	region_bonus[str(rid)] = region_boost(rid) + v
+
+
+## Intención de voto estimada del partido del presidente en una región (sin ruido)
+func region_estimate(rid: int) -> float:
+	var base := clampf(approval * 0.62 + 4.0 + campaign_bonus, 8.0, 58.0)
+	var r: Dictionary = W.REGIONS[rid]
+	var local := 0.0
+	for f in r["demo"].keys():
+		local += (fac[f] - approval) * float(r["demo"][f]) * 0.35
+	return clampf(base + local + region_boost(rid), 3.0, 80.0)
+
+
+func _campaign_tick() -> void:
+	if not campaign:
+		return
+	_campaign_days += 1
+	if _campaign_days % 6 == 0 and campaign_acts < 5:
+		campaign_acts += 1
+		toast.emit("Nuevo acto de campaña disponible (%d)" % campaign_acts, "info", "microfono")
+
+
+func use_campaign_act(n: int = 1) -> bool:
+	if campaign_acts < n:
+		return false
+	campaign_acts -= n
+	acts_done += n
+	Perfil.earn(Perfil.S.EARN["campana"] * n, "Acto de campaña")
+	if acts_done >= 6:
+		Perfil.unlock("campana")
+	return true
+
+
 func _dhondt(shares: Dictionary, n: int) -> Dictionary:
 	var out := {}
 	for p in shares.keys():
@@ -1315,14 +1462,16 @@ func legacy_title() -> String:
 # ================================================================== guardado
 
 const SAVE_PATH := "user://partida.json"
+## Los tests usan otro archivo para no tocar la partida guardada del jugador
+var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "wear"]
+	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done"]
 
 
 func has_save() -> bool:
-	return FileAccess.file_exists(SAVE_PATH)
+	return FileAccess.file_exists(save_path)
 
 
 var no_save := false
@@ -1337,7 +1486,7 @@ func save_game() -> void:
 	d["inbox"] = _serial_queue(inbox)
 	d["visitors"] = _serial_queue(visitors)
 	d["alerts"] = _serial_queue(alerts)
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
 		f.close()
@@ -1369,7 +1518,7 @@ func _deserial_queue(q: Array) -> Array:
 func load_game() -> bool:
 	if not has_save():
 		return false
-	var txt := FileAccess.get_file_as_string(SAVE_PATH)
+	var txt := FileAccess.get_file_as_string(save_path)
 	var d = JSON.parse_string(txt)
 	if not (d is Dictionary):
 		return false
@@ -1388,6 +1537,14 @@ func load_game() -> bool:
 	for k in timers.keys():
 		timers[k] = int(timers[k])
 	inbox = _deserial_queue(inbox)
+	pres["look"] = Perfil.apply_outfit(pres.get("look", {}))
+	campaign_acts = int(campaign_acts)
+	acts_done = int(acts_done)
+	if not timers.has("control"):
+		timers["control"] = 30
+	if not timers.has("summit"):
+		timers["summit"] = 100
+	_recalc_traits()
 	visitors = _deserial_queue(visitors)
 	alerts = _deserial_queue(alerts)
 	calls = []
@@ -1403,4 +1560,4 @@ func load_game() -> bool:
 
 func delete_save() -> void:
 	if has_save():
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))

@@ -1,25 +1,68 @@
 extends RefCounted
 ## Arte vectorial del despacho, generado como SVG y rasterizado en texturas (con caché).
 
+const Flags := preload("res://scripts/ui/flags.gd")
+
 static var _cache := {}
 
+const THEMES := {
+	"clasico": {"wall": ["#15271f", "#223d33", "#1f3830", "#172b24"], "curt": ["#360a10", "#4a1019", "#6d1b27", "#86283a"], "val": ["#5a1520", "#3a0c13"], "carpet": ["#4a1418", "#2a0a0d"], "stroke": "#1a0508", "damask": "#e9d9a8"},
+	"republicano": {"wall": ["#0d1626", "#1b2b47", "#17253e", "#0f1a2c"], "curt": ["#3a2c0c", "#5e4716", "#9a7a2a", "#c9a548"], "val": ["#7a5c1c", "#4a370f"], "carpet": ["#1a2a4a", "#0d1626"], "stroke": "#2a1f08", "damask": "#c9a55c"},
+	"crema": {"wall": ["#a89a7a", "#cfc3a6", "#c6b99b", "#ad9f80"], "curt": ["#4f3c14", "#6b5320", "#a58440", "#c9a55c"], "val": ["#8a6d33", "#5a461c"], "carpet": ["#1f3a6a", "#12244a"], "stroke": "#2a2008", "damask": "#5a4a2a"},
+	"imperial": {"wall": ["#320a0a", "#5a1616", "#4e1313", "#360c0c"], "curt": ["#060606", "#121212", "#242424", "#383838"], "val": ["#1a1a1a", "#0a0a0a"], "carpet": ["#2a1a10", "#120a06"], "stroke": "#000000", "damask": "#c9a55c"},
+	"medianoche": {"wall": ["#080c18", "#131b31", "#10172b", "#090e1e"], "curt": ["#1a1e26", "#2c3038", "#4a505c", "#6a717f"], "val": ["#3a3f4a", "#22262e"], "carpet": ["#1a1f2e", "#0b0e16"], "stroke": "#05060a", "damask": "#b8c0d0"},
+}
 
-static func tex(name: String, scale: float = 1.0) -> Texture2D:
-	var key := "%s@%s" % [name, scale]
+const WOODS := {
+	"caoba": {"top": ["#7a3d26", "#5e2c1b", "#351810"], "edge": ["#a86040", "#5a2c18"], "grain": "#1c0904"},
+	"roble": {"top": ["#b48d5c", "#977245", "#6b4f2c"], "edge": ["#d2ad78", "#7a5a32"], "grain": "#4a3018"},
+	"ebano": {"top": ["#3a312c", "#251f1b", "#100c0a"], "edge": ["#5a4c44", "#1a1410"], "grain": "#000000"},
+	"marmol": {"top": ["#efece6", "#dcd8d0", "#bdb8ae"], "edge": ["#ffffff", "#a8a39a"], "grain": "#6a6a72"},
+}
+
+const LAMPS := {"verde": ["#3aa26a", "#16603a", "#0b3320"], "rubi": ["#d04848", "#8a1a1a", "#450a0a"], "zafiro": ["#4a7ad0", "#1a3f86", "#0b1f48"]}
+
+
+static func _perfil():
+	var ml := Engine.get_main_loop()
+	if ml is SceneTree:
+		return (ml as SceneTree).root.get_node_or_null("Perfil")
+	return null
+
+
+static func tex(name: String, scale: float = 1.0, variant: Dictionary = {}) -> Texture2D:
+	var v := variant.duplicate()
+	var pf = _perfil()
+	match name:
+		"room":
+			if not v.has("theme"):
+				v["theme"] = pf.office_theme() if pf != null else "clasico"
+			if not v.has("flag"):
+				v["flag"] = pf.flag_style() if pf != null else "clasica"
+		"desk":
+			if not v.has("wood"):
+				v["wood"] = pf.wood() if pf != null else "caoba"
+		"lamp":
+			if not v.has("lamp"):
+				v["lamp"] = pf.equipped_data("lampara").get("lamp", "verde") if pf != null else "verde"
+		"redphone":
+			if not v.has("phone"):
+				v["phone"] = pf.equipped_data("telefono").get("phone", "rojo") if pf != null else "rojo"
+	var key := "%s@%s@%s" % [name, scale, JSON.stringify(v)]
 	if _cache.has(key):
 		return _cache[key]
 	var svg := ""
 	match name:
 		"room":
-			svg = room_svg()
+			svg = room_svg(v["theme"], v["flag"])
 		"desk":
-			svg = desk_svg()
+			svg = desk_svg(v["wood"])
 		"door_leaf":
 			svg = door_leaf_svg()
 		"lamp":
-			svg = lamp_svg()
+			svg = lamp_svg(v["lamp"])
 		"redphone":
-			svg = redphone_svg()
+			svg = redphone_svg(v["phone"])
 		"phone":
 			svg = phone_svg()
 		"folder":
@@ -109,22 +152,26 @@ static func seal_svg(size: int) -> String:
 	return "<svg xmlns='http://www.w3.org/2000/svg' width='%d' height='%d' viewBox='0 0 200 200'><defs>%s</defs>%s</svg>" % [size, size, _common_defs(), seal_body(100, 88, 62)]
 
 
-static func room_svg() -> String:
+static func room_svg(theme: String = "clasico", flag: String = "clasica") -> String:
+	var T: Dictionary = THEMES.get(theme, THEMES["clasico"])
+	var cu: Array = T["curt"]
+	var curt_stops := [[0, cu[0]], [0.12, cu[2]], [0.22, cu[1]], [0.36, cu[3]], [0.5, cu[1]], [0.64, cu[2]], [0.78, cu[1]], [0.9, cu[2]], [1, cu[0]]]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1234
 	var s := PackedStringArray()
 	s.append("<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080' viewBox='0 0 1920 1080'><defs>")
 	s.append(_common_defs())
-	s.append(_lg("wall", 0, 0, 0, 1, [[0, "#15271f"], [0.35, "#223d33"], [0.7, "#1f3830"], [1, "#172b24"]]))
+	var wl: Array = T["wall"]
+	s.append(_lg("wall", 0, 0, 0, 1, [[0, wl[0]], [0.35, wl[1]], [0.7, wl[2]], [1, wl[3]]]))
 	s.append(_lg("wood", 0, 0, 0, 1, [[0, "#5a3522"], [1, "#2c180e"]]))
 	s.append(_lg("wpanel", 0, 0, 1, 1, [[0, "#57341f"], [1, "#351e11"]]))
 	s.append(_lg("wpanel2", 0, 0, 1, 1, [[0, "#4b2c1a"], [1, "#3a2113"]]))
 	s.append(_lg("cream", 0, 0, 1, 1, [[0, "#efe5cf"], [1, "#b9aa8a"]]))
 	s.append(_lg("creamv", 0, 0, 0, 1, [[0, "#f1e8d4"], [1, "#c3b393"]]))
-	s.append(_lg("carpet", 0, 0, 0, 1, [[0, "#4a1418"], [1, "#2a0a0d"]]))
-	s.append(_lg("curtL", 0, 0, 1, 0, [[0, "#3c0c13"], [0.12, "#6d1b27"], [0.22, "#4a1019"], [0.36, "#86283a"], [0.5, "#52131d"], [0.64, "#7c2233"], [0.78, "#4c1019"], [0.9, "#6e1c29"], [1, "#360a10"]]))
-	s.append(_lg("curtR", 1, 0, 0, 0, [[0, "#3c0c13"], [0.12, "#6d1b27"], [0.22, "#4a1019"], [0.36, "#86283a"], [0.5, "#52131d"], [0.64, "#7c2233"], [0.78, "#4c1019"], [0.9, "#6e1c29"], [1, "#360a10"]]))
-	s.append(_lg("valance", 0, 0, 0, 1, [[0, "#5a1520"], [1, "#3a0c13"]]))
+	s.append(_lg("carpet", 0, 0, 0, 1, [[0, T["carpet"][0]], [1, T["carpet"][1]]]))
+	s.append(_lg("curtL", 0, 0, 1, 0, curt_stops))
+	s.append(_lg("curtR", 1, 0, 0, 0, curt_stops))
+	s.append(_lg("valance", 0, 0, 0, 1, [[0, T["val"][0]], [1, T["val"][1]]]))
 	s.append(_rg("corr", 0.5, 0.35, 0.8, [[0, "#f7dca2"], [0.5, "#b98a52"], [1, "#4a2c16"]]))
 	s.append(_lg("corrfloor", 0, 0, 0, 1, [[0, "#6a1c20"], [1, "#9e2a2e"]]))
 	s.append(_lg("tvg", 0, 0, 0, 1, [[0, "#26272a"], [1, "#0a0a0b"]]))
@@ -142,7 +189,7 @@ static func room_svg() -> String:
 			continue
 		s.append(_r(x + 16, 40, 22, 392, "#ffffff", "opacity='0.022'"))
 		for y in range(70, 430, 72):
-			s.append("<path d='M%d %d l6 9 -6 9 -6 -9 Z' fill='#e9d9a8' opacity='0.05'/>" % [x + 27, y])
+			s.append("<path d='M%d %d l6 9 -6 9 -6 -9 Z' fill='%s' opacity='0.06'/>" % [x + 27, y, T["damask"]])
 	# moldura superior
 	s.append(_r(0, 0, 1920, 32, "url(#wood)"))
 	s.append(_r(0, 32, 1920, 5, "url(#gold)"))
@@ -186,8 +233,8 @@ static func room_svg() -> String:
 	# cortinas
 	s.append("<path d='M0 76 L200 76 C194 200 164 330 154 410 C150 440 164 470 180 522 C200 592 210 650 216 712 L0 712 Z' fill='url(#curtL)'/>")
 	s.append("<path d='M600 76 L400 76 C406 200 436 330 446 410 C450 440 436 470 420 522 C400 592 390 650 384 712 L600 712 Z' fill='url(#curtR)'/>")
-	s.append("<path d='M0 76 L200 76 C194 200 164 330 154 410 C150 440 164 470 180 522 C200 592 210 650 216 712' fill='none' stroke='#1a0508' stroke-width='3' opacity='0.6'/>")
-	s.append("<path d='M600 76 L400 76 C406 200 436 330 446 410 C450 440 436 470 420 522 C400 592 390 650 384 712' fill='none' stroke='#1a0508' stroke-width='3' opacity='0.6'/>")
+	s.append("<path d='M0 76 L200 76 C194 200 164 330 154 410 C150 440 164 470 180 522 C200 592 210 650 216 712' fill='none' stroke='%s' stroke-width='3' opacity='0.6'/>" % T["stroke"])
+	s.append("<path d='M600 76 L400 76 C406 200 436 330 446 410 C450 440 436 470 420 522 C400 592 390 650 384 712' fill='none' stroke='%s' stroke-width='3' opacity='0.6'/>" % T["stroke"])
 	for side in [0, 1]:
 		var cx := 158.0 if side == 0 else 442.0
 		s.append("<ellipse cx='%s' cy='418' rx='34' ry='12' fill='url(#gold)'/>" % cx)
@@ -210,7 +257,8 @@ static func room_svg() -> String:
 	s.append("<circle cx='660' cy='112' r='7' fill='url(#gold)'/>")
 	var cloth := [Vector2(665, 130), Vector2(742, 138), Vector2(752, 220), Vector2(736, 330), Vector2(748, 440), Vector2(730, 540), Vector2(700, 560), Vector2(676, 548), Vector2(668, 440)]
 	var cloth_pts := PackedVector2Array(cloth)
-	var bands := [[Color("1d3557"), -40.0, 60.0], [Color("e9c46a"), 60.0, 150.0], [Color("1d3557"), 150.0, 400.0]]
+	var fp: Array = Flags.palette(flag)
+	var bands := [[fp[0], -40.0, 60.0], [fp[1], 60.0, 150.0], [fp[2], 150.0, 400.0]]
 	for b in bands:
 		var band := PackedVector2Array([Vector2(600, 100 + b[1]), Vector2(800, 100 + b[1] + 170.0), Vector2(800, 100 + b[2] + 170.0), Vector2(600, 100 + b[2])])
 		var inter := Geometry2D.intersect_polygons(cloth_pts, band)
@@ -307,16 +355,17 @@ static func room_svg() -> String:
 	return "".join(s)
 
 
-static func desk_svg() -> String:
+static func desk_svg(wood: String = "caoba") -> String:
+	var WD: Dictionary = WOODS.get(wood, WOODS["caoba"])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
 	var s := PackedStringArray()
 	s.append("<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='440' viewBox='0 0 1920 440'><defs>")
 	s.append(_common_defs())
-	s.append(_lg("top", 0, 0, 0, 1, [[0, "#7a3d26"], [0.25, "#5e2c1b"], [1, "#351810"]]))
+	s.append(_lg("top", 0, 0, 0, 1, [[0, WD["top"][0]], [0.25, WD["top"][1]], [1, WD["top"][2]]]))
 	s.append(_lg("leather", 0, 0, 0, 1, [[0, "#23443a"], [1, "#132820"]]))
 	s.append(_lg("pad", 0, 0, 0, 1, [[0, "#1c1512"], [1, "#0e0a08"]]))
-	s.append(_lg("edge", 0, 0, 0, 1, [[0, "#a86040"], [1, "#5a2c18"]]))
+	s.append(_lg("edge", 0, 0, 0, 1, [[0, WD["edge"][0]], [1, WD["edge"][1]]]))
 	s.append("</defs>")
 	s.append("<polygon points='150,56 1770,56 2040,440 -120,440' fill='url(#top)'/>")
 	s.append("<polygon points='150,50 1770,50 1774,58 146,58' fill='url(#edge)'/>")
@@ -332,7 +381,7 @@ static func desk_svg() -> String:
 			var x1 := lerpf(xl, xr, (k + 0.5) / segs)
 			var x2 := lerpf(xl, xr, (k + 1.0) / segs)
 			d += " Q%s %s %s %s" % [x1, y + rng.randf_range(-4, 4) * (0.5 + t), x2, y + rng.randf_range(-1.5, 1.5)]
-		s.append("<path d='%s' stroke='#1c0904' stroke-width='%s' opacity='%s' fill='none'/>" % [d, 1.0 + t * 1.5, rng.randf_range(0.06, 0.16)])
+		s.append("<path d='%s' stroke='%s' stroke-width='%s' opacity='%s' fill='none'/>" % [d, WD["grain"], 1.0 + t * 1.5, rng.randf_range(0.06, 0.16) * (1.8 if wood == "marmol" else 1.0)])
 	s.append("<polygon points='262,96 1658,96 1880,440 40,440' fill='url(#leather)'/>")
 	s.append("<polygon points='262,96 1658,96 1880,440 40,440' fill='none' stroke='#b8913f' stroke-width='2.5' opacity='0.75'/>")
 	s.append("<polygon points='276,106 1644,106 1862,440 58,440' fill='none' stroke='#b8913f' stroke-width='1' opacity='0.45'/>")
@@ -364,10 +413,11 @@ static func door_leaf_svg() -> String:
 	return s
 
 
-static func lamp_svg() -> String:
+static func lamp_svg(color: String = "verde") -> String:
+	var L: Array = LAMPS.get(color, LAMPS["verde"])
 	var s := "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='240' viewBox='0 0 200 240'><defs>"
 	s += _common_defs()
-	s += _lg("shade", 0, 0, 0, 1, [[0, "#3aa26a"], [0.5, "#16603a"], [1, "#0b3320"]])
+	s += _lg("shade", 0, 0, 0, 1, [[0, L[0]], [0.5, L[1]], [1, L[2]]])
 	s += "</defs>"
 	s += "<ellipse cx='100' cy='228' rx='66' ry='10' fill='#000' opacity='0.35'/>"
 	s += "<ellipse cx='100' cy='220' rx='62' ry='14' fill='url(#gold)'/>"
@@ -383,11 +433,15 @@ static func lamp_svg() -> String:
 	return s
 
 
-static func redphone_svg() -> String:
+static func redphone_svg(style: String = "rojo") -> String:
 	var s := "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' viewBox='0 0 200 150'><defs>"
 	s += _common_defs()
-	s += _lg("red", 0, 0, 0, 1, [[0, "#e0453e"], [0.5, "#a61c18"], [1, "#5e0c0a"]])
-	s += _lg("redh", 0, 0, 0, 1, [[0, "#ff6a5e"], [1, "#8e1612"]])
+	if style == "oro":
+		s += _lg("red", 0, 0, 0, 1, [[0, "#f6e2a6"], [0.5, "#c9a55c"], [1, "#6e521f"]])
+		s += _lg("redh", 0, 0, 0, 1, [[0, "#fff2c8"], [1, "#9a7a32"]])
+	else:
+		s += _lg("red", 0, 0, 0, 1, [[0, "#e0453e"], [0.5, "#a61c18"], [1, "#5e0c0a"]])
+		s += _lg("redh", 0, 0, 0, 1, [[0, "#ff6a5e"], [1, "#8e1612"]])
 	s += "</defs>"
 	s += "<ellipse cx='100' cy='138' rx='88' ry='10' fill='#000' opacity='0.4'/>"
 	s += "<path d='M24 134 L46 62 Q49 52 60 52 L140 52 Q151 52 154 62 L176 134 Q176 138 170 138 L30 138 Q24 138 24 134 Z' fill='url(#red)'/>"

@@ -10,6 +10,7 @@ const MonitorView := preload("res://scripts/office/monitor_view.gd")
 const DeskObject := preload("res://scripts/office/desk_object.gd")
 const Hud := preload("res://scripts/office/hud.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
+const PetArt := preload("res://scripts/office/pet_art.gd")
 const W := preload("res://scripts/data/world_data.gd")
 
 var scene: Control
@@ -32,6 +33,12 @@ var _knock_t := 0.0
 var _coffee_cd := 0.0
 var _door_open := 0.0
 var _last_alert := false
+var pet_kind := ""
+var _pet_cd := 0.0
+var _pet_happy := 0.0
+var _parrot_line := ""
+var _parrot_t := 12.0
+const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!"]
 
 
 func _ready() -> void:
@@ -132,6 +139,15 @@ func _ready() -> void:
 	ph.animated = true
 	GS.headline.connect(_on_headline_news)
 	GS.day_passed.connect(_on_day_redraw)
+	globe_mat.set_shader_parameter("style", 1 if Perfil.equipped_data("globo").get("globe", "") == "nocturno" else 0)
+	# mascota
+	pet_kind = Perfil.equipped_data("mascota").get("pet", "")
+	if pet_kind != "":
+		var pr: Rect2 = {"gato": Rect2(590, 975, 210, 105), "perro": Rect2(0, 920, 210, 160), "loro": Rect2(1208, 118, 96, 96), "pez": Rect2(478, 770, 86, 86)}[pet_kind]
+		var pet := _object("pet", pr, null, {"gato": "Decreto, el gato", "perro": "Tribuno, el perro", "loro": "Senador, el loro", "pez": "El pez dorado"}[pet_kind])
+		pet.extra_draw = _draw_pet
+		pet.animated = true
+		pet.glow_color = Color(1.0, 0.9, 0.7)
 	# iluminación
 	light = ColorRect.new()
 	UI.full(light)
@@ -327,7 +343,9 @@ func _on_object(key: String) -> void:
 		"folder":
 			request.emit("budget", {})
 		"mic":
-			if GS.day < GS.speech_until:
+			if GS.campaign:
+				request.emit("campaign", {})
+			elif GS.day < GS.speech_until:
 				GS.toast.emit("Demasiado pronto para otro discurso (%d días)." % (GS.speech_until - GS.day), "warn", "microfono")
 			else:
 				request.emit("speech", {"occasion": "campana" if GS.campaign else "nacion"})
@@ -343,6 +361,16 @@ func _on_object(key: String) -> void:
 			GS.set_speed(1 if GS.speed == 0 else 0)
 		"lamp":
 			Sfx.play("click", -2.0, 0.7)
+		"pet":
+			_pet_happy = 2.5
+			if _pet_cd <= 0.0:
+				_pet_cd = 20.0
+				GS.stress = maxf(0.0, GS.stress - 3.0)
+				GS.toast.emit({"gato": "Decreto ronronea. Estrés −3.", "perro": "Tribuno mueve la cola. Estrés −3.", "loro": "Senador: «¡Presidente guapo!». Estrés −3.", "pez": "El pez da una vuelta. Estrés −3."}.get(pet_kind, ""), "good", "bienestar")
+			if pet_kind == "loro":
+				_parrot_line = PARROT.pick_random()
+				_parrot_t = 4.0
+			Sfx.play("notify", -10.0, 1.6 if pet_kind != "perro" else 0.7)
 
 
 func enter_visitor(look: Dictionary) -> void:
@@ -374,6 +402,17 @@ func exit_visitor() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_coffee_cd = maxf(0.0, _coffee_cd - delta)
+	_pet_cd = maxf(0.0, _pet_cd - delta)
+	_pet_happy = maxf(0.0, _pet_happy - delta)
+	if pet_kind == "loro":
+		_parrot_t -= delta
+		if _parrot_t <= 0.0:
+			if _parrot_line == "":
+				_parrot_line = PARROT.pick_random()
+				_parrot_t = 3.5
+			else:
+				_parrot_line = ""
+				_parrot_t = randf_range(18.0, 35.0)
 	if tip.visible:
 		tip.position = get_global_mouse_position() + Vector2(22, 18)
 		if tip.position.x + tip.size.x > 1900:
@@ -509,6 +548,18 @@ func _draw_calendar(o: Control) -> void:
 	o.draw_string(UI.f_sans_m, Vector2(10, 88), UI.WEEKDAYS[d["weekday"]], HORIZONTAL_ALIGNMENT_CENTER, w - 28, 11, Color(0.35, 0.35, 0.4))
 	for i in 2:
 		o.draw_circle(Vector2(30 + i * (w - 68), 3), 4, Color(0.6, 0.6, 0.62))
+
+
+func _draw_pet(o: Control) -> void:
+	PetArt.draw(o, pet_kind, _t, _pet_happy > 0.0, _parrot_line)
+
+
+func _ell(c: Vector2, r: Vector2) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 24:
+		var a := TAU * i / 24.0
+		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
+	return pts
 
 
 func _draw_steam(o: Control) -> void:

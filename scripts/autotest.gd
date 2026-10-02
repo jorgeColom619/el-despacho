@@ -24,8 +24,13 @@ func run(days: int) -> void:
 		_resolve_all()
 		if GS.day == 200:
 			var before := GS.approval
+			GS.save_path = "user://autotest_partida.json"
+			GS.no_save = false
 			GS.save_game()
 			var ok := GS.load_game()
+			GS.no_save = true
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(GS.save_path))
+			GS.save_path = GS.SAVE_PATH
 			GS.set_speed(0)
 			print(">>> guardar/cargar: ", ok, " aprob antes ", before, " después ", GS.approval, " día ", GS.day, " leyes ", GS.policies.size())
 		if GS.day % 60 == 0:
@@ -112,6 +117,8 @@ func _on_req(kind: String, data: Dictionary) -> void:
 			print(">>> ELECCIONES: ganado=", r["won"], " escaños propios=", r["own_seats"], " aliados=", r["allies"], " reparto=", r["seats"])
 		"vote":
 			print(">>> MOCIÓN DE CENSURA el día ", GS.day)
+		"summit", "control", "campaign":
+			pass
 		"speech":
 			GS.apply_fx({"approval": 2.0}, "speech", false)
 			GS.speech_until = GS.day + 45

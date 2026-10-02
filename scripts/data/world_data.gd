@@ -81,6 +81,31 @@ const CHARACTERS := {
 	"periodista": {"name": "Laura Vidal", "role": "Presentadora de Canal 7", "look": {"g": "f", "skin": 1, "hair": "long", "hc": 4, "glasses": 0, "suit": "2b3e66", "shirt": "fafafa", "tie": "", "age": 0, "eyes": "4d6a80"}},
 }
 
+## Rasgos de los ministros: modifican objetivos, saldo, aprobación o minijuegos.
+const TRAITS := {
+	"negociador": {"name": "Negociador", "desc": "En las negociaciones, el límite del rival sube y su franja se ve con más precisión.", "good": true},
+	"austero": {"name": "Austero", "desc": "+350 M€ al mes de saldo.", "good": true, "monthly": 350.0},
+	"tecnocrata": {"name": "Tecnócrata", "desc": "Economía +3.", "good": true, "mods": {"economia": 3.0}},
+	"mano_dura": {"name": "Mano dura", "desc": "Seguridad +4, Jóvenes −2.", "good": true, "mods": {"seguridad": 4.0, "jovenes": -2.0}},
+	"diplomatico": {"name": "Diplomático", "desc": "Prestigio +3.", "good": true, "mods": {"prestigio": 3.0}},
+	"leal": {"name": "Leal", "desc": "Estabilidad +3.", "good": true, "mods": {"estabilidad": 3.0}},
+	"gestor": {"name": "Buen gestor", "desc": "Bienestar +3.", "good": true, "mods": {"bienestar": 3.0}},
+	"carismatico": {"name": "Carismático", "desc": "Aprobación +2.", "good": true, "approval": 2.0},
+	"veterano": {"name": "Veterano", "desc": "+1 unidad de cada tipo en el Gabinete de Crisis.", "good": true},
+	"ecologista": {"name": "Ecologista", "desc": "Medio ambiente +4, Empresarios −2.", "good": true, "mods": {"ambiente": 4.0, "empresarios": -2.0}},
+	"sindicalista": {"name": "Amigo de los sindicatos", "desc": "Trabajadores +3, Empresarios −2.", "good": true, "mods": {"trabajadores": 3.0, "empresarios": -2.0}},
+	"liberal": {"name": "Liberal", "desc": "Empresarios +3, Trabajadores −2.", "good": true, "mods": {"empresarios": 3.0, "trabajadores": -2.0}},
+	"orador": {"name": "Gran orador", "desc": "+3 segundos para responder en la sesión de control.", "good": true},
+	"polemico": {"name": "Polémico", "desc": "Estabilidad −3.", "good": false, "mods": {"estabilidad": -3.0}},
+	"inexperto": {"name": "Inexperto", "desc": "Su área −3.", "good": false, "area": -3.0},
+	"derrochador": {"name": "Derrochador", "desc": "−250 M€ al mes de saldo.", "good": false, "monthly": -250.0},
+}
+
+## Área de cada cartera (para el rasgo "inexperto")
+const MINISTRY_AREA := {"jefa": "estabilidad", "economia": "economia", "interior": "seguridad", "exteriores": "prestigio", "defensa": "militares", "sanidad": "bienestar"}
+
+const INITIAL_TRAITS := {"jefa": ["leal"], "economia": ["tecnocrata", "polemico"], "interior": ["mano_dura"], "exteriores": ["diplomatico"], "defensa": ["veterano"], "sanidad": ["gestor"]}
+
 const COUNTRIES := {
 	"norland": {"name": "Norland", "full": "Estados Federados de Norland", "leader": "Harrison Kade", "title": "Presidente", "pers": "orgulloso", "power": 95.0, "rel": 25.0, "map": 7, "color": "3b6fb6",
 		"desc": "La superpotencia occidental. Aliado histórico que exige lealtad a cambio de protección.",

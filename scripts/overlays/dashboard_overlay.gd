@@ -395,15 +395,35 @@ func _gabinete(v: VBoxContainer) -> void:
 		var cv := UI.vbox(6)
 		c.add_child(cv)
 		var pf := Control.new()
-		pf.custom_minimum_size = Vector2(400, 220)
+		pf.custom_minimum_size = Vector2(400, 180)
 		pf.clip_contents = true
 		pf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var p := Portrait.new()
-		p.position = Vector2(110, 10)
-		p.size = Vector2(180, 216)
+		p.position = Vector2(125, 6)
+		p.size = Vector2(150, 180)
 		pf.add_child(p)
 		p.setup(m["look"], false)
 		cv.add_child(pf)
 		cv.add_child(UI.lbl(m["name"], UI.f_serif_b, 24, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 		cv.add_child(UI.lbl(m["role"], UI.f_sans_m, 15, UI.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+		var flow := HFlowContainer.new()
+		flow.alignment = FlowContainer.ALIGNMENT_CENTER
+		flow.add_theme_constant_override("h_separation", 6)
+		flow.add_theme_constant_override("v_separation", 6)
+		for t in m.get("traits", []):
+			var td: Dictionary = W.TRAITS.get(t, {})
+			if td.is_empty():
+				continue
+			var good: bool = td.get("good", true)
+			var chip := Widgets.chip("capital" if good else "alerta", td["name"], UI.GREEN if good else UI.RED, 14)
+			chip.tooltip_text = td["desc"]
+			flow.add_child(chip)
+		cv.add_child(flow)
 		grid.add_child(c)
+	var b := UI.btn("Reunir al Consejo de Ministros (fichajes y ceses)", "normal", 17)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	b.pressed.connect(func():
+		close()
+		if main != null:
+			main.call_deferred("open_overlay", "cabinet", {}))
+	v.add_child(b)

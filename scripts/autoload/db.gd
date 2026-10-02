@@ -25,6 +25,26 @@ const DOMESTIC := {
 	}},
 }
 
+## Cumbres internacionales: negociación con varios líderes a la vez (el acuerdo debe convencer a todos)
+const SUMMITS := {
+	"clima": {"name": "Cumbre del Clima de Marvella", "leaders": ["union", "tsaing", "norland"],
+		"invite": "Presidente, la Unión, Tsaing y Norland celebran una cumbre climática en Marvella y nos invitan a liderar un pacto común. Si lo logramos, nuestro prestigio se disparará.",
+		"desc": "Hay que fijar un objetivo común de reducción de emisiones que acepten los tres.",
+		"term": ["Reducción de emisiones comprometida", 10.0, 55.0, "%"], "fx_min": {"ambiente": 2, "prestigio": 3}, "fx_max": {"ambiente": 9, "prestigio": 8, "jovenes": 5, "empresarios": -3}, "deal_rel": 6},
+	"estrecho": {"name": "Cumbre del Estrecho", "leaders": ["union", "aldora", "sarvenia"],
+		"invite": "La Unión, Aldora y Sarvenia se reúnen para pactar un plan conjunto de fronteras y migración. Valdoria puede salir de allí con mucho dinero... o con las manos vacías.",
+		"desc": "Se reparte un fondo común para el control de fronteras. Cuanto más pidas, más difícil será que firmen todos.",
+		"term": ["Fondos para Valdoria", 500.0, 6000.0, " M€"], "fx_min": {"money": 500, "seguridad": 2}, "fx_max": {"money": 6000, "seguridad": 5, "clase_media": 3}, "deal_rel": 5, "flag": "pacto_aldora"},
+	"energia": {"name": "Cumbre de la Energía", "leaders": ["qadar", "kharovia", "union"],
+		"invite": "Qadar y Kharovia, los grandes productores, se sientan con la Unión para fijar precios de la energía. Es nuestra oportunidad de abaratar la factura.",
+		"desc": "Pactar una rebaja del precio de la energía para Valdoria que acepten productores y socios.",
+		"term": ["Rebaja del precio de la energía", 2.0, 25.0, "%"], "fx_min": {"economia": 1}, "fx_max": {"economia": 5, "trabajadores": 4, "clase_media": 3}, "deal_rel": 5},
+	"comercio": {"name": "Cumbre de Libre Comercio", "leaders": ["norland", "tsaing", "qadar"],
+		"invite": "Norland, Tsaing y Qadar proponen un gran tratado comercial. Quien no esté en esa mesa se quedará fuera de los mercados.",
+		"desc": "Negociar los aranceles que pagarán nuestras exportaciones en los tres mercados.",
+		"term": ["Aranceles a nuestras exportaciones", 18.0, 0.0, "%"], "fx_min": {"economia": 2}, "fx_max": {"economia": 6, "empresarios": 5}, "deal_rel": 5, "treaty": "comercio"},
+}
+
 const BILLS := [
 	{"t": "Ley de Protección de Datos Digitales", "fx": {"jovenes": 2, "empresarios": -1}},
 	{"t": "Ley de Caza y Pesca", "fx": {"jubilados": 1, "ambiente": -2, "jovenes": -1}},

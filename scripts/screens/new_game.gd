@@ -221,7 +221,7 @@ func _style(b: Button, on: bool, col: Color = UI.GOLD) -> void:
 
 
 func _refresh() -> void:
-	portrait.setup(look, true)
+	portrait.setup(Perfil.apply_outfit(look), true)
 	portrait.mood = 0.35
 	labels["g"].text = "Masculino" if look["g"] == "m" else "Femenino"
 	labels["skin"].text = "Tono %d" % (int(look["skin"]) + 1)

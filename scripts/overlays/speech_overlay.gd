@@ -319,9 +319,15 @@ func _finish() -> void:
 	fx["approval"] = snappedf((avg - 0.75) * 8.0, 0.1)
 	if occasion == "tragedia":
 		fx["estabilidad"] = float(fx.get("estabilidad", 0.0)) + 2.0 * avg
-	GS.speech_until = GS.day + (12 if GS.campaign else 45)
+	if data.has("region"):
+		var rid := int(data["region"])
+		var boost := snappedf(1.5 + avg * 3.5, 0.1)
+		GS.add_region_boost(rid, boost)
+		GS.toast.emit("Mitin en %s: +%s de intención de voto en la región" % [W.REGIONS[rid]["name"], UI.num(boost, 1)], "good", "votar")
+	else:
+		GS.speech_until = GS.day + (12 if GS.campaign else 45)
 	if GS.campaign:
-		GS.campaign_bonus += avg * 1.8
+		GS.campaign_bonus += avg * (0.6 if data.has("region") else 1.8)
 	var out := GS.apply_fx(fx, "Discurso")
 	var verdict := "Discurso memorable" if avg >= 1.05 else ("Discurso correcto" if avg >= 0.8 else "Discurso para olvidar")
 	GS.push_news("%s del presidente %s" % [{"nacion": "Mensaje a la nación", "tragedia": "Declaración institucional", "campana": "Mitin"}.get(occasion, "Discurso"), GS.pres["name"]] + (": «%s»" % verdict.to_lower()), 2)

@@ -3,6 +3,8 @@
 *.translation
 export/
 export_presets.cfg
+# Las capturas del README no son recursos del juego
+docs/**/*.import
 
 # Sistema
 Thumbs.db

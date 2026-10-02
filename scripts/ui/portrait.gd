@@ -3,6 +3,7 @@ extends Control
 ## Espacio de dibujo de referencia: 400 x 480.
 
 const W := preload("res://scripts/data/world_data.gd")
+const Flags := preload("res://scripts/ui/flags.gd")
 const REF := Vector2(400, 480)
 static var _cache := {}
 
@@ -50,7 +51,7 @@ static func _defaults(l: Dictionary) -> Dictionary:
 
 
 static func texture_for(l: Dictionary, scale: float) -> Texture2D:
-	var key := JSON.stringify(l) + str(scale)
+	var key := JSON.stringify(l) + str(scale) + (Flags.current_style() if l.get("acc", "") != "" else "")
 	if _cache.has(key):
 		return _cache[key]
 	var svg := build_svg(l)
@@ -126,6 +127,29 @@ static func build_svg(l: Dictionary) -> String:
 					var a := PI * (0.18 + i * 0.08)
 					s.append("<circle cx='%f' cy='%f' r='4' fill='#f3ead6' stroke='#c9b89a' stroke-width='0.8'/>" % [200.0 - cos(a) * 30.0, 352.0 + sin(a) * 34.0])
 		s.append("<rect x='70' y='420' width='40' height='6' rx='3' fill='%s' opacity='0.35'/>" % _hex(suit_l))
+	# accesorios
+	var acc: String = l.get("acc", "")
+	if acc != "":
+		var fp: Array = Flags.palette(Flags.current_style())
+		match acc:
+			"pin":
+				s.append("<rect x='118' y='392' width='22' height='14' fill='%s' stroke='#c9a55c' stroke-width='1.5'/>" % _hex(fp[0]))
+				s.append("<rect x='118' y='396.7' width='22' height='4.6' fill='%s'/>" % _hex(fp[1]))
+			"banda":
+				var stripes := [[fp[0], -14.0], [fp[1], -4.0], [fp[2], 6.0]]
+				for st in stripes:
+					var o: float = st[1]
+					s.append("<path d='M%s %s L%s %s L%s %s L%s %s Z' fill='%s'/>" % [262 + o, 350, 276 + o, 350, 134 + o, 480, 120 + o, 480, _hex(st[0])])
+				s.append("<path d='M248 350 L120 480 M290 350 L162 480' stroke='#c9a55c' stroke-width='2' fill='none'/>")
+			"medalla":
+				s.append("<rect x='120' y='392' width='22' height='22' fill='%s'/><rect x='127' y='392' width='8' height='22' fill='%s'/>" % [_hex(fp[0]), _hex(fp[1])])
+				var pts := ""
+				for i in 16:
+					var rr := 15.0 if i % 2 == 0 else 7.0
+					var a := -PI / 2.0 + PI * i / 8.0
+					pts += "%s,%s " % [131.0 + cos(a) * rr, 430.0 + sin(a) * rr]
+				s.append("<polygon points='%s' fill='#e3c06a' stroke='#8a6a2c' stroke-width='1'/>" % pts)
+				s.append("<circle cx='131' cy='430' r='4' fill='%s'/>" % _hex(fp[0]))
 	# orejas
 	s.append("<ellipse cx='117' cy='212' rx='13' ry='22' fill='%s'/><ellipse cx='283' cy='212' rx='13' ry='22' fill='%s'/>" % [_hex(skin_d), _hex(skin_d)])
 	s.append("<ellipse cx='119' cy='213' rx='6' ry='12' fill='%s'/><ellipse cx='281' cy='213' rx='6' ry='12' fill='%s'/>" % [_hex(skin_dd), _hex(skin_dd)])
