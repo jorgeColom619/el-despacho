@@ -95,6 +95,11 @@ var _campaign_days := 0
 var laws_term := 0
 ## Sistemas que se presentan poco a poco en fácil y normal: {clave: día en que se desbloquean}
 var unlocks := {}
+## Modo de juego: "clasico" (una legislatura), "infinito" (hasta que le echen) o "meme"
+var mode := "clasico"
+## Escenario inicial de la partida y tramas sorteadas
+var scenario := "estable"
+var tramas := []
 ## Ciclo económico (-1 recesión · +1 expansión): da rachas buenas y malas que no dependen del jugador
 var cycle := 0.0
 var scandals := 0
@@ -131,7 +136,9 @@ func _ready() -> void:
 func new_game(opts: Dictionary) -> void:
 	pres = {"name": opts.get("name", "Alejandro Ríos"), "party": opts.get("party", "MP"), "look": Perfil.apply_outfit(opts.get("look", {}))}
 	difficulty = opts.get("difficulty", 1)
+	mode = opts.get("mode", "clasico")
 	term_days = int(opts.get("years", 2)) * 365
+	Perfil.start_game()
 	day = 0
 	speed = 1
 	holds = 0
@@ -222,8 +229,14 @@ func new_game(opts: Dictionary) -> void:
 	_recalc_mods()
 	_update_targets()
 	_update_approval()
-	_sample_stats()
 	active = true
+	# Cada partida es distinta: mundo aleatorio, escenario inicial y tramas sorteadas
+	_randomize_world()
+	_apply_scenario(_pick_scenario(str(opts.get("scenario", "aleatorio"))))
+	_draw_tramas()
+	_update_targets()
+	_update_approval()
+	_sample_stats()
 	# Presentación progresiva de los sistemas
 	unlocks = UNLOCK_DAYS[difficulty].duplicate()
 	for k in unlocks.keys():
@@ -231,8 +244,164 @@ func new_game(opts: Dictionary) -> void:
 	# Arranque guionizado
 	spawn(DB.event("bienvenida_guiada" if not unlocks.is_empty() else "bienvenida"))
 	schedule("doc_nombramientos", 1)
-	schedule("call_felicitacion", 3)
+	schedule(["call_felicitacion", "call_felicitacion_norland", "call_felicitacion_hao", "call_felicitacion_drogan"][rng.randi() % 4], rng.randi_range(2, 5))
 	push_news("%s jura su cargo como presidente de Valdoria" % pres["name"], 3)
+
+
+# ================================================================== variedad entre partidas
+
+const SC := preload("res://scripts/data/scenarios_data.gd")
+
+
+## Carácter de un líder extranjero en esta partida (puede cambiar de una partida a otra)
+func country_pers(c: String) -> String:
+	if countries.has(c) and countries[c].has("pers"):
+		return str(countries[c]["pers"])
+	return str(W.COUNTRIES[c]["pers"])
+
+
+## Ministros, líderes extranjeros, relaciones y escaños cambian un poco en cada partida
+func _randomize_world() -> void:
+	var good := []
+	var bad := []
+	for t in W.TRAITS.keys():
+		(good if W.TRAITS[t].get("good", true) else bad).append(t)
+	for k in ministers.keys():
+		var m: Dictionary = ministers[k]
+		# Algunos ministros son otras personas (mismo cargo y mismo género, para que los textos cuadren)
+		if k != "jefa" and rng.randf() < 0.45:
+			var g: String = m["look"].get("g", "m")
+			var look := DB.rand_look(g)
+			if k == "defensa":
+				look["uniform"] = true
+				look["suit"] = "3f4a32"
+			m["name"] = ("Gral. " if k == "defensa" else "") + DB.rand_name(g)
+			m["look"] = look
+		var tr := [good[rng.randi() % good.size()]]
+		var r := rng.randf()
+		if r < 0.35:
+			var t2: String = good[rng.randi() % good.size()]
+			if not (t2 in tr):
+				tr.append(t2)
+		elif r < 0.7:
+			tr.append(bad[rng.randi() % bad.size()])
+		m["traits"] = tr
+	_recalc_traits()
+	var pers_keys: Array = W.PERSONALITIES.keys()
+	for c in countries.keys():
+		countries[c]["rel"] = clampf(countries[c]["rel"] + rng.randf_range(-12.0, 12.0), -100.0, 100.0)
+		if rng.randf() < 0.35:
+			countries[c]["pers"] = pers_keys[rng.randi() % pers_keys.size()]
+	var own: String = pres["party"]
+	for p in parties.keys():
+		if p != own:
+			parties[p]["rel"] = clampf(parties[p]["rel"] + rng.randf_range(-8.0, 8.0), 0.0, 100.0)
+	# Escaños: pequeñas variaciones (el total sigue siendo 350)
+	var opp: String = W.PLAYER_PARTIES[own]["opp"]
+	for p in parties.keys():
+		if p == opp:
+			continue
+		var dv := rng.randi_range(-6, 6) if p == own else rng.randi_range(-4, 4)
+		var nv := maxi(2, int(parties[p]["seats"]) + dv)
+		parties[opp]["seats"] = int(parties[opp]["seats"]) - (nv - int(parties[p]["seats"]))
+		parties[p]["seats"] = nv
+
+
+func _pick_scenario(id: String) -> String:
+	if SC.SCENARIOS.has(id):
+		return id
+	var total := 0.0
+	for k in SC.SCENARIOS.keys():
+		total += float(SC.SCENARIOS[k].get("w", 1.0))
+	var r := rng.randf() * total
+	for k in SC.SCENARIOS.keys():
+		r -= float(SC.SCENARIOS[k].get("w", 1.0))
+		if r <= 0.0:
+			return k
+	return "estable"
+
+
+func _apply_scenario(id: String) -> void:
+	scenario = id
+	var sc: Dictionary = SC.SCENARIOS[id]
+	var st: Dictionary = sc.get("setup", {})
+	# El contexto inicial se nota de golpe y se va diluyendo (vida media de un año)
+	for k in st.get("meters", {}).keys():
+		var v := float(st["meters"][k])
+		meters[k] = clampf(meters[k] + v, 0.0, 100.0)
+		add_memory(k, v, 365.0)
+	for k in st.get("fac", {}).keys():
+		var v2 := float(st["fac"][k])
+		fac[k] = clampf(fac[k] + v2, 0.0, 100.0)
+		add_memory(k, v2, 365.0)
+	if st.has("debt"):
+		debt += gdp * float(st["debt"])
+	if st.has("cycle"):
+		cycle = float(st["cycle"])
+	for c in st.get("rel", {}).keys():
+		countries[c]["rel"] = clampf(countries[c]["rel"] + float(st["rel"][c]), -100.0, 100.0)
+	var pr: Dictionary = st.get("party_rel", {})
+	for p in parties.keys():
+		if p == pres["party"]:
+			continue
+		var dv := float(pr.get(p, pr.get("*", 0.0)))
+		parties[p]["rel"] = clampf(parties[p]["rel"] + dv, 0.0, 100.0)
+	if st.has("own_seats"):
+		var own: String = pres["party"]
+		var opp: String = W.PLAYER_PARTIES[own]["opp"]
+		var d := int(st["own_seats"])
+		parties[own]["seats"] = int(parties[own]["seats"]) + d
+		parties[opp]["seats"] = int(parties[opp]["seats"]) - int(d * 0.6)
+		var rest: int = -d - (-int(d * 0.6))
+		for p in ["CC", "VV", "PO", "FS"]:
+			if p != own and p != opp and rest != 0:
+				var step := signi(rest) * mini(absi(rest), 4)
+				parties[p]["seats"] = int(parties[p]["seats"]) + step
+				rest -= step
+		parties[opp]["seats"] = int(parties[opp]["seats"]) + rest
+	for f in st.get("flags", []):
+		flags[f] = 0
+	for e in sc.get("schedule", []):
+		schedule(str(e[0]), int(e[1]))
+	push_news(sc.get("headline", ""), 3)
+
+
+## Sortea las tramas de esta legislatura y programa su arranque
+func _draw_tramas() -> void:
+	tramas = []
+	var sc: Dictionary = SC.SCENARIOS.get(scenario, {})
+	var n := 2 if term_days <= 365 else (3 if term_days <= 730 else 4)
+	for t in sc.get("force", []):
+		if not (t in tramas):
+			tramas.append(t)
+	var pool := {}
+	for t in SC.TRAMAS.keys():
+		if t in tramas:
+			continue
+		var w := float(SC.TRAMAS[t].get("w", 1.0)) * Perfil.trama_factor(t)
+		if t in sc.get("tramas", []):
+			w *= 2.5
+		pool[t] = w
+	while tramas.size() < n and not pool.is_empty():
+		var total := 0.0
+		for t in pool.keys():
+			total += float(pool[t])
+		var r := rng.randf() * total
+		var chosen: String = pool.keys().back()
+		for t in pool.keys():
+			r -= float(pool[t])
+			if r <= 0.0:
+				chosen = t
+				break
+		tramas.append(chosen)
+		pool.erase(chosen)
+	# Cada trama arranca en un momento distinto (la ventana se adapta a la duración)
+	var scale := clampf(float(term_days - 60) / 670.0, 0.45, 2.0)
+	for t in tramas:
+		var td: Dictionary = SC.TRAMAS[t]
+		var win: Array = td.get("window", [60, 300])
+		var d := rng.randi_range(int(float(win[0]) * minf(scale, 1.0)), int(float(win[1]) * scale))
+		schedule(td["start"], maxi(15, d))
 
 
 # ================================================================== bucle
@@ -630,6 +799,7 @@ func _monthly(dd: Dictionary) -> void:
 		budget_year_done = int(dd["year"])
 		toast.emit("Nuevo año fiscal: revise los Presupuestos (carpeta de cuero)", "info", "dinero")
 		flags["presupuesto_pendiente"] = true
+	Perfil.note_game(used.keys(), tramas)
 	# Periódico mensual
 	open_request.emit("newspaper", {"month_day": day - 1})
 	month_log = []
@@ -699,6 +869,14 @@ func value_of(key: String) -> float:
 			return stress
 		"corr":
 			return corruption
+		"paro":
+			return unemployment()
+		"crecimiento":
+			return growth()
+		"left":
+			return float(term_days - day)
+	if key.begins_with("tax_"):
+		return float(taxes.get(key.substr(4), 0.0))
 	if key.begins_with("rel_"):
 		var c := key.substr(4)
 		if countries.has(c):
@@ -743,6 +921,16 @@ func check(cond: Dictionary) -> bool:
 		for k in cond["gt"].keys():
 			if value_of(k) <= float(cond["gt"][k]):
 				return false
+	if cond.has("trama") and not (cond["trama"] in tramas):
+		return false
+	if cond.has("scenario"):
+		var scs = cond["scenario"]
+		if not (scenario in (scs if scs is Array else [scs])):
+			return false
+	if cond.has("mode") and mode != str(cond["mode"]):
+		return false
+	if cond.has("left_gt") and term_days - day <= int(cond["left_gt"]):
+		return false
 	if cond.has("chance") and rng.randf() > float(cond["chance"]):
 		return false
 	return true
@@ -791,7 +979,7 @@ func _interval(kind: String) -> int:
 		"advisor":
 			return int(rng.randi_range(8, 15) * mult)
 		"call":
-			return int(rng.randi_range(13, 24) * mult)
+			return int(rng.randi_range(16, 28) * mult)
 		"crisis":
 			return int(rng.randi_range(60, 95) * mult)
 		"press":
@@ -803,8 +991,10 @@ func _interval(kind: String) -> int:
 
 func _eligible(type: String) -> Array:
 	var out := []
-	for ev in DB.E.EVENTS:
+	for ev in DB.all_events:
 		if ev["type"] != type or ev.get("chain_only", false):
+			continue
+		if ev.get("meme", false) and mode != "meme":
 			continue
 		var id: String = ev["id"]
 		if ev.get("once", false) and used.has(id):
@@ -828,14 +1018,18 @@ func _is_queued(id: String) -> bool:
 
 
 func _pick(list: Array) -> Dictionary:
+	var ws := []
 	var total := 0.0
 	for e in list:
-		total += float(e.get("w", 1.0))
+		# Lo que salió en tus últimas partidas sale menos: así no se repite siempre lo mismo
+		var w := float(e.get("w", 1.0)) * Perfil.recent_factor(str(e.get("id", "")))
+		ws.append(w)
+		total += w
 	var r := rng.randf() * total
-	for e in list:
-		r -= float(e.get("w", 1.0))
+	for i in list.size():
+		r -= float(ws[i])
 		if r <= 0.0:
-			return e
+			return list[i]
 	return list.back()
 
 
@@ -1212,6 +1406,11 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 					advance_day()
 			"term":
 				term_days += int(v)
+			"adelanto":
+				# Elecciones anticipadas: la legislatura acaba dentro de v días
+				term_days = mini(term_days, day + int(v))
+				if term_days - day <= 60 and not campaign:
+					term_days = day + 61
 			"policy":
 				if not (v in policies):
 					policies.append(v)
@@ -1261,6 +1460,8 @@ func _fire_minister(key: String) -> void:
 	else:
 		role = role.replace("Ministra", "Ministro")
 	var traits := [W.TRAITS.keys().pick_random()]
+	if key == "jefa":
+		role = "Jefa de Gabinete" if g == "f" else "Jefe de Gabinete"
 	ministers[key] = {"name": nm, "role": role, "look": DB.rand_look(g), "traits": traits}
 	_recalc_traits()
 	push_news("%s sustituye a %s como %s" % [nm, old, role.to_lower()], 2)
@@ -1423,7 +1624,7 @@ func end_game(reason: String) -> void:
 
 ## Intención de voto nacional del partido del presidente (sin ruido)
 func vote_base() -> float:
-	return approval * 0.62 + 1.0 + campaign_bonus + [2.0, 0.0, -3.0][difficulty]
+	return approval * 0.62 + 1.0 + campaign_bonus + [2.0, -1.0, -3.0][difficulty]
 
 
 func compute_election() -> Dictionary:
@@ -1492,7 +1693,8 @@ func compute_election() -> Dictionary:
 	var allies := 0
 	var ally_list := []
 	for p in seats.keys():
-		if p == own:
+		# El principal partido rival nunca apoya al Gobierno
+		if p == own or p == opp:
 			continue
 		var dist := absf(W.PARTIES[p]["ideo"] - W.PARTIES[own]["ideo"])
 		if parties[p]["rel"] >= 60.0 and dist <= 50.0:
@@ -1610,7 +1812,7 @@ var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks"]
+	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas"]
 
 
 func has_save() -> bool:

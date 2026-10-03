@@ -176,7 +176,7 @@ func _select(c: String) -> void:
 	var tv := UI.vbox(2)
 	tv.add_child(UI.lbl(cd["full"], UI.f_serif_b, 26, UI.CREAM))
 	tv.add_child(UI.lbl("%s %s" % [cd["title"], cd["leader"]], UI.f_sans_m, 17, UI.GOLD))
-	var pers: Dictionary = W.PERSONALITIES[cd["pers"]]
+	var pers: Dictionary = W.PERSONALITIES[GS.country_pers(c)]
 	tv.add_child(UI.lbl("Carácter: %s · Poder: %d" % [pers["name"], int(cd["power"])], UI.f_sans, 15, UI.DIM))
 	top.add_child(tv)
 	panel.add_child(top)
@@ -258,7 +258,7 @@ func _action(c: String, a: String) -> void:
 			fx = {"money": -600, "rel": {c: 11}, "prestigio": 1}
 			GS.push_news("Valdoria aprueba un paquete de ayuda para %s" % nm, 1)
 		"sanciones":
-			var p: String = W.COUNTRIES[c]["pers"]
+			var p: String = GS.country_pers(c)
 			fx = {"rel": {c: -25}, "economia": -1.5, "prestigio": 2 if p in ["agresivo", "volatil"] else -1}
 			if c == "kharovia":
 				fx["rel"]["union"] = 5

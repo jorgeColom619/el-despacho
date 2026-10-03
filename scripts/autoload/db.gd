@@ -3,9 +3,14 @@ extends Node
 
 const W := preload("res://scripts/data/world_data.gd")
 const E := preload("res://scripts/data/events_data.gd")
+const E_TRAMAS := preload("res://scripts/data/events_tramas.gd")
+const E_EXTRA := preload("res://scripts/data/events_extra.gd")
 const P := preload("res://scripts/data/press_data.gd")
+const SC := preload("res://scripts/data/scenarios_data.gd")
 
 var events_by_id := {}
+## Todos los eventos del juego (base + tramas + extra)
+var all_events := []
 var world_map_info := {}
 var region_info := {}
 
@@ -109,8 +114,12 @@ const BID_NOTES := [
 
 
 func _ready() -> void:
-	for e in E.EVENTS:
-		events_by_id[e["id"]] = e
+	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS]:
+		for e in list:
+			if events_by_id.has(e["id"]):
+				push_warning("Evento duplicado: " + e["id"])
+			events_by_id[e["id"]] = e
+			all_events.append(e)
 	world_map_info = _load_json("res://art/maps/world.json")
 	region_info = _load_json("res://art/maps/valdoria.json")
 
@@ -159,7 +168,7 @@ func counterpart(who: String) -> Dictionary:
 	# Datos para negociar: personalidad, poder y relación (-100..100)
 	if W.COUNTRIES.has(who):
 		var c: Dictionary = W.COUNTRIES[who]
-		return {"pers": c["pers"], "power": c["power"], "rel": GS.countries[who]["rel"], "country": who}
+		return {"pers": GS.country_pers(who), "power": c["power"], "rel": GS.countries[who]["rel"], "country": who}
 	if DOMESTIC.has(who):
 		var d: Dictionary = DOMESTIC[who]
 		var rel := 0.0

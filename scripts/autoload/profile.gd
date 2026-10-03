@@ -16,6 +16,11 @@ var equipped := {}
 var achievements := {}
 var stats := {"partidas": 0, "victorias": 0, "clausulas": 0}
 var receipts := []
+## Memoria entre partidas: lo que salió en las últimas para no repetirlo
+var recent_events := []
+var recent_tramas := []
+var current_events := []
+var current_tramas := []
 
 
 func _ready() -> void:
@@ -33,7 +38,8 @@ func _ready() -> void:
 func save_profile() -> void:
 	if GS.no_save:
 		return
-	var d := {"laureles": laureles, "lingotes": lingotes, "owned": owned, "equipped": equipped, "achievements": achievements, "stats": stats, "receipts": receipts}
+	var d := {"laureles": laureles, "lingotes": lingotes, "owned": owned, "equipped": equipped, "achievements": achievements, "stats": stats, "receipts": receipts,
+		"recent_events": recent_events, "recent_tramas": recent_tramas, "current_events": current_events, "current_tramas": current_tramas}
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -55,6 +61,51 @@ func load_profile() -> void:
 	for k in st.keys():
 		stats[k] = st[k]
 	receipts = d.get("receipts", [])
+	recent_events = d.get("recent_events", [])
+	recent_tramas = d.get("recent_tramas", [])
+	current_events = d.get("current_events", [])
+	current_tramas = d.get("current_tramas", [])
+
+
+# ------------------------------------------------------------------ memoria entre partidas
+
+## Al empezar una partida, la anterior pasa a la memoria (se recuerdan las dos últimas)
+func start_game() -> void:
+	if not current_events.is_empty():
+		recent_events.push_front(current_events.duplicate())
+	if not current_tramas.is_empty():
+		recent_tramas.push_front(current_tramas.duplicate())
+	while recent_events.size() > 2:
+		recent_events.pop_back()
+	while recent_tramas.size() > 2:
+		recent_tramas.pop_back()
+	current_events = []
+	current_tramas = []
+	save_profile()
+
+
+## Se llama cada mes: anota lo que va saliendo en la partida actual
+func note_game(event_ids: Array, tramas: Array) -> void:
+	current_events = event_ids.duplicate()
+	current_tramas = tramas.duplicate()
+	save_profile()
+
+
+## Multiplicador de probabilidad: lo visto en la última partida sale mucho menos; lo de la penúltima, algo menos
+func recent_factor(id: String) -> float:
+	if recent_events.size() > 0 and id in recent_events[0]:
+		return 0.25
+	if recent_events.size() > 1 and id in recent_events[1]:
+		return 0.6
+	return 1.0
+
+
+func trama_factor(id: String) -> float:
+	if recent_tramas.size() > 0 and id in recent_tramas[0]:
+		return 0.15
+	if recent_tramas.size() > 1 and id in recent_tramas[1]:
+		return 0.5
+	return 1.0
 
 
 # ------------------------------------------------------------------ monedas

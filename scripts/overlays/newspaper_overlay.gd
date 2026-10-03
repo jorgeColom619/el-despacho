@@ -15,6 +15,10 @@ func build() -> void:
 	var items: Array = []
 	if intro:
 		items = [{"t": "%s jura su cargo como presidente de Valdoria" % GS.pres["name"], "imp": 3}]
+		var sc: Dictionary = GS.SC.SCENARIOS.get(GS.scenario, {})
+		if sc.has("headline"):
+			items.append({"t": sc["headline"], "imp": 2})
+		items.append({"t": "Lo que le espera al nuevo Gobierno: %s" % String(sc.get("name", "")).to_lower(), "imp": 1})
 	else:
 		items = GS.month_log.duplicate()
 		if items.is_empty():
@@ -145,7 +149,8 @@ func _rule(th: int) -> Control:
 
 func _subhead(is_intro: bool) -> String:
 	if is_intro:
-		return "El líder de %s promete \"un Gobierno para todos\" en su toma de posesión. La oposición le da cien días de cortesía." % W.PARTIES[GS.pres["party"]]["name"]
+		var ctx: String = GS.SC.SCENARIOS.get(GS.scenario, {}).get("context", "")
+		return "El líder de %s promete \"un Gobierno para todos\". %s" % [W.PARTIES[GS.pres["party"]]["name"], ctx]
 	var ap := GS.approval
 	var mood := "se mantiene"
 	var hist: Array = GS.stat_hist["approval"]

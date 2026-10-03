@@ -8,6 +8,8 @@ extends Node
 ##   worst   · elige siempre lo peor
 ##   casual  · elige al azar, pero aprueba alguna ley y da discursos (jugador medio)
 ##   player  · decide bien casi siempre, aprueba leyes afines, da discursos y hace campaña
+## Variedad: godot --headless --path . -- --autotest=270 --variety=30
+##   simula 30 partidas seguidas (con memoria entre partidas) y mide cuánto se parecen entre sí
 
 const W := preload("res://scripts/data/world_data.gd")
 
@@ -16,13 +18,17 @@ var difficulty := 1
 var mode := "clasico"
 var quiet := false
 var events_seen := {}
+var _first_ids := []
 var _next_law_day := 0
 var _result := {}
 
 
 func run(days: int) -> void:
 	var runs := 1
+	var variety := 0
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--variety="):
+			variety = int(a.substr(10))
 		if a.begins_with("--strategy="):
 			strategy = a.substr(11)
 		elif a.begins_with("--difficulty="):
@@ -39,6 +45,11 @@ func run(days: int) -> void:
 		if not quiet:
 			print(">>> FIN: ", d["reason"], " día ", GS.day))
 	var t0 := Time.get_ticks_msec()
+	if variety > 0:
+		_variety(variety, days)
+		print("Tiempo: %d ms" % (Time.get_ticks_msec() - t0))
+		get_tree().quit()
+		return
 	var summary := []
 	for r in runs:
 		summary.append(_play(days))
@@ -52,6 +63,7 @@ func _play(days: int) -> Dictionary:
 	_result = {"end": "", "end_day": 0, "won": false, "terms": 0, "approval_min": 100.0}
 	_next_law_day = 0
 	events_seen.clear()
+	_first_ids.clear()
 	var party: String = W.PLAYER_PARTIES.keys().pick_random() if quiet else "MP"
 	GS.new_game({"name": "Test", "party": party, "difficulty": difficulty, "years": int(ceil(days / 365.0)), "mode": mode, "look": {}})
 	GS.set_speed(0)
@@ -86,6 +98,63 @@ func _play(days: int) -> Dictionary:
 	_result["corr"] = GS.corruption
 	_result["fac"] = GS.fac.duplicate()
 	return _result
+
+
+## Juega varias partidas seguidas y mide cuántos eventos se repiten entre una partida y la siguiente
+func _variety(n: int, days: int) -> void:
+	quiet = true
+	var sets := []
+	var firsts := {}
+	var scen := {}
+	var tram := {}
+	for i in n:
+		_play(days)
+		sets.append(events_seen.duplicate())
+		var first3: Array = _first_ids.slice(0, 3)
+		firsts[str(first3)] = true
+		scen[GS.scenario] = scen.get(GS.scenario, 0) + 1
+		for t in GS.tramas:
+			tram[t] = tram.get(t, 0) + 1
+	var consec := 0.0
+	var anyp := 0.0
+	var pairs := 0
+	for i in n:
+		for j in range(i + 1, n):
+			var sh := _shared(sets[i], sets[j])
+			anyp += sh
+			pairs += 1
+			if j == i + 1:
+				consec += sh
+	var freq := {}
+	for st in sets:
+		for k in st.keys():
+			freq[k] = freq.get(k, 0) + 1
+	var always := 0
+	var always_ids := []
+	for k in freq.keys():
+		if float(freq[k]) / n >= 0.9:
+			always += 1
+			always_ids.append(k)
+	var avg := 0.0
+	for st in sets:
+		avg += st.size()
+	print("== Variedad · %d partidas de %d días" % [n, days])
+	print("   Eventos distintos por partida: %.1f · distintos en total: %d" % [avg / n, freq.size()])
+	print("   Coincidencia entre partidas seguidas: %d%% · entre dos partidas cualesquiera: %d%%" % [int(consec / maxf(1.0, n - 1) * 100.0), int(anyp / maxf(1.0, pairs) * 100.0)])
+	print("   Eventos que salen en casi todas (>=90%%): %d · comienzos distintos (3 primeros eventos): %d" % [always, firsts.size()])
+	print("   Siempre: ", always_ids)
+	print("   Escenarios: ", scen)
+	print("   Tramas: ", tram)
+
+
+func _shared(a: Dictionary, b: Dictionary) -> float:
+	if a.is_empty():
+		return 0.0
+	var c := 0
+	for k in a.keys():
+		if b.has(k):
+			c += 1
+	return float(c) / a.size()
 
 
 func _print_summary(rs: Array) -> void:
@@ -168,12 +237,21 @@ func _pick(n: int, choices: Array) -> int:
 	return best
 
 
+func _seen(ev: Dictionary) -> void:
+	if ev.get("gen", false):
+		return
+	var id: String = ev.get("id", "")
+	if not events_seen.has(id):
+		_first_ids.append(id)
+	events_seen[id] = true
+
+
 func _resolve_all() -> void:
 	var guard := 0
 	while GS.inbox.size() > 0 and guard < 20:
 		guard += 1
 		var it: Dictionary = GS.inbox[0]
-		events_seen[it["ev"].get("id", "")] = true
+		_seen(it["ev"])
 		if it["ev"].has("options"):
 			var opts: Array = it["ev"]["options"]
 			GS.resolve_option(it, opts[_pick(opts.size(), opts)])
@@ -182,17 +260,17 @@ func _resolve_all() -> void:
 	while GS.visitors.size() > 0 and guard < 40:
 		guard += 1
 		var it2: Dictionary = GS.visitors[0]
-		events_seen[it2["ev"].get("id", "")] = true
+		_seen(it2["ev"])
 		GS.resolve_choice(it2, _pick(it2["ev"]["choices"].size(), it2["ev"]["choices"]))
 	while GS.calls.size() > 0 and guard < 60:
 		guard += 1
 		var it3: Dictionary = GS.calls[0]
-		events_seen[it3["ev"].get("id", "")] = true
+		_seen(it3["ev"])
 		GS.resolve_choice(it3, _pick(it3["ev"]["choices"].size(), it3["ev"]["choices"]))
 	while GS.alerts.size() > 0 and guard < 80:
 		guard += 1
 		var it4: Dictionary = GS.alerts[0]
-		events_seen[it4["ev"].get("id", "")] = true
+		_seen(it4["ev"])
 		var skill := randf_range(0.35, 0.85)
 		if strategy == "player":
 			skill = randf_range(0.5, 0.95)

@@ -780,7 +780,7 @@ const EVENTS := [
 	{"id": "crisis_disturbios", "type": "crisis", "crisis": "disturbios", "title": "Disturbios", "text": "La indignación estalla en las calles.",
 		"cond": {"lt": {"approval": 38}, "min_day": 60}, "cd": 150, "w": 1.2},
 	{"id": "crisis_migrantes", "type": "crisis", "crisis": "migrantes", "title": "Crisis migratoria", "text": "Oleada de embarcaciones en el Estrecho.",
-		"cond": {"min_day": 70, "noflag": "pacto_aldora"}, "cd": 260, "w": 1.0},
+		"cond": {"min_day": 70, "noflag": "pacto_aldora"}, "cd": 300, "w": 0.8},
 	{"id": "crisis_terror", "type": "crisis", "crisis": "terrorismo", "title": "Amenaza terrorista", "text": "Los servicios secretos detectan una amenaza inminente.",
 		"cond": {"min_day": 120}, "cd": 400, "w": 0.6},
 	{"id": "crisis_apagon", "type": "crisis", "crisis": "apagon", "title": "Ciberataque", "text": "Un ciberataque tumba la red eléctrica.",
