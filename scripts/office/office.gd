@@ -39,6 +39,7 @@ var _pet_happy := 0.0
 var _parrot_line := ""
 var _parrot_t := 12.0
 const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!"]
+const PARROT_MEME := ["¡Un vaso es un vaso!", "¡Sé fuerte!", "¡Con cebolla!", "¡Sin cebolla!", "¡Me gusta la fruta!", "¡Plasma! ¡Plasma!", "¡Bueno... eso!", "¡Es muy difícil todo esto!"]
 
 
 func _ready() -> void:
@@ -402,7 +403,7 @@ func _on_object(key: String) -> void:
 				GS.stress = maxf(0.0, GS.stress - 3.0)
 				GS.toast.emit({"gato": "Decreto ronronea. Estrés −3.", "perro": "Tribuno mueve la cola. Estrés −3.", "loro": "Senador: «¡Presidente guapo!». Estrés −3.", "pez": "El pez da una vuelta. Estrés −3."}.get(pet_kind, ""), "good", "bienestar")
 			if pet_kind == "loro":
-				_parrot_line = PARROT.pick_random()
+				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
 				_parrot_t = 4.0
 			Sfx.play("notify", -10.0, 1.6 if pet_kind != "perro" else 0.7)
 
@@ -442,7 +443,7 @@ func _process(delta: float) -> void:
 		_parrot_t -= delta
 		if _parrot_t <= 0.0:
 			if _parrot_line == "":
-				_parrot_line = PARROT.pick_random()
+				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
 				_parrot_t = 3.5
 			else:
 				_parrot_line = ""

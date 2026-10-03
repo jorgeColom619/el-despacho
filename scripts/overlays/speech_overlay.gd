@@ -131,6 +131,12 @@ func _next_section() -> void:
 	sec_lbl.text = "PARTE %d DE %d · %s" % [si + 1, sections.size(), String(sec[1]).to_upper()]
 	var pool: Array = P.SPEECH[sec[0]].duplicate()
 	pool.shuffle()
+	if GS.mode == "meme":
+		# En el modo meme, las frases de chiste van primero
+		var memes: Array = DB.E_MEME.SPEECH.get(sec[0], []).duplicate()
+		memes.shuffle()
+		memes.append_array(pool)
+		pool = memes
 	var shown := 0
 	for ph in pool:
 		if shown >= 3:

@@ -67,7 +67,7 @@ func build() -> void:
 	var top := UI.hbox(0)
 	top.add_child(UI.lbl("EDICIÓN NACIONAL", UI.f_sans_b, 12, INK))
 	top.add_child(UI.spacer(0, 0, true))
-	top.add_child(UI.lbl("FUNDADO EN 1911 · INDEPENDIENTE", UI.f_sans_b, 12, INK))
+	top.add_child(UI.lbl("EDICIÓN SATÍRICA · NO SE LO CREA TODO" if GS.mode == "meme" else "FUNDADO EN 1911 · INDEPENDIENTE", UI.f_sans_b, 12, INK))
 	v.add_child(top)
 	v.add_child(UI.lbl("El Diario de la República", UI.f_goth, 86, INK, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(_rule(3))

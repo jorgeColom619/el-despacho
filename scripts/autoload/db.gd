@@ -5,6 +5,7 @@ const W := preload("res://scripts/data/world_data.gd")
 const E := preload("res://scripts/data/events_data.gd")
 const E_TRAMAS := preload("res://scripts/data/events_tramas.gd")
 const E_EXTRA := preload("res://scripts/data/events_extra.gd")
+const E_MEME := preload("res://scripts/data/events_meme.gd")
 const P := preload("res://scripts/data/press_data.gd")
 const SC := preload("res://scripts/data/scenarios_data.gd")
 
@@ -114,7 +115,7 @@ const BID_NOTES := [
 
 
 func _ready() -> void:
-	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS]:
+	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS, E_MEME.EVENTS]:
 		for e in list:
 			if events_by_id.has(e["id"]):
 				push_warning("Evento duplicado: " + e["id"])
@@ -226,8 +227,12 @@ func gen_doc() -> Dictionary:
 	return _gen_letter()
 
 
+func _meme() -> bool:
+	return GS.mode == "meme" and randf() < 0.7
+
+
 func _gen_bill() -> Dictionary:
-	var b: Dictionary = BILLS.pick_random()
+	var b: Dictionary = (E_MEME.BILLS if _meme() else BILLS).pick_random()
 	var fx: Dictionary = b["fx"].duplicate(true)
 	var veto := {"estabilidad": -1}
 	for k in fx.keys():
@@ -238,7 +243,7 @@ func _gen_bill() -> Dictionary:
 		"text": "Proyecto aprobado por el Congreso de los Diputados y remitido a la Presidencia para su sanción y promulgación. Entrará en vigor al día siguiente de su publicación en el Boletín Oficial.",
 		"choices": [{"t": "Aprobar", "fx": fx}, {"t": "Vetar", "fx": veto}], "default": 0, "small": []}
 	if randf() < 0.45:
-		var rider: Dictionary = RIDERS.pick_random()
+		var rider: Dictionary = (E_MEME.RIDERS if _meme() else RIDERS).pick_random()
 		doc["small"] = [rider["t"]]
 		doc["choices"][0]["hidden"] = rider["fx"].duplicate(true)
 	return doc
@@ -289,7 +294,7 @@ func _gen_contract() -> Dictionary:
 
 
 func _gen_pardon() -> Dictionary:
-	var c: Dictionary = CRIMES.pick_random()
+	var c: Dictionary = (E_MEME.CRIMES if _meme() else CRIMES).pick_random()
 	var g := "m" if randf() < 0.65 else "f"
 	var nm := rand_name(g)
 	var look := rand_look(g)
@@ -300,7 +305,7 @@ func _gen_pardon() -> Dictionary:
 
 
 func _gen_letter() -> Dictionary:
-	var l: Dictionary = LETTERS.pick_random()
+	var l: Dictionary = (E_MEME.LETTERS if _meme() else LETTERS).pick_random()
 	return {"id": "gen_letter", "type": "doc", "kind": "carta", "gen": true, "title": "Carta de %s" % l["from"],
 		"text": l["t"], "stamps": [l["yes"], "ARCHIVAR"],
 		"choices": [{"t": l["yes"].capitalize(), "fx": l["fx_yes"].duplicate(true)}, {"t": "Archivar", "fx": {}}], "default": 1}
@@ -308,7 +313,11 @@ func _gen_letter() -> Dictionary:
 
 func press_questions(n: int) -> Array:
 	var pool := []
-	for q in P.QUESTIONS:
+	var src: Array = P.QUESTIONS.duplicate()
+	if GS.mode == "meme":
+		src.append_array(E_MEME.QUESTIONS)
+		src.append_array(E_MEME.QUESTIONS)
+	for q in src:
 		if GS.check(q.get("cond", {})):
 			pool.append(q)
 	pool.shuffle()

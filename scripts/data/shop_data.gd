@@ -118,6 +118,9 @@ const ACHIEVEMENTS := {
 	"veterano": {"name": "Veterano", "desc": "Gobierna 8 años en el modo infinito.", "reward": 120},
 	"decada": {"name": "Una década en el Palacio", "desc": "Gobierna 12 años en el modo infinito.", "reward": 200},
 	"dinastia": {"name": "Dinastía", "desc": "Gana 4 elecciones en una misma partida.", "reward": 300},
+	"plasma": {"name": "Presidente del plasma", "desc": "Modo meme: comparece ante la prensa a través de una pantalla.", "reward": 40},
+	"michi": {"name": "Gatocracia", "desc": "Modo meme: nombra ministro a un gato.", "reward": 40},
+	"siesta": {"name": "Patrimonio nacional", "desc": "Modo meme: aprueba la Ley de la Siesta Nacional.", "reward": 40},
 }
 
 # Recompensas durante la partida

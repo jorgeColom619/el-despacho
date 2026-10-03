@@ -257,7 +257,10 @@ func new_game(opts: Dictionary) -> void:
 	for k in unlocks.keys():
 		schedule(UNLOCK_INFO[k]["event"], int(unlocks[k]))
 	# Arranque guionizado
-	spawn(DB.event("bienvenida_guiada" if not unlocks.is_empty() else "bienvenida"))
+	if mode == "meme":
+		spawn(DB.event("bienvenida_meme"))
+	else:
+		spawn(DB.event("bienvenida_guiada" if not unlocks.is_empty() else "bienvenida"))
 	schedule("doc_nombramientos", 1)
 	schedule(["call_felicitacion", "call_felicitacion_norland", "call_felicitacion_hao", "call_felicitacion_drogan"][rng.randi() % 4], rng.randi_range(2, 5))
 	push_news("%s jura su cargo como presidente de Valdoria" % pres["name"], 3)
@@ -1043,6 +1046,9 @@ func _pick(list: Array) -> Dictionary:
 		var w := float(e.get("w", 1.0)) * Perfil.recent_factor(str(e.get("id", "")))
 		if seen_terms.has(e.get("id", "")):
 			w *= 0.35
+		# En el modo meme, los eventos serios salen mucho menos
+		if mode == "meme" and not e.get("meme", false):
+			w *= 0.4
 		ws.append(w)
 		total += w
 	var r := rng.randf() * total
@@ -1369,6 +1375,8 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				corruption = maxf(0.0, corruption + float(v))
 			"corr_mult":
 				corruption = maxf(0.0, corruption * float(v))
+			"unlock":
+				Perfil.unlock(str(v))
 			"fortune":
 				fortune += float(v)
 			"approval":
@@ -1896,6 +1904,19 @@ func _dhondt(shares: Dictionary, n: int) -> Dictionary:
 
 
 func legacy_title() -> String:
+	if mode == "meme":
+		var mt := "El Presidente del Plasma"
+		if flags.has("gato"):
+			mt = "El Amigo de los Gatos"
+		elif corruption > 20.0:
+			mt = "El Señor de los Sobres"
+		elif approval > 60.0:
+			mt = "El Rey de la Sobremesa"
+		elif approval < 30.0:
+			mt = "El Presidente del 'Bueno... eso'"
+		elif meters["economia"] > 65.0:
+			mt = "El de la Champions League de la Economía"
+		return mt
 	var t := "El Superviviente"
 	if corruption > 25.0:
 		t = "El Presidente de los Sobres"
