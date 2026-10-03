@@ -166,9 +166,9 @@ const EVENTS := [
 			{"t": "Que dé explicaciones en el Congreso.", "fx": {"pc": -6, "risk": {"p": 0.5, "fx": {"estabilidad": 2}, "text": "Su comparecencia convence: era una herencia legal."}, "else": {"fx": {"estabilidad": -6, "clase_media": -5, "fire": "economia"}, "text": "La comparecencia es un desastre. Dimite horas después.", "news": "Dimite el ministro de Economía tras una comparecencia desastrosa"}}},
 		], "default": 1},
 	{"id": "offshore_pruebas", "type": "advisor", "who": "jefa", "chain_only": true, "title": "Aparecen más pruebas",
-		"text": "Malas noticias. El Diario Libre publica transferencias recientes de la sociedad de Ferrer. No era una herencia. Usted lo defendió en público.",
+		"text": "Malas noticias. El Diario Libre publica transferencias recientes de la sociedad de {min_eco}. No era una herencia. Usted lo defendió en público.",
 		"choices": [
-			{"t": "Cesarlo y pedir disculpas al país.", "fx": {"estabilidad": -3, "clase_media": 2, "fire": "economia", "stress": 8}, "news": "El presidente pide perdón y cesa a Ferrer"},
+			{"t": "Cesarlo y pedir disculpas al país.", "fx": {"estabilidad": -3, "clase_media": 2, "fire": "economia", "stress": 8}, "news": "El presidente pide perdón y cesa a su ministro de Economía"},
 			{"t": "Seguir defendiéndolo. Es una campaña.", "fx": {"estabilidad": -10, "clase_media": -8, "jovenes": -6, "corr": 6}, "news": "El Gobierno insiste: 'Es una campaña de difamación'"},
 		], "default": 1},
 	{"id": "cunado", "type": "advisor", "who": "jefa", "title": "Asuntos de familia",
@@ -249,7 +249,7 @@ const EVENTS := [
 		"text": "Un grupo de asesores jóvenes y bastante entusiastas propone adoptar el 'ValCoin' como moneda de curso legal. Dicen que atraerá inversión. Yo le pido que no lo haga. Por favor.",
 		"cond": {"min_day": 90}, "once": true,
 		"choices": [
-			{"t": "¡Hacia la luna! Adoptamos el ValCoin.", "fx": {"jovenes": 6, "prestigio": -5, "empresarios": -3, "risk": {"p": 0.3, "fx": {"economia": 4}, "text": "Contra todo pronóstico, el ValCoin se dispara.", "news": "El ValCoin se dispara: Valdoria, capital cripto"}, "else": {"fx": {"economia": -7, "clase_media": -8, "money": -2000}, "news": "El ValCoin se desploma un 80%: miles de ahorradores arruinados", "text": "El ValCoin se ha desplomado. Ferrer está pálido."}}},
+			{"t": "¡Hacia la luna! Adoptamos el ValCoin.", "fx": {"jovenes": 6, "prestigio": -5, "empresarios": -3, "risk": {"p": 0.3, "fx": {"economia": 4}, "text": "Contra todo pronóstico, el ValCoin se dispara.", "news": "El ValCoin se dispara: Valdoria, capital cripto"}, "else": {"fx": {"economia": -7, "clase_media": -8, "money": -2000}, "news": "El ValCoin se desploma un 80%: miles de ahorradores arruinados", "text": "El ValCoin se ha desplomado. {min_eco} está pálido."}}},
 			{"t": "No, gracias.", "fx": {}, "rec": "economia"},
 		], "default": 1},
 	{"id": "islas_protestas", "type": "advisor", "who": "interior", "title": "Tensión en las Islas Cordales",

@@ -14,6 +14,7 @@ extends Node
 const W := preload("res://scripts/data/world_data.gd")
 
 var strategy := "random"
+var save_day := 200
 var difficulty := 1
 var mode := "clasico"
 var quiet := false
@@ -35,6 +36,8 @@ func run(days: int) -> void:
 			difficulty = int(a.substr(13))
 		elif a.begins_with("--mode="):
 			mode = a.substr(7)
+		elif a.begins_with("--saveday="):
+			save_day = int(a.substr(10))
 		elif a.begins_with("--runs="):
 			runs = int(a.substr(7))
 	quiet = runs > 1
@@ -74,7 +77,7 @@ func _play(days: int) -> Dictionary:
 		_resolve_all()
 		_act()
 		_result["approval_min"] = minf(_result["approval_min"], GS.approval)
-		if GS.day == 200 and not quiet:
+		if GS.day == save_day and not quiet:
 			var before := GS.approval
 			GS.save_path = "user://autotest_partida.json"
 			GS.no_save = false
@@ -84,7 +87,7 @@ func _play(days: int) -> Dictionary:
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(GS.save_path))
 			GS.save_path = GS.SAVE_PATH
 			GS.set_speed(0)
-			print(">>> guardar/cargar: ", ok, " aprob antes ", before, " después ", GS.approval, " día ", GS.day, " leyes ", GS.policies.size())
+			print(">>> guardar/cargar: ", ok, " aprob antes ", before, " después ", GS.approval, " día ", GS.day, " leyes ", GS.policies.size(), " legislatura ", GS.term_index, " modo ", GS.mode)
 		if GS.day % 60 == 0 and not quiet:
 			_report()
 	if not quiet:

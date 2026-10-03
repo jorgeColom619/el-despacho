@@ -13,13 +13,55 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 | ![Gabinete de crisis](docs/capturas/crisis.png) | ![Congreso](docs/capturas/congreso.png) |
 | ![Documentos](docs/capturas/documentos.png) | ![Tienda del Palacio](docs/capturas/tienda.png) |
 
+## Novedades de la versión 2.0
+
+- **Tres modos de juego**: *Clásico* (una legislatura), *Infinito* (legislaturas encadenadas hasta
+  que dejen de votarte, con récord de años en el poder) y *Meme* (política de chiste).
+- **Dificultades que cambian la forma de jugar**, no solo los números (ver más abajo).
+- **Cada partida es distinta**: escenario inicial, tramas sorteadas, mundo aleatorio y memoria de
+  lo que salió en tus últimas partidas. Más de 200 eventos (antes, 139).
+- **Equilibrio revisado**: las decisiones dejan huella durante meses, la corrupción acaba en
+  escándalos, cada ley encarece la siguiente y ningún grupo social se dispara al 99 % ni cae al 1 %.
+- **Nueva barra superior** con el estilo del despacho (madera, latón y tipografía clásica) y avisos
+  que ya no tapan la mesa.
+
 ## Cómo jugar
 
 - Necesitas **[Godot 4.7](https://godotengine.org/download)** (versión estándar, no .NET).
-- Abre `project.godot` con Godot y pulsa **F5**. En Windows, si guardas Godot en
-  `%USERPROFILE%\Godot\`, basta con hacer doble clic en `Jugar.bat`.
+- Abre `project.godot` con Godot y pulsa **F5**. En Windows basta con hacer doble clic en
+  `Jugar.bat`: busca Godot en `%USERPROFILE%\Godot\` y en la carpeta de Descargas.
 - **F11**: pantalla completa · **Espacio**: pausa · **1 / 2 / 3**: velocidad · **Esc**: menú.
 - Usa el renderizador *Compatibility*, así que funciona incluso en equipos sin tarjeta gráfica dedicada.
+
+## Modos de juego
+
+| Modo | Cómo es |
+|---|---|
+| Clásico | Una legislatura de 1, 2 o 4 años. Gana la reelección. |
+| Infinito | Legislaturas de 4 años, una tras otra. Si ganas, el Congreso sale de las urnas, llegan tramas nuevas y la oposición puede cambiar de líder. Cada legislatura pesa más que la anterior (fatiga y ganas de cambio), así que siempre hay un final. Tu récord de años en el poder queda guardado. |
+| Meme | Política de chiste con personajes inventados: la tortilla con o sin cebolla, el plasma, el máster fantasma, el expresidente Galbana y sus frases, plagas de palomas, la caída nacional del wifi... |
+
+## Dificultad
+
+| | Fácil | Normal | Difícil |
+|---|---|---|---|
+| Sistemas | Se presentan poco a poco (discursos, leyes, diplomacia, presupuestos) | Poco a poco, algo más rápido | Todo desde el primer día |
+| Ayuda | El gabinete marca la opción más favorable | — | Los efectos solo muestran su dirección, sin cifras ni tendencias |
+| Plazos | Más largos | Normales | Más cortos |
+| Congreso y mercados | Socios más dóciles; quiebra al 170 % | Quiebra al 155 % | Socios exigentes, mercados duros; quiebra al 140 % |
+
+## Cada partida es distinta
+
+- **Escenario inicial** (elige uno o déjalo al azar): legislatura tranquila, gran recesión, bonanza,
+  gobierno en minoría, herencia envenenada, tras la catástrofe, las Islas quieren votar, vientos de
+  guerra o crisis energética.
+- **Tramas**: historias de varios meses con ramificaciones (la huelga de controladores, espías en el
+  móvil, la burbuja inmobiliaria, la conspiración interna, la tesis del presidente, el tren de
+  Altamira...). Cada partida sortea unas pocas.
+- **Mundo aleatorio**: ministros, rasgos, carácter de los líderes extranjeros, relaciones y escaños
+  cambian en cada partida.
+- **Memoria**: lo que viste en tus dos últimas partidas sale mucho menos.
+- **Consecuencias**: eventos que dependen del estado del país y de las leyes que hayas aprobado.
 
 ## El despacho (todo es interactivo)
 
@@ -71,14 +113,17 @@ a su sustituto entre tres candidatos.
 - **Lingotes** (moneda premium): ahora mismo funcionan en **modo de prueba**, sin cobros reales.
   `scripts/autoload/payments.gd` explica cómo conectar Steam o Stripe cuando se publique el juego
   (los cobros reales deben validarse siempre en un servidor, nunca solo en el cliente).
-- 18 logros con recompensa. El perfil se guarda aparte de la partida (`user://perfil.json`).
+- 24 logros con recompensa. El perfil se guarda aparte de la partida (`user://perfil.json`).
 
 ## Consejos
 
 - Si te limitas a esperar, el **desgaste del poder** te hundirá. Aprueba leyes, cuida a tus socios
-  (relación ≥ 60 en el Congreso) y habla al país.
-- Vigila la **deuda** (quiebra al 155 %), la **estabilidad** (moción de censura) y la moral de las
-  **Fuerzas Armadas** (golpe de Estado).
+  (relación ≥ 60 en el Congreso) y habla al país. Para gobernar, tu partido debe ser el más votado
+  de su bloque.
+- Vigila la **deuda** (quiebra al 155 % en normal), la **estabilidad** (moción de censura) y la moral
+  de las **Fuerzas Armadas** (golpe de Estado).
+- Las decisiones turbias suman **corrupción**: no se ve, pero acaba saliendo en forma de escándalo.
+  Junto al capital político verás el riesgo (en fácil y normal).
 - La partida se guarda automáticamente cada mes.
 
 ## Archivos del proyecto
@@ -88,7 +133,23 @@ a su sustituto entre tres candidatos.
 - `scripts/screens/` — menú, nueva partida, tienda y pantalla final.
 - `scripts/office/` — el despacho (arte vectorial generado por código, ventana, TV, HUD).
 - `scripts/overlays/` — cada minijuego y panel.
+- `scripts/data/scenarios_data.gd` — escenarios iniciales y tramas; `events_tramas.gd`, `events_extra.gd`
+  y `events_meme.gd` — eventos de las tramas, eventos adicionales y modo meme.
 - `tools/gen_audio.gd` y `tools/gen_maps.gd` — generan la música, los efectos y los mapas.
+
+## Pruebas automáticas
+
+Simulan partidas enteras sin interfaz (no tocan tu perfil ni tu partida guardada):
+
+```
+godot --headless --path . -- --check                       # compila todos los scripts
+godot --headless --path . -- --autotest=730 --runs=30 --strategy=player --difficulty=1
+godot --headless --path . -- --autotest=9125 --runs=20 --mode=infinito --strategy=casual
+godot --headless --path . -- --autotest=270 --variety=30   # cuánto se parecen las partidas
+godot --headless --path . -- --uitest                      # abre y prueba cada pantalla
+```
+
+Estrategias: `random`, `smart`, `casual` (jugador medio), `player` (jugador experto) y `worst`.
 
 Para crear un ejecutable: en Godot, *Proyecto → Exportar → Añadir → Windows Desktop*
 (la primera vez te pedirá descargar las plantillas de exportación).

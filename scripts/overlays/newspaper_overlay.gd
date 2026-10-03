@@ -22,7 +22,7 @@ func build() -> void:
 		var sc: Dictionary = GS.SC.SCENARIOS.get(GS.scenario, {})
 		if sc.has("headline"):
 			items.append({"t": sc["headline"], "imp": 2})
-		items.append({"t": "Lo que le espera al nuevo Gobierno: %s" % String(sc.get("name", "")).to_lower(), "imp": 1})
+		items.append({"t": "La oposición promete una legislatura «de máxima exigencia»", "imp": 1})
 	else:
 		items = GS.month_log.duplicate()
 		if items.is_empty():
