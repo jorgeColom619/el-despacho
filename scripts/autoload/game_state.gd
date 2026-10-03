@@ -91,6 +91,18 @@ var region_bonus := {}
 var campaign_acts := 0
 var acts_done := 0
 var _campaign_days := 0
+## Leyes aprobadas en la legislatura actual (cada una encarece la siguiente)
+var laws_term := 0
+## Ciclo económico (-1 recesión · +1 expansión): da rachas buenas y malas que no dependen del jugador
+var cycle := 0.0
+var scandals := 0
+
+## Los efectos de las decisiones se olvidan poco a poco (vida media en días)
+const MEMORY_HALF_LIFE := 150.0
+## Techo suave de los modificadores acumulados: evita grupos al 99 % o al 1 %
+const MOD_SOFTCAP := 24.0
+## Fuerza de los efectos positivos permanentes de las leyes (la sociedad se acostumbra a ellas)
+const LAW_STRENGTH := 0.65
 
 
 func _ready() -> void:
@@ -186,6 +198,9 @@ func new_game(opts: Dictionary) -> void:
 	budget_year_done = 2027
 	elections_result = {}
 	wear = 0.0
+	laws_term = 0
+	cycle = rng.randf_range(-0.3, 0.3)
+	scandals = 0
 	var mult: float = [1.25, 1.0, 0.8][difficulty]
 	timers = {"doc": 2, "advisor": 9, "call": 6, "crisis": int(55 * mult), "press": int(50 * mult), "news": 3, "control": 35, "summit": 110}
 	_recalc_mods()
@@ -254,8 +269,10 @@ func advance_day() -> void:
 		_generate()
 	if dd["day"] == 1:
 		_monthly(dd)
-	if day % 60 == 0 and wear > -10.0:
-		var step: float = 0.9 * [0.5, 1.0, 1.3][difficulty]
+	# Desgaste del poder: tras la luna de miel, cada dos meses el Gobierno pierde algo de apoyo
+	var wear_cap: float = [7.0, 11.0, 14.0][difficulty]
+	if day % 60 == 0 and day >= 120 and wear > -wear_cap:
+		var step: float = [0.8, 1.2, 1.5][difficulty]
 		wear -= step
 		for f in ["trabajadores", "empresarios", "clase_media", "jovenes", "jubilados"]:
 			add_mod(f, -step, -1)
@@ -289,7 +306,7 @@ func debt_ratio() -> float:
 
 
 func growth() -> float:
-	var g: float = 1.2 + (meters["economia"] - 50.0) * 0.08
+	var g: float = 1.2 + (meters["economia"] - 50.0) * 0.08 + cycle * 0.8
 	return g
 
 
@@ -361,29 +378,29 @@ func _update_targets() -> void:
 	for t in treaties:
 		if t["type"] in ["comercio", "inversion", "energia"]:
 			econ_treaties += 1
-	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + modsum("economia") + diff * 0.5
-	mtarget["bienestar"] = 48.0 + (b["sanidad"] - 1.0) * 28.0 + (b["educacion"] - 1.0) * 14.0 + (b["social"] - 1.0) * 16.0 + (b["pensiones"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.15 + modsum("bienestar") + diff * 0.5
-	mtarget["seguridad"] = 52.0 + (b["seguridad"] - 1.0) * 32.0 + (b["defensa"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.1 + (m["bienestar"] - 50.0) * 0.1 + modsum("seguridad") + diff * 0.5
+	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + cycle * 9.0 + (fac["empresarios"] - 50.0) * 0.12 + soft_mod("economia") + diff * 0.5
+	mtarget["bienestar"] = 48.0 + (b["sanidad"] - 1.0) * 28.0 + (b["educacion"] - 1.0) * 14.0 + (b["social"] - 1.0) * 16.0 + (b["pensiones"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.15 + soft_mod("bienestar") + diff * 0.5
+	mtarget["seguridad"] = 52.0 + (b["seguridad"] - 1.0) * 32.0 + (b["defensa"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.1 + (m["bienestar"] - 50.0) * 0.1 + soft_mod("seguridad") + diff * 0.5
 	var support := (supporting_seats() - 175.0) / 350.0 * 40.0
-	mtarget["estabilidad"] = 32.0 + approval * 0.35 + support + (m["seguridad"] - 50.0) * 0.1 - corruption * 0.25 + modsum("estabilidad") + diff * 0.5
+	mtarget["estabilidad"] = 32.0 + approval * 0.35 + support + (m["seguridad"] - 50.0) * 0.1 + (fac["trabajadores"] - 50.0) * 0.06 - corruption * 0.2 + soft_mod("estabilidad") + diff * 0.5
 	var avg_rel := 0.0
 	for c in countries.keys():
 		avg_rel += countries[c]["rel"]
 	avg_rel /= maxf(1.0, countries.size())
-	mtarget["prestigio"] = 46.0 + avg_rel * 0.2 + (m["economia"] - 50.0) * 0.15 + (b["defensa"] - 1.0) * 6.0 + treaties.size() * 1.5 + modsum("prestigio") + diff * 0.5
-	mtarget["ambiente"] = 42.0 + (b["ambiente"] - 1.0) * 35.0 - (m["economia"] - 50.0) * 0.08 + modsum("ambiente")
+	mtarget["prestigio"] = 46.0 + avg_rel * 0.2 + (m["economia"] - 50.0) * 0.15 + (b["defensa"] - 1.0) * 6.0 + treaties.size() * 1.5 + soft_mod("prestigio") + diff * 0.5
+	mtarget["ambiente"] = 42.0 + (b["ambiente"] - 1.0) * 35.0 - (m["economia"] - 50.0) * 0.08 + soft_mod("ambiente")
 	for k in METERS:
 		mtarget[k] = clampf(mtarget[k], 2.0, 98.0)
 	var t := taxes
 	var bonus: Dictionary = W.PLAYER_PARTIES[pres["party"]]["bonus"]
 	ftarget["trabajadores"] = 50.0 + (m["economia"] - 50.0) * 0.3 + (b["social"] - 1.0) * 25.0 + (b["sanidad"] - 1.0) * 10.0 + (b["infraestructura"] - 1.0) * 10.0 - (t["iva"] - 21.0) * 1.2 - (t["renta"] - 22.0) * 0.4
 	ftarget["empresarios"] = 50.0 + (m["economia"] - 50.0) * 0.5 - (t["sociedades"] - 25.0) * 2.0 - (t["renta"] - 22.0) * 0.5 + (b["infraestructura"] - 1.0) * 10.0 + (m["estabilidad"] - 50.0) * 0.2
-	ftarget["clase_media"] = 50.0 + (m["economia"] - 50.0) * 0.35 + (m["seguridad"] - 50.0) * 0.25 - (t["renta"] - 22.0) * 1.3 - (t["iva"] - 21.0) * 0.6 + (b["sanidad"] - 1.0) * 10.0 + (b["educacion"] - 1.0) * 10.0 - corruption * 0.2
+	ftarget["clase_media"] = 50.0 + (m["economia"] - 50.0) * 0.35 + (m["seguridad"] - 50.0) * 0.25 - (t["renta"] - 22.0) * 1.3 - (t["iva"] - 21.0) * 0.6 + (b["sanidad"] - 1.0) * 10.0 + (b["educacion"] - 1.0) * 10.0 - corruption * 0.15
 	ftarget["jovenes"] = 50.0 + (b["educacion"] - 1.0) * 25.0 + (m["ambiente"] - 50.0) * 0.3 + (m["economia"] - 50.0) * 0.25 + (b["social"] - 1.0) * 12.0
 	ftarget["jubilados"] = 50.0 + (b["pensiones"] - 1.0) * 40.0 + (b["sanidad"] - 1.0) * 20.0 + (m["seguridad"] - 50.0) * 0.25 - (t["iva"] - 21.0) * 0.8
 	ftarget["militares"] = 50.0 + (b["defensa"] - 1.0) * 45.0 + (m["prestigio"] - 50.0) * 0.3 + (m["seguridad"] - 50.0) * 0.2
 	for f in FACTIONS:
-		ftarget[f] += bonus.get(f, 0.0) + modsum(f) + diff
+		ftarget[f] += bonus.get(f, 0.0) + soft_mod(f) + diff
 		ftarget[f] = clampf(ftarget[f], 2.0, 98.0)
 
 
@@ -402,11 +419,21 @@ func _update_approval() -> void:
 		s += fac[f] * w
 		ws += w
 	var honeymoon := 10.0 * maxf(0.0, 1.0 - day / 120.0)
-	approval = clampf(s / ws + honeymoon + approval_bonus + float(_trait_sums.get("_approval", 0.0)), 0.0, 100.0)
+	var raw := s / ws + honeymoon + approval_bonus + float(_trait_sums.get("_approval", 0.0))
+	# Cuanto más alto se vuela, más exigentes son los ciudadanos: por encima del 50 % cuesta más subir
+	if raw > 50.0:
+		raw = 50.0 + (raw - 50.0) * 0.75
+	approval = clampf(raw, 0.0, 100.0)
 
 
 func modsum(k: String) -> float:
 	return float(_mod_sums.get(k, 0.0)) + float(_trait_sums.get(k, 0.0))
+
+
+## Suma de modificadores con techo suave: los primeros puntos cuentan enteros y los siguientes, cada vez menos
+func soft_mod(k: String) -> float:
+	var x := modsum(k)
+	return MOD_SOFTCAP * tanh(x / MOD_SOFTCAP)
 
 
 # ================================================================== gabinete (rasgos y fichajes)
@@ -477,28 +504,43 @@ func add_mod(k: String, v: float, dur: int) -> void:
 	_recalc_mods()
 
 
+## Modificador que se va olvidando: pierde la mitad de su fuerza cada `half_life` días
+func add_memory(k: String, v: float, half_life: float = MEMORY_HALF_LIFE) -> void:
+	mods.append({"k": k, "v": v, "t0": day, "hl": half_life, "until": -1})
+	_recalc_mods()
+
+
+func _mod_value(m: Dictionary) -> float:
+	if m.has("hl"):
+		return float(m["v"]) * pow(0.5, float(day - int(m["t0"])) / maxf(1.0, float(m["hl"])))
+	return float(m["v"])
+
+
 func _recalc_mods() -> void:
 	_mod_sums = {}
 	for m in mods:
-		_mod_sums[m["k"]] = _mod_sums.get(m["k"], 0.0) + float(m["v"])
+		_mod_sums[m["k"]] = _mod_sums.get(m["k"], 0.0) + _mod_value(m)
 
 
 func _expire_mods() -> void:
-	var changed := false
 	var keep := []
 	for m in mods:
 		if int(m["until"]) >= 0 and int(m["until"]) <= day:
-			changed = true
-		else:
-			keep.append(m)
-	if changed:
-		mods = keep
-		_recalc_mods()
+			continue
+		if m.has("hl") and absf(_mod_value(m)) < 0.05:
+			continue
+		keep.append(m)
+	mods = keep
+	_recalc_mods()
 
 
 func _monthly(dd: Dictionary) -> void:
 	last_balance = monthly_balance()
-	pc = clampf(pc + 5.0 + approval * 0.08 + meters["estabilidad"] * 0.05, 0.0, 100.0)
+	pc = clampf(pc + 4.0 + approval * 0.07 + meters["estabilidad"] * 0.04 + [1.5, 0.0, -1.0][difficulty], 0.0, 100.0)
+	# La corrupción se diluye con el tiempo... salvo que alguien tire del hilo (ver escándalos)
+	corruption = maxf(0.0, corruption * (0.93 if flags.has("transparencia") else 0.95) - 0.4)
+	# Ciclo económico: paseo aleatorio que tiende a volver a la normalidad
+	cycle = clampf(cycle * 0.93 + rng.randf_range(-0.16, 0.16), -1.0, 1.0)
 	_sample_stats()
 	month_passed.emit()
 	# Presupuesto anual en enero
@@ -1029,6 +1071,8 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				stress = clampf(stress + float(v), 0.0, 100.0)
 			"corr":
 				corruption = maxf(0.0, corruption + float(v))
+			"corr_mult":
+				corruption = maxf(0.0, corruption * float(v))
 			"fortune":
 				fortune += float(v)
 			"approval":
@@ -1092,11 +1136,11 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 			_:
 				if meters.has(k):
 					meters[k] = clampf(meters[k] + float(v), 0.0, 100.0)
-					add_mod(k, float(v) * 0.5, 120)
+					add_memory(k, float(v) * 0.5)
 					out.append({"k": k, "v": float(v)})
 				elif fac.has(k):
 					fac[k] = clampf(fac[k] + float(v), 0.0, 100.0)
-					add_mod(k, float(v) * 0.5, 120)
+					add_memory(k, float(v) * 0.5)
 					out.append({"k": k, "v": float(v)})
 	_update_targets()
 	_update_approval()
@@ -1177,6 +1221,12 @@ func law_available(id: String) -> bool:
 	return not (id in policies) and not flags.has("law_pending_" + id)
 
 
+## Coste en capital político: cada ley aprobada en la legislatura encarece la siguiente un 20 %
+func law_cost(id: String) -> int:
+	var base := float(W.LAWS[id]["pc"])
+	return int(round(base * (1.0 + 0.2 * laws_term)))
+
+
 func vote_forecast(law: Dictionary, lobby: Dictionary) -> Dictionary:
 	# Devuelve {party: prob_si}
 	var out := {}
@@ -1187,6 +1237,9 @@ func vote_forecast(law: Dictionary, lobby: Dictionary) -> Dictionary:
 		var prob: float = 0.5 + (60.0 - dist) / 120.0 + (parties[p]["rel"] - 50.0) / 150.0
 		if p == pres["party"]:
 			prob = 0.97 - maxf(0.0, dist - 60.0) / 100.0
+		else:
+			# En difícil los socios exigen más; en fácil se dejan convencer antes
+			prob -= [-0.04, 0.0, 0.07][difficulty]
 		prob += float(lobby.get(p, 0.0))
 		out[p] = clampf(prob, 0.02, 0.98)
 	return out
@@ -1196,6 +1249,7 @@ func enact_law(id: String) -> Array:
 	var law: Dictionary = W.LAWS[id]
 	policies.append(id)
 	last_law = id
+	laws_term += 1
 	Perfil.earn(Perfil.S.EARN["ley"], "Ley aprobada")
 	Perfil.unlock("primera_ley")
 	if policies.size() >= 5:
@@ -1204,7 +1258,9 @@ func enact_law(id: String) -> Array:
 	var fx: Dictionary = law.get("fx", {}).duplicate(true)
 	var out := apply_fx(fx, law["name"])
 	for mk in law.get("mods", {}).keys():
-		add_mod(mk, float(law["mods"][mk]), -1)
+		var lv := float(law["mods"][mk])
+		# Los perjudicados se movilizan más que los beneficiados
+		add_mod(mk, lv * (LAW_STRENGTH if lv > 0.0 else 1.0), -1)
 	if law.has("monthly"):
 		monthly_adj += float(law["monthly"])
 	if law.has("flag"):
@@ -1283,9 +1339,14 @@ func end_game(reason: String) -> void:
 
 # ================================================================== elecciones
 
+## Intención de voto nacional del partido del presidente (sin ruido)
+func vote_base() -> float:
+	return approval * 0.62 + 1.0 + campaign_bonus + [2.0, 0.0, -3.0][difficulty]
+
+
 func compute_election() -> Dictionary:
 	var own: String = pres["party"]
-	var base := clampf(approval * 0.62 + 4.0 + campaign_bonus + rng.randf_range(-2.5, 2.5), 8.0, 58.0)
+	var base := clampf(vote_base() + rng.randf_range(-2.5, 2.5), 8.0, 58.0)
 	var shares := {}
 	var rest := 100.0 - base
 	var weights := {}
@@ -1387,7 +1448,7 @@ func add_region_boost(rid: int, v: float) -> void:
 
 ## Intención de voto estimada del partido del presidente en una región (sin ruido)
 func region_estimate(rid: int) -> float:
-	var base := clampf(approval * 0.62 + 4.0 + campaign_bonus, 8.0, 58.0)
+	var base := clampf(vote_base(), 8.0, 58.0)
 	var r: Dictionary = W.REGIONS[rid]
 	var local := 0.0
 	for f in r["demo"].keys():
@@ -1399,7 +1460,7 @@ func _campaign_tick() -> void:
 	if not campaign:
 		return
 	_campaign_days += 1
-	if _campaign_days % 6 == 0 and campaign_acts < 5:
+	if _campaign_days % 8 == 0 and campaign_acts < 4:
 		campaign_acts += 1
 		toast.emit("Nuevo acto de campaña disponible (%d)" % campaign_acts, "info", "microfono")
 
@@ -1467,7 +1528,7 @@ var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done"]
+	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals"]
 
 
 func has_save() -> bool:
@@ -1540,6 +1601,9 @@ func load_game() -> bool:
 	pres["look"] = Perfil.apply_outfit(pres.get("look", {}))
 	campaign_acts = int(campaign_acts)
 	acts_done = int(acts_done)
+	laws_term = int(laws_term)
+	scandals = int(scandals)
+	cycle = float(cycle)
 	if not timers.has("control"):
 		timers["control"] = 30
 	if not timers.has("summit"):

@@ -101,7 +101,7 @@ func build() -> void:
 			if voting:
 				return
 			GS.flags.erase("law_pending_" + law_id)
-			GS.pc += float(law["pc"]) * 0.5
+			GS.pc += float(GS.law_cost(law_id)) * 0.5
 			GS.toast.emit("Proyecto retirado. Recupera la mitad del capital político.", "info", "ley")
 			close())
 		bh.add_child(wd)

@@ -211,7 +211,7 @@ func _sociedad(v: VBoxContainer) -> void:
 
 
 func _leyes(v: VBoxContainer) -> void:
-	v.add_child(UI.lbl("Presente proyectos de ley al Congreso. Cuestan capital político y necesitan mayoría. Una vez aprobados, sus efectos son permanentes.  Capital político disponible: %d" % int(GS.pc), UI.f_sans, 17, UI.DIM))
+	v.add_child(UI.lbl("Presente proyectos de ley al Congreso. Cuestan capital político y necesitan mayoría. Una vez aprobados, sus efectos son permanentes. Cada ley aprobada encarece la siguiente.  Capital político disponible: %d" % int(GS.pc), UI.f_sans, 17, UI.DIM))
 	if GS.policies.size() > 0:
 		v.add_child(Widgets.section("Leyes en vigor"))
 		var flow := HFlowContainer.new()
@@ -261,8 +261,9 @@ func _leyes(v: VBoxContainer) -> void:
 		var need := 234 if law.get("super", false) else 176
 		bh.add_child(UI.lbl("Previsión: ≈%d votos (necesita %d)" % [yes, need], UI.f_sans_m, 14, UI.GREEN if yes >= need else UI.RED))
 		bh.add_child(UI.spacer(0, 0, true))
-		var b := UI.btn("Presentar (%d CP)" % int(law["pc"]), "gold", 16)
-		b.disabled = GS.pc < float(law["pc"]) or GS.flags.has("law_pending_" + id)
+		var cost := GS.law_cost(id)
+		var b := UI.btn("Presentar (%d CP)" % cost, "gold", 16)
+		b.disabled = GS.pc < float(cost) or GS.flags.has("law_pending_" + id)
 		var lid: String = id
 		b.pressed.connect(func(): _propose(lid))
 		bh.add_child(b)
@@ -281,10 +282,10 @@ func _quick_forecast(law: Dictionary) -> float:
 
 
 func _propose(id: String) -> void:
-	var law: Dictionary = W.LAWS[id]
-	if GS.pc < float(law["pc"]):
+	var cost := float(GS.law_cost(id))
+	if GS.pc < cost:
 		return
-	GS.pc -= float(law["pc"])
+	GS.pc -= cost
 	GS.flags["law_pending_" + id] = GS.day
 	GS.stats_changed.emit()
 	Sfx.play("paper", -2.0)

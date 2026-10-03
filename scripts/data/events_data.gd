@@ -459,6 +459,39 @@ const EVENTS := [
 			{"t": "Descansaré cuando esté muerto.", "fx": {"stress": 5, "pc": 3}},
 		], "default": 1},
 
+	# ----- Escándalos: aparecen cuando la corrupción acumulada es alta (las decisiones turbias acaban saliendo)
+	{"id": "escandalo_sobres", "type": "advisor", "who": "jefa", "title": "Los sobres de la sede",
+		"text": "Presidente, Diario Libre abre mañana con la contabilidad B del partido: pagos en sobres a altos cargos durante años. Hay nombres, fechas y cantidades. Algunos de esos nombres se sientan en su Gobierno.",
+		"cond": {"gt": {"corr": 15}, "min_day": 60}, "cd": 260, "w": 2.5,
+		"choices": [
+			{"t": "Asumir responsabilidades y limpiar el partido de arriba abajo.", "fx": {"estabilidad": -5, "clase_media": 3, "pc": -12, "corr_mult": 0.3}, "news": "El presidente expulsa a los implicados en los sobres: «Caiga quien caiga»"},
+			{"t": "Culpar al tesorero y cerrar filas.", "fx": {"estabilidad": -4, "clase_media": -4, "corr_mult": 0.55}, "news": "El extesorero, señalado como único responsable de la caja B"},
+			{"t": "Negarlo todo: es una campaña de difamación.", "fx": {"estabilidad": -3, "corr_mult": 0.9, "risk": {"p": 0.55, "fx": {"clase_media": -10, "estabilidad": -8, "jovenes": -5}, "news": "Aparecen los recibos firmados: el Gobierno mintió sobre los sobres", "text": "Han aparecido los recibos originales. La negativa se ha vuelto en su contra."}, "else": {"fx": {"clase_media": -3}, "text": "La noticia pierde fuelle... por ahora."}}},
+		], "default": 2},
+	{"id": "escandalo_comisiones", "type": "advisor", "who": "interior", "title": "Comisiones en los contratos",
+		"text": "La Guardia Civil ha detenido a un asesor de Fomento. Cobraba un 3% de comisión por adjudicar obra pública. En su agenda aparecen reuniones en ministerios... y una en este Palacio.",
+		"cond": {"gt": {"corr": 18}, "min_day": 90}, "cd": 300, "w": 2.2,
+		"choices": [
+			{"t": "Comparecer, pedir perdón y crear una oficina anticorrupción.", "fx": {"money": -150, "estabilidad": -4, "clase_media": 2, "pc": -8, "corr_mult": 0.35}, "news": "El presidente comparece por el caso Comisiones y crea una oficina anticorrupción"},
+			{"t": "Cesar a la ministra responsable del área.", "fx": {"estabilidad": -5, "corr_mult": 0.6, "clase_media": -1}, "news": "Primera dimisión en el Gobierno por el caso Comisiones"},
+			{"t": "Que hable la justicia. Silencio.", "fx": {"clase_media": -6, "jovenes": -4, "estabilidad": -4, "corr_mult": 0.85}, "news": "El Gobierno guarda silencio sobre el caso Comisiones"},
+		], "default": 2},
+	{"id": "escandalo_grabaciones", "type": "advisor", "who": "jefa", "title": "Las grabaciones del comisario",
+		"text": "Un excomisario jubilado amenaza con publicar cientos de horas de grabaciones: favores, cacerías, cenas con empresarios... Pide un indulto para un amigo a cambio de su silencio.",
+		"cond": {"gt": {"corr": 22}, "min_day": 120}, "once": true, "w": 2.0,
+		"choices": [
+			{"t": "Ni un paso atrás. Que publique lo que quiera.", "fx": {"estabilidad": -7, "clase_media": -5, "corr_mult": 0.4, "prestigio": -2}, "news": "Ven la luz las grabaciones del excomisario: semanas de titulares"},
+			{"t": "Conceder el indulto discretamente.", "fx": {"corr": 8, "risk": {"p": 0.45, "fx": {"estabilidad": -12, "clase_media": -10, "jovenes": -6}, "news": "Escándalo: el Gobierno pagó el silencio del excomisario con un indulto", "text": "Se ha sabido el trato. Esto ya no hay quien lo pare."}, "else": {"fx": {}, "text": "El excomisario cumple su palabra. De momento."}}},
+			{"t": "Denunciarlo por extorsión ante la Fiscalía.", "fx": {"seguridad": 1, "estabilidad": -3, "clase_media": 2, "corr_mult": 0.6}, "rec": "interior", "news": "El Gobierno denuncia al excomisario por extorsión"},
+		], "default": 0},
+	{"id": "escandalo_juez", "type": "advisor", "who": "jefa", "title": "Un juez llama a la puerta",
+		"text": "El juez Garrido ha imputado a su secretario de Estado de Infraestructuras por tráfico de influencias. Pide además los correos de su gabinete. La prensa pregunta si usted sabía algo.",
+		"cond": {"gt": {"corr": 12}, "min_day": 150}, "cd": 360, "w": 1.6,
+		"choices": [
+			{"t": "Entregar los correos y colaborar.", "fx": {"estabilidad": -4, "clase_media": 3, "corr_mult": 0.5}, "news": "El Gobierno entrega sus correos al juez Garrido"},
+			{"t": "Recurrir: son comunicaciones protegidas.", "fx": {"estabilidad": -2, "clase_media": -5, "jovenes": -3, "corr_mult": 0.9}, "news": "El Gobierno se niega a entregar sus correos al juez"},
+		], "default": 1},
+
 	# =====================================================================  DOCUMENTOS
 	{"id": "doc_nombramientos", "type": "doc", "kind": "decreto", "chain_only": true, "title": "Decreto de nombramiento del Gobierno",
 		"text": "Por el presente Real Decreto, y en uso de las atribuciones que me confiere la Constitución, nombro a los miembros del Consejo de Ministros de la República de Valdoria, que tomarán posesión de sus carteras en el día de hoy.",

@@ -54,7 +54,7 @@ func build() -> void:
 	rv.add_child(chart)
 	rv.add_child(Widgets.section("Intención de voto estimada"))
 	var own: String = GS.pres["party"]
-	var est := clampf(GS.approval * 0.62 + 6.0 + GS.campaign_bonus, 8.0, 58.0)
+	var est := clampf(GS.vote_base() + 2.0, 8.0, 58.0)
 	var opp: String = W.PLAYER_PARTIES[own]["opp"]
 	var opp_est := clampf((100.0 - est) * 0.45, 10.0, 50.0)
 	for row in [[own, est], [opp, opp_est], ["otros", 100.0 - est - opp_est]]:
