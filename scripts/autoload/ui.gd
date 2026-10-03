@@ -37,6 +37,9 @@ var f_type: Font
 var f_hand: Font
 var f_goth: Font
 var f_sign: Font
+## Playfair con cifras alineadas (las cifras "antiguas" bailan de altura en los marcadores)
+var f_num: Font
+var f_num_r: Font
 var theme: Theme
 
 var _icon_cache := {}
@@ -162,6 +165,15 @@ func _load_fonts() -> void:
 	f_hand = _var(_font("res://fonts/Caveat.ttf"), 600)
 	f_goth = _font("res://fonts/UnifrakturMaguntia.ttf")
 	f_sign = _font("res://fonts/MrsSaintDelafield.ttf")
+	f_num = _lining(playfair, 700)
+	f_num_r = _lining(playfair, 400)
+
+
+func _lining(base: Font, wght: int) -> FontVariation:
+	var fv := _var(base, wght)
+	var ts := TextServerManager.get_primary_interface()
+	fv.opentype_features = {ts.name_to_tag("lnum"): 1, ts.name_to_tag("pnum"): 1}
+	return fv
 
 
 # ------------------------------------------------------------------ estilos

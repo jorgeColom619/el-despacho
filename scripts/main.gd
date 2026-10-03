@@ -316,25 +316,31 @@ func _on_request(kind: String, data: Dictionary) -> void:
 func _on_deltas(items: Array) -> void:
 	if office == null:
 		return
-	var i := 0
+	const GOOD := Color("a9cf78")
+	const BAD := Color("e2705e")
 	for it in items:
 		var k: String = it["k"]
 		var v: float = it["v"]
-		var txt := UI.signed(v, 0)
-		var col := UI.GREEN if v > 0 else UI.RED
 		var pos: Vector2 = office.hud.anchor_for(k)
+		var fmt := func(x: float) -> String: return UI.signed(x, 0)
+		var good := GOOD
 		if k == "money":
-			txt = UI.money(v, true)
+			fmt = func(x: float) -> String: return UI.money(x, true)
 		elif k == "monthly":
-			txt = UI.money(v, true) + "/mes"
-		elif GS.countries.has(k) or GS.parties.has(k):
-			txt = "%s %s" % [GS.label_of(k), UI.signed(v, 0)]
-			pos = Vector2(960, 160 + i * 8)
+			fmt = func(x: float) -> String: return UI.money(x, true) + "/mes"
+		elif GS.countries.has(k):
+			# relaciones con países: junto al globo
+			var lbl: String = GS.label_of(k)
+			fmt = func(x: float) -> String: return "%s %s" % [lbl, UI.signed(x, 0)]
+			pos = Vector2(1784, 560)
+		elif GS.parties.has(k):
+			# relaciones con partidos: junto al ordenador
+			var lbl2: String = GS.label_of(k)
+			fmt = func(x: float) -> String: return "%s %s" % [lbl2, UI.signed(x, 0)]
+			pos = Vector2(1410, 520)
 		elif k == "pc":
-			col = UI.GOLD_L if v > 0 else UI.RED
-		var d := i * 0.12
-		get_tree().create_timer(d).timeout.connect(func(): toasts.float_text(pos, txt, col, 24))
-		i += 1
+			good = UI.GOLD_L
+		toasts.float_delta(k, pos, v, fmt, good, BAD)
 
 
 func _on_game_over(data: Dictionary) -> void:
@@ -407,6 +413,19 @@ func _scan(dir: String, out: Array) -> void:
 		n = d.get_next()
 
 
+## Opciones de partida para las capturas: --dmode=meme --ddiff=0 --dscen=recesion
+func _debug_opts() -> Dictionary:
+	var o := {"name": "Alejandro Ríos", "party": "MP", "difficulty": 1, "years": 2, "look": {"g": "m", "skin": 1, "hair": "side", "hc": 1}}
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--dmode="):
+			o["mode"] = a.substr(8)
+		elif a.begins_with("--ddiff="):
+			o["difficulty"] = int(a.substr(8))
+		elif a.begins_with("--dscen="):
+			o["scenario"] = a.substr(8)
+	return o
+
+
 func _debug_start() -> void:
 	if debug_shot == "menu":
 		show_menu()
@@ -415,7 +434,7 @@ func _debug_start() -> void:
 		show_shop()
 		return
 	if debug_shot == "start":
-		start_new({"name": "Alejandro Ríos", "party": "MP", "difficulty": 1, "years": 2, "look": {"g": "m", "skin": 1, "hair": "side", "hc": 1}})
+		start_new(_debug_opts())
 		return
 	if debug_shot == "newgame":
 		var NG = load("res://scripts/screens/new_game.gd")
@@ -423,7 +442,7 @@ func _debug_start() -> void:
 		n.main = self
 		change_screen(n)
 		return
-	GS.new_game({"name": "Alejandro Ríos", "party": "MP", "difficulty": 1, "years": 2, "look": {"g": "m", "skin": 1, "hair": "side", "hc": 1}})
+	GS.new_game(_debug_opts())
 	GS.used["bienvenida"] = 0
 	GS.scheduled.clear()
 	GS.day = 95
