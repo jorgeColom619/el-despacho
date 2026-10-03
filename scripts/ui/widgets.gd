@@ -23,14 +23,27 @@ static func chip(icon_name: String, text: String, col: Color, size: int = 17) ->
 
 
 static func arrows(v: float) -> String:
+	var ch := "▲" if v > 0 else "▼"
+	# En difícil solo se conoce la dirección del efecto, no su tamaño
+	if GS.difficulty >= 2:
+		return ch
 	var n := 1
 	var a := absf(v)
 	if a >= 7.0:
 		n = 3
 	elif a >= 3.0:
 		n = 2
-	var ch := "▲" if v > 0 else "▼"
 	return ch.repeat(n)
+
+
+## Etiqueta "consejo del gabinete" (modo fácil)
+static func advice_tag() -> Control:
+	var h := UI.hbox(6)
+	h.add_child(UI.spacer(32, 0))
+	h.add_child(UI.icon_rect("check", 16, UI.GREEN))
+	h.add_child(UI.lbl("Consejo del gabinete: la opción más favorable para su electorado", UI.f_sans_b, 14, UI.GREEN))
+	return h
+
 
 
 static func effect_chips(items: Array, size: int = 17, max_items: int = 8) -> HFlowContainer:
@@ -70,15 +83,19 @@ static func effect_chips(items: Array, size: int = 17, max_items: int = 8) -> HF
 				var good := v > 0
 				c = chip(GS.icon_of(k), "%s %s" % [GS.label_of(k), arrows(v)], UI.GREEN if good else UI.RED, size)
 		if c != null:
-			c.tooltip_text = "%s: %s" % [GS.label_of(k), UI.signed(v, 0)] if not (k in ["risk", "nego", "speech", "debate", "press", "crisis"]) else ""
+			var exact := not (k in ["risk", "nego", "speech", "debate", "press", "crisis"])
+			if GS.difficulty >= 2 and not (k in ["money", "monthly", "pc"]):
+				c.tooltip_text = "%s: efecto aproximado (en difícil no se conoce la cifra exacta)" % GS.label_of(k) if exact else ""
+			else:
+				c.tooltip_text = "%s: %s" % [GS.label_of(k), UI.signed(v, 0)] if exact else ""
 			box.add_child(c)
 			n += 1
 	return box
 
 
-static func click_card(content: Control, on_click: Callable, pad: int = 16, bg: Color = Color(0.08, 0.12, 0.19, 0.95)) -> PanelContainer:
+static func click_card(content: Control, on_click: Callable, pad: int = 16, bg: Color = Color(0.08, 0.12, 0.19, 0.95), border: Color = Color(1, 1, 1, 0.1)) -> PanelContainer:
 	var card := PanelContainer.new()
-	var st := UI.sb(bg, 8, Color(1, 1, 1, 0.1), 1, 0, pad)
+	var st := UI.sb(bg, 8, border, 1 if border.a < 0.5 else 2, 0, pad)
 	var sth := UI.sb(bg.lightened(0.08), 8, UI.GOLD, 1, 0, pad)
 	card.add_theme_stylebox_override("panel", st)
 	card.mouse_filter = Control.MOUSE_FILTER_STOP

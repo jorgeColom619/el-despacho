@@ -109,7 +109,7 @@ func _show_choices() -> void:
 		choices_box.add_child(_choice_card(i, choices[i]))
 	if ev.has("urgent"):
 		timer.visible = true
-		timer.start(float(ev["urgent"]) * (0.8 if GS.stress > 75 else 1.0), "DECISIÓN URGENTE")
+		timer.start(float(ev["urgent"]) * (0.8 if GS.stress > 75 else 1.0) * [1.5, 1.0, 0.8][GS.difficulty], "DECISIÓN URGENTE")
 		timer.timeout.connect(func():
 			if not decided:
 				_decide(int(ev.get("default", choices.size() - 1)), true))
@@ -139,7 +139,10 @@ func _choice_card(i: int, c: Dictionary) -> Control:
 		rh.add_child(UI.spacer(32, 0))
 		rh.add_child(rl)
 		v.add_child(rh)
-	var b := Widgets.click_card(v, func(): _decide(i, false), 14)
+	var advised := GS.difficulty == 0 and i == GS.recommend(ev.get("choices", []))
+	if advised:
+		v.add_child(Widgets.advice_tag())
+	var b := Widgets.click_card(v, func(): _decide(i, false), 14, Color(0.07, 0.15, 0.12, 0.95) if advised else Color(0.08, 0.12, 0.19, 0.95), Color(UI.GREEN, 0.8) if advised else Color(1, 1, 1, 0.1))
 	b.custom_minimum_size = Vector2(668, 0)
 	UI.pop_in(b, 0.3)
 	return b

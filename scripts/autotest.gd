@@ -218,7 +218,7 @@ func _act() -> void:
 			else:
 				GS.add_region_boost(randi_range(1, 8), 2.5)
 		return
-	if GS.day >= GS.speech_until and GS.day > 20:
+	if GS.day >= GS.speech_until and GS.day > 20 and GS.is_unlocked("discurso"):
 		var q := randf_range(0.8, 1.15) if strategy == "player" else randf_range(0.6, 1.0)
 		var fx := {"approval": snappedf((q - 0.75) * 8.0, 0.1)}
 		fx[["trabajadores", "clase_media", "jovenes", "jubilados"].pick_random()] = 2.0 * q
@@ -240,7 +240,7 @@ func _act() -> void:
 
 
 func _try_law() -> void:
-	if GS.day < _next_law_day or GS.day < 25:
+	if GS.day < _next_law_day or GS.day < 25 or not GS.is_unlocked("leyes"):
 		return
 	var best_law := ""
 	var best_s := 0.5

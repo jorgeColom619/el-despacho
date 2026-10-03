@@ -87,7 +87,7 @@ func _ready() -> void:
 	right.add_child(Widgets.section("Dificultad"))
 	var dh := UI.hbox(14)
 	right.add_child(dh)
-	var dnames := [["Fácil", "Más capital político, eventos más amables."], ["Normal", "La experiencia equilibrada."], ["Difícil", "Menos margen, más crisis, deuda más alta."]]
+	var dnames := [["Fácil", "El gabinete le aconseja. Todo llega poco a poco."], ["Normal", "La experiencia completa, presentada paso a paso."], ["Difícil", "Todo desde el día 1. Efectos aproximados, socios duros."]]
 	for i in 3:
 		var b := _option_btn(dnames[i][0], dnames[i][1])
 		var idx := i

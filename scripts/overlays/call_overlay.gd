@@ -152,8 +152,11 @@ func _build_dialog() -> void:
 		var chips := Widgets.effect_chips(GS.preview(c.get("fx", {})), 15, 7)
 		chips.custom_minimum_size = Vector2(860, 0)
 		cv.add_child(chips)
+		var advised := GS.difficulty == 0 and i == GS.recommend(choices)
+		if advised:
+			cv.add_child(Widgets.advice_tag())
 		var idx := i
-		var card := Widgets.click_card(cv, func(): _dialog_choice(idx), 16)
+		var card := Widgets.click_card(cv, func(): _dialog_choice(idx), 16, Color(0.07, 0.15, 0.12, 0.95) if advised else Color(0.08, 0.12, 0.19, 0.95), Color(UI.GREEN, 0.8) if advised else Color(1, 1, 1, 0.1))
 		right.add_child(card)
 
 

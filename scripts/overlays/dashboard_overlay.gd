@@ -48,6 +48,8 @@ func build() -> void:
 		b.pressed.connect(func(): _show(id))
 		nav.add_child(b)
 		tabs[id] = b
+		if id in ["leyes", "congreso"] and not GS.is_unlocked("leyes"):
+			b.modulate = Color(1, 1, 1, 0.5)
 	content = Control.new()
 	content.position = SCREEN.position + Vector2(280, 80)
 	content.size = Vector2(1390, 800)
@@ -75,6 +77,9 @@ func _show(id: String) -> void:
 	var v := UI.vbox(16)
 	v.custom_minimum_size = Vector2(1360, 0)
 	scroll.add_child(v)
+	if id in ["leyes", "congreso"] and not GS.is_unlocked("leyes"):
+		_locked(v, "leyes")
+		return
 	match id:
 		"resumen":
 			_resumen(v)
@@ -88,6 +93,20 @@ func _show(id: String) -> void:
 			_agenda(v)
 		"gabinete":
 			_gabinete(v)
+
+
+func _locked(v: VBoxContainer, key: String) -> void:
+	var n := GS.days_to_unlock(key)
+	var h := UI.hbox(16)
+	h.add_child(UI.icon_rect("candado", 40, UI.GOLD))
+	var t := UI.vbox(6)
+	t.add_child(UI.lbl(GS.UNLOCK_INFO[key]["name"], UI.f_serif_b, 30, UI.TEXT))
+	var l := UI.lbl("Su Jefa de Gabinete se lo presentará en %d día%s. De momento, céntrese en documentos, visitas y llamadas: así conocerá cómo reacciona cada grupo social." % [n, "" if n == 1 else "s"], UI.f_sans, 19, UI.DIM)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(1100, 0)
+	t.add_child(l)
+	h.add_child(t)
+	v.add_child(h)
 
 
 func _card(w: float, h: float) -> PanelContainer:

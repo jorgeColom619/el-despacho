@@ -93,6 +93,8 @@ var acts_done := 0
 var _campaign_days := 0
 ## Leyes aprobadas en la legislatura actual (cada una encarece la siguiente)
 var laws_term := 0
+## Sistemas que se presentan poco a poco en fácil y normal: {clave: día en que se desbloquean}
+var unlocks := {}
 ## Ciclo económico (-1 recesión · +1 expansión): da rachas buenas y malas que no dependen del jugador
 var cycle := 0.0
 var scandals := 0
@@ -103,6 +105,20 @@ const MEMORY_HALF_LIFE := 150.0
 const MOD_SOFTCAP := 24.0
 ## Fuerza de los efectos positivos permanentes de las leyes (la sociedad se acostumbra a ellas)
 const LAW_STRENGTH := 0.65
+## Presentación progresiva de los sistemas (fácil / normal). En difícil todo está disponible desde el primer día.
+const UNLOCK_DAYS := [
+	{"discurso": 15, "leyes": 35, "diplomacia": 55, "presupuestos": 90},
+	{"discurso": 12, "leyes": 28, "diplomacia": 45, "presupuestos": 75},
+	{},
+]
+const UNLOCK_INFO := {
+	"discurso": {"name": "Discursos a la nación", "event": "intro_discurso"},
+	"leyes": {"name": "Agenda legislativa y Congreso", "event": "intro_leyes"},
+	"diplomacia": {"name": "Diplomacia y agenda telefónica", "event": "intro_diplomacia"},
+	"presupuestos": {"name": "Presupuestos Generales", "event": "intro_presupuestos"},
+}
+## Plazos para decidir según la dificultad (días)
+const DEADLINES := {"doc": [21, 14, 10], "advisor": [10, 7, 5], "crisis": [7, 5, 4]}
 
 
 func _ready() -> void:
@@ -208,8 +224,12 @@ func new_game(opts: Dictionary) -> void:
 	_update_approval()
 	_sample_stats()
 	active = true
+	# Presentación progresiva de los sistemas
+	unlocks = UNLOCK_DAYS[difficulty].duplicate()
+	for k in unlocks.keys():
+		schedule(UNLOCK_INFO[k]["event"], int(unlocks[k]))
 	# Arranque guionizado
-	spawn(DB.event("bienvenida"))
+	spawn(DB.event("bienvenida_guiada" if not unlocks.is_empty() else "bienvenida"))
 	schedule("doc_nombramientos", 1)
 	schedule("call_felicitacion", 3)
 	push_news("%s jura su cargo como presidente de Valdoria" % pres["name"], 3)
@@ -229,10 +249,71 @@ func _process(delta: float) -> void:
 	# Llamadas: el teléfono deja de sonar si nadie contesta
 	if calls.size() > 0:
 		ringing_time += delta
-		if ringing_time > RING_SECONDS:
+		if ringing_time > RING_SECONDS * [1.4, 1.0, 0.8][difficulty]:
 			ringing_time = 0.0
 			var c: Dictionary = calls.pop_front()
 			_missed_call(c)
+
+
+## ¿Está disponible este sistema? (presentación progresiva en fácil y normal)
+func is_unlocked(key: String) -> bool:
+	return day >= int(unlocks.get(key, 0))
+
+
+func days_to_unlock(key: String) -> int:
+	return maxi(0, int(unlocks.get(key, 0)) - day)
+
+
+## Deuda (% del PIB) a partir de la cual el país quiebra
+func bankruptcy_limit() -> float:
+	return [170.0, 155.0, 140.0][difficulty]
+
+
+## Índice de la opción más favorable para el electorado: el "consejo del gabinete" en fácil
+func recommend(choices: Array) -> int:
+	var best := 0
+	var bs := -INF
+	for i in choices.size():
+		var c: Dictionary = choices[i]
+		var sc := _score_fx(c.get("fx", {})) + _score_fx(c.get("hidden", {}))
+		if sc > bs:
+			bs = sc
+			best = i
+	return best
+
+
+func _score_fx(fx: Dictionary) -> float:
+	var sc := 0.0
+	for k in fx.keys():
+		var v = fx[k]
+		if typeof(v) in [TYPE_INT, TYPE_FLOAT]:
+			if fac.has(k):
+				sc += float(v) * (float(W.FACTION_INFO[k]["w"]) * 4.0 + 0.2)
+			elif meters.has(k):
+				sc += float(v) * 0.6
+			else:
+				match k:
+					"money":
+						sc += float(v) / 700.0
+					"monthly":
+						sc += float(v) / 60.0
+					"pc":
+						sc += float(v) * 0.15
+					"corr":
+						sc -= float(v) * 0.6
+					"approval":
+						sc += float(v) * 1.5
+		elif k == "risk" and v is Dictionary:
+			sc += _score_fx(v.get("fx", {})) * float(v.get("p", 0.5))
+			if fx.has("else") and fx["else"] is Dictionary:
+				sc += _score_fx(fx["else"].get("fx", {})) * (1.0 - float(v.get("p", 0.5)))
+		elif k == "rel" and v is Dictionary:
+			for c2 in v.keys():
+				sc += float(v[c2]) * 0.08
+		elif k == "party" and v is Dictionary:
+			for p2 in v.keys():
+				sc += float(v[p2]) * 0.1
+	return sc
 
 
 func hold() -> void:
@@ -315,7 +396,8 @@ func unemployment() -> float:
 
 
 func interest_rate() -> float:
-	var r := 2.8 + maxf(0.0, debt_ratio() - 90.0) * 0.06 + maxf(0.0, 50.0 - meters["estabilidad"]) * 0.02
+	var sens: float = [0.8, 1.0, 1.4][difficulty]
+	var r := 2.8 + maxf(0.0, debt_ratio() - 90.0) * 0.06 * sens + maxf(0.0, 50.0 - meters["estabilidad"]) * 0.02
 	if flags.has("prima"):
 		r += 1.0
 	return r
@@ -814,12 +896,12 @@ func spawn(ev: Dictionary) -> void:
 	var item := {"uid": next_uid(), "ev": ev, "day": day}
 	match ev["type"]:
 		"doc":
-			item["deadline"] = day + 14
+			item["deadline"] = day + int(DEADLINES["doc"][difficulty])
 			inbox.append(item)
 			Sfx.play("paper2", -4.0)
 			toast.emit("Nuevo documento: %s" % fmt(ev["title"]), "info", "documento")
 		"advisor":
-			item["deadline"] = day + 7
+			item["deadline"] = day + int(DEADLINES["advisor"][difficulty])
 			visitors.append(item)
 			Sfx.play("knock", -2.0)
 			var ch := DB.character(ev.get("who", "jefa"))
@@ -828,7 +910,7 @@ func spawn(ev: Dictionary) -> void:
 			calls.append(item)
 			ringing_time = 0.0
 		"crisis":
-			item["deadline"] = day + 5
+			item["deadline"] = day + int(DEADLINES["crisis"][difficulty])
 			alerts.append(item)
 			Sfx.play("alert", 0.0)
 			toast.emit("¡CRISIS! %s" % fmt(ev["title"]), "bad", "alerta")
@@ -1303,10 +1385,10 @@ func _check_end() -> void:
 			return
 	else:
 		low_approval_days = maxi(0, low_approval_days - 2)
-	if debt_ratio() > 155.0:
+	if debt_ratio() > bankruptcy_limit():
 		end_game("bancarrota")
 		return
-	if meters["estabilidad"] < 15.0 and day > mocion_until and day > 60:
+	if meters["estabilidad"] < [11.0, 15.0, 19.0][difficulty] and day > mocion_until and day > 60:
 		mocion_until = day + 150
 		open_request.emit("vote", {"mode": "mocion"})
 		return
@@ -1528,7 +1610,7 @@ var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals"]
+	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks"]
 
 
 func has_save() -> bool:
@@ -1583,6 +1665,7 @@ func load_game() -> bool:
 	var d = JSON.parse_string(txt)
 	if not (d is Dictionary):
 		return false
+	unlocks = {}
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])

@@ -531,6 +531,9 @@ func _rebuild_effects() -> void:
 		if revealed and ch.has("hidden"):
 			var warn := UI.lbl("   ⚠ Incluye efectos de la letra pequeña", UI.f_sans_b, 13, Color("a3261d"))
 			effects_holder.add_child(warn)
+	if GS.difficulty == 0 and ev["choices"].size() >= 2:
+		var best := GS.recommend(ev["choices"].slice(0, 2))
+		effects_holder.add_child(UI.lbl("✔ Consejo del gabinete: %s" % labels[best], UI.f_sans_b, 15, Color("1f6b3a")))
 
 
 func _stamp_labels() -> Array:

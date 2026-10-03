@@ -180,6 +180,8 @@ func _on_headline_news(_t2: String) -> void:
 
 func _on_day_redraw() -> void:
 	objs["calendar"].queue_redraw()
+	if not GS.unlocks.is_empty() and GS.day <= 120:
+		_refresh()
 
 
 func _on_weather() -> void:
@@ -301,12 +303,44 @@ func _refresh() -> void:
 	objs["monitor"].status = "Datos, leyes, Congreso y gabinete"
 	objs["globe"].status = "Relaciones internacionales y acuerdos"
 	objs["calendar"].status = "Próximos acontecimientos"
+	objs["folder"].status = "Gasto por partidas e impuestos"
+	for k in ["globe", "folder", "mic", "phone"]:
+		var lk := _lock_key(k)
+		var locked := lk != "" and not GS.is_unlocked(lk)
+		objs[k].modulate = Color(0.62, 0.62, 0.66) if locked else Color.WHITE
+		if locked:
+			objs[k].status = "Disponible en %d días" % GS.days_to_unlock(lk)
 	for o in objs.values():
 		o.queue_redraw()
 
 
+## Objetos que se presentan poco a poco (fácil y normal) y el sistema del que dependen
+const LOCKS := {"globe": "diplomacia", "folder": "presupuestos", "mic": "discurso"}
+
+
+func _lock_key(key: String) -> String:
+	if key == "phone" and GS.calls.is_empty():
+		return "diplomacia"
+	if key == "mic" and GS.campaign:
+		return ""
+	return LOCKS.get(key, "")
+
+
+## Si el objeto aún no está disponible, avisa y devuelve true
+func _blocked(key: String) -> bool:
+	var lk := _lock_key(key)
+	if lk == "" or GS.is_unlocked(lk):
+		return false
+	var n := GS.days_to_unlock(lk)
+	GS.toast.emit("%s: su gabinete se lo presentará en %d día%s. De momento, céntrese en documentos, visitas y llamadas." % [GS.UNLOCK_INFO[lk]["name"], n, "" if n == 1 else "s"], "info", "candado")
+	Sfx.play("click", -6.0, 0.7)
+	return true
+
+
 func _on_object(key: String) -> void:
 	tip.visible = false
+	if _blocked(key):
+		return
 	match key:
 		"tray":
 			if GS.inbox.is_empty():
