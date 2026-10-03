@@ -163,9 +163,14 @@ func _conclude() -> void:
 		sub.text = "%s obtiene %d escaños. %s" % [W.PARTIES[own]["name"], own_seats, ("%s gana las elecciones y formará Gobierno." % W.PARTIES[first]["name"]) if first != own else "No alcanza apoyos suficientes para gobernar."]
 		Sfx.play("sting_lose", -2.0)
 	UI.pop_in(banner)
-	var b := UI.btn("Continuar", "gold", 22)
+	var infinite := GS.mode == "infinito" and won
+	var b := UI.btn("Empezar la %s legislatura" % GS.ordinal(GS.term_index + 1) if infinite else "Continuar", "gold", 22)
 	b.pressed.connect(func():
-		GS.end_game("reelegido" if won else "derrota"))
+		GS.after_election(res)
+		if not GS.game_ended:
+			close()
+			if main != null:
+				main.call_deferred("open_overlay", "newspaper", {"new_term": true}))
 	list_box.get_parent().add_child(b)
 
 

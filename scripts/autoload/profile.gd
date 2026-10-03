@@ -100,6 +100,24 @@ func recent_factor(id: String) -> float:
 	return 1.0
 
 
+## Récord de años en el poder (modo infinito)
+func record_years(years: float) -> void:
+	if GS.no_save:
+		return
+	if years > float(stats.get("record_anios", 0.0)):
+		stats["record_anios"] = snappedf(years, 0.1)
+		save_profile()
+
+
+func unlock_terms(terms_won: int, years: float) -> void:
+	if years >= 8.0:
+		unlock("veterano")
+	if years >= 12.0:
+		unlock("decada")
+	if terms_won >= 4:
+		unlock("dinastia")
+
+
 func trama_factor(id: String) -> float:
 	if recent_tramas.size() > 0 and id in recent_tramas[0]:
 		return 0.15

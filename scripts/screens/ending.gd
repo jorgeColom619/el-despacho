@@ -49,6 +49,9 @@ func _ready() -> void:
 	pv.add_child(rule)
 	pv.add_child(UI.lbl("EDICIÓN HISTÓRICA · %s" % UI.date_long(GS.day).to_upper(), UI.f_sans_b, 14, ink, HORIZONTAL_ALIGNMENT_CENTER))
 	var h: Array = HEADS.get(reason, HEADS["derrota"])
+	if GS.mode == "infinito" and GS.terms_won > 0 and reason != "reelegido":
+		var yrs := int(floor(float(GS.day) / 365.0))
+		h = ["FIN DE UNA ERA: %s DEJA EL PODER TRAS " + str(yrs) + " AÑOS", "Tras %d legislaturas, el presidente se despide del Palacio. %s" % [GS.term_index, h[1]]]
 	var hl := UI.lbl(h[0] % GS.pres["name"].to_upper(), UI.f_serif_k, 50, ink, HORIZONTAL_ALIGNMENT_CENTER)
 	hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hl.custom_minimum_size = Vector2(840, 0)
@@ -115,8 +118,12 @@ func _ready() -> void:
 		["Deuda pública", UI.pct(GS.debt_ratio(), 1) + " del PIB"],
 		["Paro", UI.pct(GS.unemployment(), 1)],
 		["Leyes aprobadas", str(laws)],
+		["Años en el poder", UI.num(float(GS.day) / 365.0, 1)],
 		["Tratados internacionales", str(GS.treaty_count())],
 	]
+	if GS.mode == "infinito":
+		stats.append(["Legislaturas", str(GS.term_index)])
+		stats.append(["Récord personal", "%s años" % UI.num(float(Perfil.stats.get("record_anios", 0.0)), 1)])
 	if GS.corruption > 10:
 		stats.append(["Escándalos acumulados", "Muchos"])
 	if GS.fortune > 0:
@@ -163,5 +170,8 @@ func _score(reason: String) -> float:
 			s += 8.0
 		_:
 			s -= 10.0
-	s *= clampf(float(GS.day) / maxf(1.0, GS.term_days), 0.3, 1.0)
+	if GS.mode == "infinito":
+		s += minf(20.0, float(GS.terms_won) * 6.0)
+	else:
+		s *= clampf(float(GS.day) / maxf(1.0, GS.term_days), 0.3, 1.0)
 	return clampf(s, 0.0, 100.0)

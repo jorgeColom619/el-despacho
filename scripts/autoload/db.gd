@@ -141,6 +141,8 @@ func event(id: String) -> Dictionary:
 func character(who: String) -> Dictionary:
 	# Devuelve {name, role, look, country?}
 	if who == "opo":
+		if not GS.opo_override.is_empty():
+			return GS.opo_override
 		var opp: String = W.PLAYER_PARTIES[GS.pres["party"]]["opp"]
 		var c: Dictionary = W.CHARACTERS.get("opo_" + opp, W.CHARACTERS["opo_AR"])
 		return c

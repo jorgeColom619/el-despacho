@@ -6,12 +6,20 @@ const Portrait := preload("res://scripts/ui/portrait.gd")
 const Flags := preload("res://scripts/ui/flags.gd")
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const SC := preload("res://scripts/data/scenarios_data.gd")
 
 var main: Node
 var look := {"g": "m", "skin": 1, "hair": "side", "hc": 1, "glasses": 0, "beard": "none", "suit": "1b2436", "shirt": "f4f6fa", "tie": "8e2a22", "age": 1, "eyes": "3b2a20"}
 var party := "MP"
 var difficulty := 1
 var years := 2
+var mode := "clasico"
+var scenario := "aleatorio"
+var mode_btns := {}
+var years_box: Control
+var years_note: Label
+var scen_name: Label
+var scen_desc: Label
 var portrait: Control
 var name_edit: LineEdit
 var party_cards := {}
@@ -73,10 +81,21 @@ func _ready() -> void:
 	_row(opts, "Gafas", "glasses")
 	_row(opts, "Barba", "beard")
 	# --- columna derecha
-	var right := UI.vbox(22)
-	right.position = Vector2(660, 190)
-	right.size = Vector2(1160, 820)
+	var right := UI.vbox(14)
+	right.position = Vector2(660, 150)
+	right.size = Vector2(1160, 880)
 	add_child(right)
+	right.add_child(Widgets.section("Modo de juego"))
+	var mh := UI.hbox(14)
+	right.add_child(mh)
+	for spec in [["clasico", "Clásico", "Una legislatura. Gane la reelección."], ["infinito", "Infinito", "Gobierne hasta que dejen de votarle."], ["meme", "Meme", "Política de chiste. Caos y risas."]]:
+		var mb := _option_btn(spec[1], spec[2])
+		var mid: String = spec[0]
+		mb.pressed.connect(func():
+			mode = mid
+			_refresh())
+		mh.add_child(mb)
+		mode_btns[mid] = mb
 	right.add_child(Widgets.section("Su partido"))
 	var ph := UI.hbox(18)
 	right.add_child(ph)
@@ -87,7 +106,7 @@ func _ready() -> void:
 	right.add_child(Widgets.section("Dificultad"))
 	var dh := UI.hbox(14)
 	right.add_child(dh)
-	var dnames := [["Fácil", "El gabinete le aconseja. Todo llega poco a poco."], ["Normal", "La experiencia completa, presentada paso a paso."], ["Difícil", "Todo desde el día 1. Efectos aproximados, socios duros."]]
+	var dnames := [["Fácil", "El gabinete le aconseja. Todo poco a poco."], ["Normal", "La experiencia completa, paso a paso."], ["Difícil", "Todo desde el día 1. Sin cifras exactas."]]
 	for i in 3:
 		var b := _option_btn(dnames[i][0], dnames[i][1])
 		var idx := i
@@ -97,8 +116,14 @@ func _ready() -> void:
 		dh.add_child(b)
 		diff_btns.append(b)
 	right.add_child(Widgets.section("Duración de la legislatura"))
+	years_box = Control.new()
+	years_box.custom_minimum_size = Vector2(1132, 70)
+	right.add_child(years_box)
 	var yh := UI.hbox(14)
-	right.add_child(yh)
+	years_box.add_child(yh)
+	years_note = UI.lbl("Legislaturas de 4 años, una tras otra, mientras le sigan votando. Su récord quedará guardado.", UI.f_sans_m, 19, UI.GOLD_L)
+	years_note.position = Vector2(4, 20)
+	years_box.add_child(years_note)
 	var ynames := [[1, "1 año", "Partida rápida · ~40 min"], [2, "2 años", "Recomendado · ~1 h 20 min"], [4, "4 años", "Legislatura completa · ~2 h 30 min"]]
 	for yn in ynames:
 		var b2 := _option_btn(yn[1], yn[2])
@@ -108,7 +133,25 @@ func _ready() -> void:
 			_refresh())
 		yh.add_child(b2)
 		year_btns.append([yv, b2])
-	right.add_child(UI.spacer(0, 10))
+	right.add_child(Widgets.section("Escenario inicial"))
+	var sh := UI.hbox(12)
+	right.add_child(sh)
+	var sprev := UI.btn("◀", "normal", 18)
+	sprev.custom_minimum_size = Vector2(48, 64)
+	sprev.pressed.connect(func(): _cycle_scenario(-1))
+	sh.add_child(sprev)
+	var sv := UI.vbox(2)
+	sv.custom_minimum_size = Vector2(1020, 64)
+	scen_name = UI.lbl("", UI.f_sans_b, 21, UI.TEXT)
+	scen_desc = UI.lbl("", UI.f_sans, 16, UI.DIM)
+	sv.add_child(scen_name)
+	sv.add_child(scen_desc)
+	sh.add_child(sv)
+	var snext := UI.btn("▶", "normal", 18)
+	snext.custom_minimum_size = Vector2(48, 64)
+	snext.pressed.connect(func(): _cycle_scenario(1))
+	sh.add_child(snext)
+	right.add_child(UI.spacer(0, 6))
 	var bottom := UI.hbox(20)
 	right.add_child(bottom)
 	var back := UI.btn("← Volver", "ghost", 22)
@@ -122,6 +165,13 @@ func _ready() -> void:
 	_refresh()
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.6)
+
+
+func _cycle_scenario(d: int) -> void:
+	var keys: Array = ["aleatorio"] + SC.SCENARIOS.keys()
+	scenario = keys[wrapi(keys.find(scenario) + d, 0, keys.size())]
+	Sfx.play("click", -4.0)
+	_refresh()
 
 
 func _row(parent: Control, label: String, key: String) -> void:
@@ -170,7 +220,7 @@ func _cycle(key: String, d: int) -> void:
 func _party_card(p: String) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(368, 250)
+	b.custom_minimum_size = Vector2(368, 196)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var pd: Dictionary = W.PARTIES[p]
 	var col := Color(pd["color"])
@@ -201,10 +251,10 @@ func _party_card(p: String) -> Button:
 func _option_btn(title: String, desc: String) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(368, 84)
+	b.custom_minimum_size = Vector2(368, 70)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var v := UI.vbox(2)
-	v.position = Vector2(20, 12)
+	var v := UI.vbox(0)
+	v.position = Vector2(20, 8)
 	b.add_child(v)
 	v.add_child(UI.lbl(title, UI.f_sans_b, 22, UI.TEXT))
 	v.add_child(UI.lbl(desc, UI.f_sans, 15, UI.DIM))
@@ -235,6 +285,18 @@ func _refresh() -> void:
 		_style(diff_btns[i], i == difficulty)
 	for yb in year_btns:
 		_style(yb[1], yb[0] == years)
+	for m in mode_btns.keys():
+		_style(mode_btns[m], m == mode)
+	var inf := mode == "infinito"
+	years_note.visible = inf
+	for yb in year_btns:
+		yb[1].visible = not inf
+	if scenario == "aleatorio":
+		scen_name.text = "Aleatorio"
+		scen_desc.text = "El país que le toque. Cada partida, uno distinto."
+	else:
+		scen_name.text = SC.SCENARIOS[scenario]["name"]
+		scen_desc.text = SC.SCENARIOS[scenario]["desc"]
 
 
 func _start() -> void:
@@ -242,4 +304,4 @@ func _start() -> void:
 	if nm == "":
 		nm = "Alejandro Ríos"
 	Sfx.play("whoosh", -2.0)
-	main.start_new({"name": nm, "party": party, "difficulty": difficulty, "years": years, "look": look.duplicate()})
+	main.start_new({"name": nm, "party": party, "difficulty": difficulty, "years": years, "mode": mode, "scenario": scenario, "look": look.duplicate()})

@@ -100,6 +100,14 @@ var mode := "clasico"
 ## Escenario inicial de la partida y tramas sorteadas
 var scenario := "estable"
 var tramas := []
+## Modo infinito: número de legislatura, día en que empezó y elecciones ganadas
+var term_index := 1
+var term_start := 0
+var terms_won := 0
+## Líder de la oposición cuando cambia (modo infinito): {name, role, look}
+var opo_override := {}
+## Eventos vistos en legislaturas anteriores (salen menos en las siguientes)
+var seen_terms := {}
 ## Ciclo económico (-1 recesión · +1 expansión): da rachas buenas y malas que no dependen del jugador
 var cycle := 0.0
 var scandals := 0
@@ -138,6 +146,13 @@ func new_game(opts: Dictionary) -> void:
 	difficulty = opts.get("difficulty", 1)
 	mode = opts.get("mode", "clasico")
 	term_days = int(opts.get("years", 2)) * 365
+	if mode == "infinito":
+		term_days = 4 * 365
+	term_index = 1
+	term_start = 0
+	terms_won = 0
+	opo_override = {}
+	seen_terms = {}
 	Perfil.start_game()
 	day = 0
 	speed = 1
@@ -370,7 +385,8 @@ func _apply_scenario(id: String) -> void:
 func _draw_tramas() -> void:
 	tramas = []
 	var sc: Dictionary = SC.SCENARIOS.get(scenario, {})
-	var n := 2 if term_days <= 365 else (3 if term_days <= 730 else 4)
+	var tlen := term_days - term_start
+	var n := 2 if tlen <= 365 else (3 if tlen <= 730 else 4)
 	for t in sc.get("force", []):
 		if not (t in tramas):
 			tramas.append(t)
@@ -396,7 +412,7 @@ func _draw_tramas() -> void:
 		tramas.append(chosen)
 		pool.erase(chosen)
 	# Cada trama arranca en un momento distinto (la ventana se adapta a la duración)
-	var scale := clampf(float(term_days - 60) / 670.0, 0.45, 2.0)
+	var scale := clampf(float(tlen - 60) / 670.0, 0.45, 2.0)
 	for t in tramas:
 		var td: Dictionary = SC.TRAMAS[t]
 		var win: Array = td.get("window", [60, 300])
@@ -520,12 +536,13 @@ func advance_day() -> void:
 	if dd["day"] == 1:
 		_monthly(dd)
 	# Desgaste del poder: tras la luna de miel, cada dos meses el Gobierno pierde algo de apoyo
-	var wear_cap: float = [7.0, 11.0, 14.0][difficulty]
-	if day % 60 == 0 and day >= 120 and wear > -wear_cap:
+	var wear_cap: float = [7.0, 11.0, 14.0][difficulty] + 1.5 * float(term_index - 1)
+	if day % 60 == 0 and day - term_start >= 120 and wear > -wear_cap:
 		var step: float = [0.8, 1.2, 1.5][difficulty]
 		wear -= step
 		for f in ["trabajadores", "empresarios", "clase_media", "jovenes", "jubilados"]:
-			add_mod(f, -step, -1)
+			mods.append({"k": f, "v": -step, "until": -1, "tag": "wear"})
+		_recalc_mods()
 	if approval >= 70.0:
 		Perfil.unlock("idolo")
 	if debt_ratio() < 80.0:
@@ -575,14 +592,15 @@ func interest_rate() -> float:
 func revenue() -> float:
 	var gm := gdp / 12.0
 	var ef: float = 0.85 + meters["economia"] / 100.0 * 0.3
-	return gm * (taxes["renta"] / 100.0 * 0.70 + taxes["sociedades"] / 100.0 * 0.18 + taxes["iva"] / 100.0 * 0.55 + 0.08) * ef
+	return gm * (taxes["renta"] / 100.0 * 0.70 + taxes["sociedades"] / 100.0 * 0.18 + taxes["iva"] / 100.0 * 0.55 + 0.094) * ef
 
 
 func spending() -> float:
 	var s := 0.0
 	for b in W.BUDGET.keys():
 		s += W.BUDGET[b]["base"] * budget[b]
-	return s
+	# El gasto crece con la economía (salarios públicos, pensiones e inflación)
+	return s * gdp / 1200000.0
 
 
 func interest() -> float:
@@ -669,7 +687,7 @@ func _update_approval() -> void:
 		var w: float = W.FACTION_INFO[f]["w"]
 		s += fac[f] * w
 		ws += w
-	var honeymoon := 10.0 * maxf(0.0, 1.0 - day / 120.0)
+	var honeymoon := (10.0 if term_index == 1 else 5.0) * maxf(0.0, 1.0 - float(day - term_start) / 120.0)
 	var raw := s / ws + honeymoon + approval_bonus + float(_trait_sums.get("_approval", 0.0))
 	# Cuanto más alto se vuela, más exigentes son los ciudadanos: por encima del 50 % cuesta más subir
 	if raw > 50.0:
@@ -1023,6 +1041,8 @@ func _pick(list: Array) -> Dictionary:
 	for e in list:
 		# Lo que salió en tus últimas partidas sale menos: así no se repite siempre lo mismo
 		var w := float(e.get("w", 1.0)) * Perfil.recent_factor(str(e.get("id", "")))
+		if seen_terms.has(e.get("id", "")):
+			w *= 0.35
 		ws.append(w)
 		total += w
 	var r := rng.randf() * total
@@ -1388,6 +1408,12 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				pass
 			"fire":
 				_fire_minister(str(v))
+			"reshuffle":
+				var keys := ministers.keys()
+				keys.erase("jefa")
+				keys.shuffle()
+				for i in mini(int(v), keys.size()):
+					_fire_minister(keys[i])
 			"crisis":
 				var cev := {"id": "crisis_" + str(v), "type": "crisis", "crisis": str(v), "title": W.CRISES[str(v)]["title"], "text": W.CRISES[str(v)]["desc"], "gen": true}
 				spawn(cev)
@@ -1487,12 +1513,12 @@ func fmt(s: String) -> String:
 	var opp: String = W.PLAYER_PARTIES[pres["party"]]["opp"]
 	var d := {
 		"pres": pres["name"], "pais": "Valdoria", "cap": "Santa Aurora",
-		"opo": W.PARTIES[opp]["leader"], "opo_party": W.PARTIES[opp]["name"], "party": W.PARTIES[pres["party"]]["name"],
+		"opo": opo_name(), "opo_party": W.PARTIES[opp]["name"], "party": W.PARTIES[pres["party"]]["name"],
 		"jefa": ministers.get("jefa", {}).get("name", ""), "min_eco": ministers.get("economia", {}).get("name", ""),
 		"min_int": ministers.get("interior", {}).get("name", ""), "min_ext": ministers.get("exteriores", {}).get("name", ""),
 		"min_def": ministers.get("defensa", {}).get("name", ""), "min_san": ministers.get("sanidad", {}).get("name", ""),
 		"paro": UI.num(unemployment(), 1), "crec": UI.num(growth(), 1), "deuda": UI.num(debt_ratio(), 0), "aprob": UI.num(approval, 0),
-		"term": "%d años" % (term_days / 365) if term_days >= 730 else "un año",
+		"term": "%d años" % ((term_days - term_start) / 365) if term_days - term_start >= 730 else "un año",
 		"ultima_ley": W.LAWS[last_law]["name"] if last_law != "" else "última ley",
 	}
 	return s.format(d)
@@ -1611,9 +1637,91 @@ func _check_end() -> void:
 		open_request.emit("election", {})
 
 
+## Tras la noche electoral: en el modo infinito, si gana, empieza otra legislatura
+func after_election(res: Dictionary) -> void:
+	if res.get("won", false):
+		terms_won += 1
+	if mode == "infinito" and res.get("won", false):
+		_new_term(res)
+	else:
+		end_game("reelegido" if res.get("won", false) else "derrota")
+
+
+func _new_term(res: Dictionary) -> void:
+	term_index += 1
+	term_start = day
+	term_days = day + 4 * 365
+	campaign = false
+	debate_done = false
+	campaign_bonus = 0.0
+	region_bonus = {}
+	campaign_acts = 0
+	acts_done = 0
+	_campaign_days = 0
+	laws_term = 0
+	flags.erase("campana")
+	# El nuevo Congreso sale de las urnas
+	var seats_res: Dictionary = res.get("seats", {})
+	for p in parties.keys():
+		if seats_res.has(p):
+			parties[p]["seats"] = int(seats_res[p])
+	for p in res.get("allies", []):
+		if parties.has(p):
+			parties[p]["rel"] = clampf(parties[p]["rel"] + 4.0, 0.0, 100.0)
+	# El desgaste de esta legislatura se convierte en fatiga acumulada (más años, más difícil)
+	var keep := []
+	for m in mods:
+		if m.get("tag", "") != "wear":
+			keep.append(m)
+	mods = keep
+	wear = 0.0
+	var fat: float = [2.0, 3.0, 4.0][difficulty]
+	for f in ["trabajadores", "empresarios", "clase_media", "jovenes", "jubilados"]:
+		mods.append({"k": f, "v": -fat, "until": -1, "tag": "fatiga"})
+	_recalc_mods()
+	# Los eventos vistos pueden volver, pero con menos frecuencia
+	for id in used.keys():
+		seen_terms[id] = true
+	used = {}
+	cooldowns = {}
+	# La oposición derrotada suele cambiar de líder
+	if rng.randf() < 0.6:
+		var g := "m" if rng.randf() < 0.5 else "f"
+		var opp: String = W.PLAYER_PARTIES[pres["party"]]["opp"]
+		opo_override = {"name": DB.rand_name(g), "role": "Líder de la Oposición (%s)" % W.PARTIES[opp]["short"], "look": DB.rand_look(g)}
+	_draw_tramas()
+	schedule("nueva_legislatura", 2)
+	timers["control"] = 45
+	speech_until = day
+	elections_result = res
+	game_ended = false
+	active = true
+	Perfil.unlock_terms(terms_won, float(day) / 365.0)
+	push_news("%s inicia su %s legislatura" % [pres["name"], ordinal(term_index)], 3)
+	log_history("Elecciones generales", "Victoria · %s legislatura" % ordinal(term_index))
+	_update_targets()
+	_update_approval()
+	stats_changed.emit()
+	save_game()
+
+
+func ordinal(n: int) -> String:
+	var names := ["", "primera", "segunda", "tercera", "cuarta", "quinta", "sexta", "séptima", "octava", "novena", "décima"]
+	return names[n] if n < names.size() else "%d.ª" % n
+
+
+func opo_name() -> String:
+	if not opo_override.is_empty():
+		return str(opo_override["name"])
+	var opp: String = W.PLAYER_PARTIES[pres["party"]]["opp"]
+	return W.PARTIES[opp]["leader"]
+
+
 func end_game(reason: String) -> void:
 	if game_ended:
 		return
+	if mode == "infinito":
+		Perfil.record_years(float(day) / 365.0)
 	game_ended = true
 	active = false
 	delete_save()
@@ -1624,7 +1732,10 @@ func end_game(reason: String) -> void:
 
 ## Intención de voto nacional del partido del presidente (sin ruido)
 func vote_base() -> float:
-	return approval * 0.62 + 1.0 + campaign_bonus + [2.0, -1.0, -3.0][difficulty]
+	# Tras varias legislaturas, crecen las ganas de cambio
+	var t := float(term_index - 1)
+	var change := 2.5 * t + 0.6 * t * t
+	return approval * 0.62 + 1.0 + campaign_bonus + [2.0, -1.0, -3.0][difficulty] - change
 
 
 func compute_election() -> Dictionary:
@@ -1700,7 +1811,12 @@ func compute_election() -> Dictionary:
 		if parties[p]["rel"] >= 60.0 and dist <= 50.0:
 			allies += int(seats[p])
 			ally_list.append(p)
-	var won := int(seats[own]) + allies >= 176
+	# Para presidir el Gobierno, su partido debe ser el más votado de su bloque
+	var leads := true
+	for p in ally_list:
+		if int(seats[p]) > int(seats[own]):
+			leads = false
+	var won := int(seats[own]) + allies >= 176 and leads
 	var first := own
 	for p in seats.keys():
 		if int(seats[p]) > int(seats[first]):
@@ -1812,7 +1928,7 @@ var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas"]
+	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms"]
 
 
 func has_save() -> bool:
@@ -1868,6 +1984,12 @@ func load_game() -> bool:
 	if not (d is Dictionary):
 		return false
 	unlocks = {}
+	mode = "clasico"
+	term_index = 1
+	term_start = 0
+	terms_won = 0
+	opo_override = {}
+	seen_terms = {}
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])
@@ -1887,6 +2009,9 @@ func load_game() -> bool:
 	campaign_acts = int(campaign_acts)
 	acts_done = int(acts_done)
 	laws_term = int(laws_term)
+	term_index = int(term_index)
+	term_start = int(term_start)
+	terms_won = int(terms_won)
 	scandals = int(scandals)
 	cycle = float(cycle)
 	if not timers.has("control"):

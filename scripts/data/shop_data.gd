@@ -115,6 +115,9 @@ const ACHIEVEMENTS := {
 	"fichaje": {"name": "Cazatalentos", "desc": "Ficha a un nuevo ministro.", "reward": 25},
 	"campana": {"name": "En la carretera", "desc": "Realiza 6 actos de campaña en una partida.", "reward": 40},
 	"coleccionista": {"name": "Coleccionista", "desc": "Consigue 10 objetos de la tienda.", "reward": 100},
+	"veterano": {"name": "Veterano", "desc": "Gobierna 8 años en el modo infinito.", "reward": 120},
+	"decada": {"name": "Una década en el Palacio", "desc": "Gobierna 12 años en el modo infinito.", "reward": 200},
+	"dinastia": {"name": "Dinastía", "desc": "Gana 4 elecciones en una misma partida.", "reward": 300},
 }
 
 # Recompensas durante la partida

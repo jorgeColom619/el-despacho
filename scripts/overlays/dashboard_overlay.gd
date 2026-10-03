@@ -341,7 +341,8 @@ func _congreso(v: VBoxContainer) -> void:
 		var nv := UI.vbox(0)
 		nv.custom_minimum_size = Vector2(420, 0)
 		nv.add_child(UI.lbl(pd["name"] + (" · su partido" if p == GS.pres["party"] else ""), UI.f_sans_b, 20, UI.TEXT))
-		nv.add_child(UI.lbl("Líder: %s · %d escaños" % [pd["leader"], int(GS.parties[p]["seats"])], UI.f_sans, 14, UI.DIM))
+		var leader: String = GS.opo_name() if p == W.PLAYER_PARTIES[GS.pres["party"]]["opp"] else pd["leader"]
+		nv.add_child(UI.lbl("Líder: %s · %d escaños" % [leader, int(GS.parties[p]["seats"])], UI.f_sans, 14, UI.DIM))
 		h.add_child(nv)
 		var rel: float = GS.parties[p]["rel"]
 		h.add_child(UI.lbl("Relación con el Gobierno", UI.f_sans, 15, UI.DIM))

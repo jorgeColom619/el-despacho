@@ -8,12 +8,16 @@ const W := preload("res://scripts/data/world_data.gd")
 const INK := Color("1a1a1c")
 var page: Control
 var intro := false
+var new_term := false
 
 
 func build() -> void:
 	intro = data.get("intro", false)
+	new_term = data.get("new_term", false)
 	var items: Array = []
-	if intro:
+	if new_term:
+		items = GS.news_feed.slice(0, 6)
+	elif intro:
 		items = [{"t": "%s jura su cargo como presidente de Valdoria" % GS.pres["name"], "imp": 3}]
 		var sc: Dictionary = GS.SC.SCENARIOS.get(GS.scenario, {})
 		if sc.has("headline"):
@@ -29,6 +33,8 @@ func build() -> void:
 		main_head = items[0]["t"]
 	if intro:
 		main_head = "¡%s, PRESIDENTE!" % GS.pres["name"].to_upper()
+	if new_term:
+		main_head = "¡%s REVALIDA! COMIENZA SU %s LEGISLATURA" % [GS.pres["name"].to_upper(), GS.ordinal(GS.term_index).to_upper()]
 	page = Control.new()
 	page.size = Vector2(1180, 940)
 	page.position = Vector2(370, 120)
@@ -148,6 +154,9 @@ func _rule(th: int) -> Control:
 
 
 func _subhead(is_intro: bool) -> String:
+	if new_term:
+		var own: String = GS.pres["party"]
+		return "%s obtiene %d escaños. Tras %s en el Palacio, el presidente promete «no caer en la rutina». La oposición, con %s al frente, anuncia una legislatura sin tregua." % [W.PARTIES[own]["name"], int(GS.parties[own]["seats"]), _years_txt(), GS.opo_name()]
 	if is_intro:
 		var ctx: String = GS.SC.SCENARIOS.get(GS.scenario, {}).get("context", "")
 		return "El líder de %s promete \"un Gobierno para todos\". %s" % [W.PARTIES[GS.pres["party"]]["name"], ctx]
@@ -161,6 +170,11 @@ func _subhead(is_intro: bool) -> String:
 		elif diff < -2.0:
 			mood = "cae"
 	return "La aprobación del Gobierno %s hasta el %s%% según la encuesta de El Diario. La deuda pública roza el %s%% del PIB." % [mood, UI.num(ap, 0), UI.num(GS.debt_ratio(), 0)]
+
+
+func _years_txt() -> String:
+	var y := int(floor(float(GS.day) / 365.0))
+	return "%d año%s" % [y, "" if y == 1 else "s"]
 
 
 func _caption(h: String) -> String:

@@ -272,6 +272,15 @@ const EVENTS := [
 			{"t": "Buscaremos una fórmula para los fondos extranjeros.", "fx": {"rel": {"norland": 4}, "jovenes": -4}},
 		], "default": 1},
 
+	# =====================================================================  MODO INFINITO
+	{"id": "nueva_legislatura", "type": "advisor", "who": "jefa", "chain_only": true, "title": "Otros cuatro años",
+		"text": "Enhorabuena, presidente: el país le ha vuelto a dar su confianza. Pero cuidado: cada legislatura pesa más que la anterior. La gente se cansa de las mismas caras y la oposición llega con hambre. ¿Mantiene su equipo o cambia el Gobierno?",
+		"choices": [
+			{"t": "El equipo que gana no se toca.", "fx": {"estabilidad": 3, "pc": 4}},
+			{"t": "Remodelación parcial: dos caras nuevas.", "fx": {"reshuffle": 2, "approval": 2, "pc": -2}, "news": "El presidente remodela su Gobierno"},
+			{"t": "Gobierno nuevo de arriba abajo.", "fx": {"reshuffle": 5, "approval": 4, "estabilidad": -3, "pc": -6}, "news": "Crisis de Gobierno: el presidente cambia a todo su gabinete"},
+		], "default": 0},
+
 	# =====================================================================  ESCENARIOS
 	{"id": "recesion_paro", "type": "advisor", "who": "economia", "chain_only": true, "title": "El paro, por encima del 17%",
 		"text": "Presidente, los datos de este mes son malos: el paro supera el 17% y entre los jóvenes roza el 35%. Necesitamos un mensaje y medidas ya. Tengo tres propuestas.",
