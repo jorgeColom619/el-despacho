@@ -144,8 +144,8 @@ func _ready() -> void:
 	# mascota
 	pet_kind = Perfil.equipped_data("mascota").get("pet", "")
 	if pet_kind != "":
-		var pr: Rect2 = {"gato": Rect2(590, 975, 210, 105), "perro": Rect2(0, 920, 210, 160), "loro": Rect2(1208, 118, 96, 96), "pez": Rect2(478, 770, 86, 86)}[pet_kind]
-		var pet := _object("pet", pr, null, {"gato": "Decreto, el gato", "perro": "Tribuno, el perro", "loro": "Senador, el loro", "pez": "El pez dorado"}[pet_kind])
+		var pr: Rect2 = {"gato": Rect2(590, 975, 210, 105), "perro": Rect2(0, 920, 210, 160), "loro": Rect2(1208, 118, 96, 96), "pez": Rect2(478, 770, 86, 86), "tortuga": Rect2(860, 776, 170, 124)}[pet_kind]
+		var pet := _object("pet", pr, null, {"gato": "Decreto, el gato", "perro": "Tribuno, el perro", "loro": "Senador, el loro", "pez": "El pez dorado", "tortuga": "Trámite, la tortuga"}[pet_kind])
 		pet.extra_draw = _draw_pet
 		pet.animated = true
 		pet.glow_color = Color(1.0, 0.9, 0.7)
@@ -401,7 +401,7 @@ func _on_object(key: String) -> void:
 			if _pet_cd <= 0.0:
 				_pet_cd = 20.0
 				GS.stress = maxf(0.0, GS.stress - 3.0)
-				GS.toast.emit({"gato": "Decreto ronronea. Estrés −3.", "perro": "Tribuno mueve la cola. Estrés −3.", "loro": "Senador: «¡Presidente guapo!». Estrés −3.", "pez": "El pez da una vuelta. Estrés −3."}.get(pet_kind, ""), "good", "bienestar")
+				GS.toast.emit({"gato": "Decreto ronronea. Estrés −3.", "perro": "Tribuno mueve la cola. Estrés −3.", "loro": "Senador: «¡Presidente guapo!». Estrés −3.", "pez": "El pez da una vuelta. Estrés −3.", "tortuga": "Trámite echa burbujas de alegría. Estrés −3."}.get(pet_kind, ""), "good", "bienestar")
 			if pet_kind == "loro":
 				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
 				_parrot_t = 4.0

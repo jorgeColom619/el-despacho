@@ -74,7 +74,7 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 | Ordenador (SIGEP) | Datos, grupos sociales, **agenda legislativa** (presentar leyes), Congreso (reunirse con los partidos), agenda y gabinete. |
 | Globo | Mapa diplomático: tratados, visitas de Estado, ayudas, sanciones. |
 | Micrófono | Discurso a la nación (minijuego de ritmo con el teleprompter). En campaña abre el **mapa de campaña por regiones**. |
-| Mascota | Si has comprado una en la tienda (gato, perro, loro o pez), haz clic para bajar el estrés. |
+| Mascota | Si has comprado una en la tienda (gato, perro, loro, pez o tortuga), haz clic para bajar el estrés. |
 | Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. |
 | Periódico, TV, calendario, reloj, café | Noticias, encuestas, agenda... y un café para el estrés. |
 | Ventana | Refleja el estado del país: manifestaciones, disturbios, fuegos artificiales, clima. |

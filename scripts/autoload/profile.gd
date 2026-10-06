@@ -263,6 +263,10 @@ func shop_today() -> Array:
 		pool[i] = pool[j]
 		pool[j] = tmp
 	var out := pool.slice(0, SHOP_SIZE)
+	# las novedades están a la venta todos los días hasta que se compran
+	for id in S.ITEMS.keys():
+		if S.ITEMS[id].get("nuevo", false) and not is_owned(id) and not out.has(id):
+			out.append(id)
 	return out
 
 

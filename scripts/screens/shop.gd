@@ -117,6 +117,10 @@ func _preview(id: String, sz: Vector2) -> Control:
 	return p
 
 
+func _slot_text(it: Dictionary) -> String:
+	return S.SLOTS[it["slot"]].to_upper() + ("  ·  NOVEDAD" if it.get("nuevo", false) else "")
+
+
 func _price_text(cost: Dictionary) -> String:
 	if cost.has("laureles"):
 		return "%s Laureles" % UI.num(cost["laureles"])
@@ -174,7 +178,7 @@ func _escaparate() -> void:
 		v.add_child(rib)
 		v.add_child(_preview(feat, Vector2(496, 360)))
 		v.add_child(UI.lbl(it["name"], UI.f_serif_b, 32, UI.CREAM))
-		v.add_child(UI.lbl(S.SLOTS[it["slot"]].to_upper(), UI.f_sans_b, 14, UI.GOLD))
+		v.add_child(UI.lbl(_slot_text(it), UI.f_sans_b, 14, UI.GOLD))
 		var d := UI.lbl(it["desc"], UI.f_sans, 18, UI.DIM)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		d.custom_minimum_size = Vector2(490, 0)
@@ -213,7 +217,7 @@ func _item_card(id: String) -> Control:
 	h.add_child(n)
 	h.add_child(_rarity_chip(it["rarity"]))
 	v.add_child(h)
-	v.add_child(UI.lbl(S.SLOTS[it["slot"]].to_upper(), UI.f_sans_b, 12, UI.GOLD))
+	v.add_child(UI.lbl(_slot_text(it), UI.f_sans_b, 12, UI.GOLD))
 	var d := UI.lbl(it["desc"], UI.f_sans, 15, UI.DIM)
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	d.custom_minimum_size = Vector2(330, 40)

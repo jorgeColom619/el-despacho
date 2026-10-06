@@ -36,6 +36,7 @@ const RARITY := {
 }
 
 # price = laureles (0 = no se vende con laureles), premium = lingotes
+# nuevo = novedad: sale cada día en el escaparate hasta que se compra
 const ITEMS := {
 	# --- banderas
 	"flag_clasica": {"slot": "bandera", "name": "Bandera de la República", "desc": "Azul marino y oro con la estrella de ocho puntas.", "rarity": "comun", "price": 0, "default": true, "data": {"style": "clasica"}},
@@ -83,6 +84,7 @@ const ITEMS := {
 	# --- mascotas
 	"pet_ninguna": {"slot": "mascota", "name": "Sin mascota", "desc": "El despacho, en silencio.", "rarity": "comun", "price": 0, "default": true, "data": {"pet": ""}},
 	"pet_pez": {"slot": "mascota", "name": "Pez dorado", "desc": "Una pecera junto a la lámpara.", "rarity": "comun", "price": 90, "data": {"pet": "pez"}},
+	"pet_tortuga": {"slot": "mascota", "name": "Trámite, la tortuga", "desc": "Una pecera con su roca para tomar el sol. Lenta como un expediente. Reduce el estrés.", "rarity": "raro", "price": 180, "nuevo": true, "data": {"pet": "tortuga"}},
 	"pet_gato": {"slot": "mascota", "name": "Decreto, el gato", "desc": "Duerme sobre el escritorio. Reduce el estrés.", "rarity": "raro", "price": 200, "data": {"pet": "gato"}},
 	"pet_perro": {"slot": "mascota", "name": "Tribuno, el perro", "desc": "Asoma junto a la mesa. Reduce el estrés.", "rarity": "raro", "price": 200, "data": {"pet": "perro"}},
 	"pet_loro": {"slot": "mascota", "name": "Senador, el loro", "desc": "Vive sobre el reloj y opina de todo.", "rarity": "epico", "price": 320, "data": {"pet": "loro"}},
