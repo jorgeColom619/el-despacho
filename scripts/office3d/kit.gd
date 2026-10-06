@@ -359,7 +359,8 @@ static func pbr(kind: String, p: Dictionary, tile: float, rough: float, tint := 
 	if clearcoat > 0.0:
 		m.clearcoat_enabled = true
 		m.clearcoat = clearcoat
-		m.clearcoat_roughness = 0.15
+		# laca satinada: con 0.15 los reflejos de las lámparas eran manchas blancas (puerta, borde de la mesa)
+		m.clearcoat_roughness = 0.32
 	_mat_cache[k] = m
 	return m
 
@@ -405,8 +406,9 @@ static func glass(tint := Color(0.75, 0.88, 1.0, 0.12)) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.albedo_color = tint
-	m.roughness = 0.03
-	m.metallic_specular = 1.0
+	# reflejos contenidos: con especular 1.0 el fuego de la chimenea se veía en la ventana como un segundo sol
+	m.roughness = 0.12
+	m.metallic_specular = 0.35
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_mat_cache[k] = m
 	return m
@@ -450,8 +452,8 @@ static func velvet(col: Color) -> StandardMaterial3D:
 		return _mat_cache[k]
 	var m := pbr("velvet", {}, 0.5, 0.88, col.lightened(0.08), 0.8).duplicate()
 	m.rim_enabled = true
-	m.rim = 0.65
-	m.rim_tint = 0.7
+	m.rim = 0.4
+	m.rim_tint = 0.85
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_mat_cache[k] = m
 	return m
@@ -471,7 +473,7 @@ static func wood(name: String) -> StandardMaterial3D:
 		return pbr("wood", Tex.wood_params("marmol"), 0.8, 0.12, Color.WHITE, 0.4, 0.0, 0.5)
 	if name == "panel":
 		return pbr("wood", Tex.wood_params("panel"), 0.6, 0.42, Color.WHITE, 0.8)
-	return pbr("wood", Tex.wood_params(name), 0.6, 0.3, Color.WHITE, 0.8, 0.0, 0.6)
+	return pbr("wood", Tex.wood_params(name), 0.6, 0.36, Color.WHITE, 0.8, 0.0, 0.3)
 
 
 static func panel_wood() -> StandardMaterial3D:
@@ -585,10 +587,16 @@ static func shape_box(size: Vector3) -> BoxShape3D:
 	return s
 
 
-static func shape_cyl(r: float, h: float) -> CylinderShape3D:
-	var s := CylinderShape3D.new()
-	s.radius = r
-	s.height = h
+## Cilindro de colisión como prisma convexo de 16 caras: con CylinderShape3D el motor de físicas hacía
+## temblar y resbalar solos la taza, los vasos, la licorera o la estatuilla
+static func shape_cyl(r: float, h: float, sides := 16) -> ConvexPolygonShape3D:
+	var pts := PackedVector3Array()
+	for i in sides:
+		var a := TAU * i / sides
+		for y in [-h * 0.5, h * 0.5]:
+			pts.append(Vector3(cos(a) * r, y, sin(a) * r))
+	var s := ConvexPolygonShape3D.new()
+	s.points = pts
 	return s
 
 

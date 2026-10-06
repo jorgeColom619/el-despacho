@@ -16,7 +16,8 @@ const Z0 := -5.0
 const Z1 := 4.0
 const H := 3.6
 const WAIN := 1.05
-const WINDOW := Rect2(-4.3, 1.0, 1.8, 2.0)
+## Ventanal de suelo casi a techo: desde el sillón se ve la plaza, la ciudad y el sol
+const WINDOW := Rect2(-4.3, 0.45, 1.8, 2.55)
 const DOOR := Rect2(-0.8, 0.0, 1.6, 2.6)
 const DESK_TOP := 0.78
 const DESK_Z := -1.0
@@ -24,8 +25,11 @@ const SEAT := Vector3(0, 0, 0.12)
 const STAND := Vector3(0, 0, 1.0)
 const VISITOR_SPOT := Vector3(0, 0, -2.45)
 const CORRIDOR_START := Vector3(0, 0, -7.6)
-const LIGHT_POS := Vector3(-5.5, 5.0, -9.0)
-const LIGHT_AIM := Vector3(0.1, 0.0, -2.3)
+## Dirección en la que viaja la luz del sol: entra por la parte alta del ventanal y, desde el sillón,
+## el sol se ve por la ventana
+const SUN_DIR := Vector3(0.545, -0.218, 0.809)
+## Pared exterior: grosor de los muros (evita que la luz de fuera se cuele por paredes finas)
+const SHELL := 0.34
 
 var root: Node3D
 var theme: Dictionary
@@ -35,8 +39,17 @@ var m := {}
 var door_l: Node3D
 var door_r: Node3D
 var door_bodies: Array = []
-var window_quad: MeshInstance3D
-var window_light: SpotLight3D
+## Luz del sol (o de la luna, de noche) que entra por el ventanal
+var window_light: DirectionalLight3D
+## Cortinas: mallas que se regeneran al abrirlas o cerrarlas (0 = recogidas, 1 = cerradas)
+var curtains: Array = []
+var curtain_body: StaticBody3D
+var curtain_amount := 0.0
+## Asientos donde puede sentarse el presidente además de su sillón: {pos, yaw, eye, stand, body, title}
+var seats: Array = []
+## Mapa del mundo enmarcado en la pared del fondo
+var map_mesh: MeshInstance3D
+var map_mat: ShaderMaterial
 var chandelier_light: OmniLight3D
 var sconce_lights: Array = []
 var fire_light: OmniLight3D
@@ -70,7 +83,7 @@ func _init(parent: Node3D) -> void:
 	m["gold"] = Kit.gold()
 	m["desk"] = Kit.wood(Perfil.wood())
 	m["caoba"] = Kit.wood("caoba")
-	m["leather"] = Kit.pbr("leather", {}, 0.5, 0.45, Color("1d3a2f").lightened(0.18), 0.25)
+	m["leather"] = Kit.pbr("leather", {}, 0.5, 0.6, Color("1d3a2f").lightened(0.18), 0.25)
 	m["chair"] = Kit.tufted(Color("4a1712"), 0.22)
 	m["chair_plain"] = Kit.leather(Color("4a1712"), 0.38)
 	m["black"] = Kit.mat(Color("0c0c0e"), 0.35)
@@ -91,6 +104,7 @@ func _init(parent: Node3D) -> void:
 func build() -> void:
 	_floor_and_ceiling()
 	_walls()
+	_shell()
 	_window()
 	_door_and_corridor()
 	_clock()
@@ -218,7 +232,8 @@ static func runs(hl: float, y0: float, y1: float, holes: Array) -> Array:
 	return out
 
 
-func _wall(xf: Transform3D, length: float, holes: Array) -> void:
+## deco_holes: cuadros colgados (la moldura dorada no pasa por detrás de ellos)
+func _wall(xf: Transform3D, length: float, holes: Array, deco_holes: Array = []) -> void:
 	var hl := length * 0.5
 	b.rects(xf, subtract(-hl, hl, WAIN, H, holes), m["wall"], 1.0)
 	b.rects(xf, subtract(-hl, hl, 0.0, WAIN, holes), m["panel"], 1.0)
@@ -227,7 +242,7 @@ func _wall(xf: Transform3D, length: float, holes: Array) -> void:
 	for r in runs(hl, 0.0, 0.19, holes):
 		b.molding(xf, r[0], r[1], Kit.PROFILE_BASE, m["panel_d"], true)
 	b.molding(xf * Transform3D(Basis(), Vector3(0, H - 0.175, 0)), -hl, hl, Kit.PROFILE_CROWN, m["cream"])
-	for r in runs(hl, 2.47, 2.49, holes):
+	for r in runs(hl, 2.47, 2.49, holes + deco_holes):
 		b.box(xf * Transform3D(Basis(), Vector3((r[0] + r[1]) * 0.5, 2.48, 0.006)), Vector3(r[1] - r[0], 0.018, 0.012), m["gold"], 1.0, 0.004)
 	# cuarterones de la boiserie
 	var px := -hl + 0.6
@@ -248,8 +263,9 @@ func _wall(xf: Transform3D, length: float, holes: Array) -> void:
 
 func _walls() -> void:
 	_wall(Transform3D(Basis(), Vector3(0, 0, Z0)), X1 - X0, [WINDOW, DOOR])
-	_wall(Transform3D(Basis(Vector3.UP, PI), Vector3(0, 0, Z1)), X1 - X0, [])
-	_wall(Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(X0, 0, (Z0 + Z1) / 2.0)), Z1 - Z0, [Rect2(-0.5, 0.0, 2.4, 1.15)])
+	# mapa del mundo (pared del fondo) y retrato sobre la chimenea (pared izquierda)
+	_wall(Transform3D(Basis(Vector3.UP, PI), Vector3(0, 0, Z1)), X1 - X0, [], [Rect2(-1.42, 1.3, 2.84, 1.7)])
+	_wall(Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(X0, 0, (Z0 + Z1) / 2.0)), Z1 - Z0, [Rect2(-0.5, 0.0, 2.4, 1.15)], [Rect2(0.09, 1.66, 1.22, 1.44)])
 	_wall(Transform3D(Basis(Vector3.UP, -PI / 2.0), Vector3(X1, 0, (Z0 + Z1) / 2.0)), Z1 - Z0, [])
 	Kit.solid(root, Vector3(-2.9, H / 2.0, Z0 - 0.2), Vector3(4.2, H, 0.4))
 	Kit.solid(root, Vector3(2.9, H / 2.0, Z0 - 0.2), Vector3(4.2, H, 0.4))
@@ -257,6 +273,33 @@ func _walls() -> void:
 	Kit.solid(root, Vector3(0, H / 2.0, Z1 + 0.2), Vector3(10.4, H, 0.4))
 	Kit.solid(root, Vector3(X0 - 0.2, H / 2.0, -0.5), Vector3(0.4, H, 9.4))
 	Kit.solid(root, Vector3(X1 + 0.2, H / 2.0, -0.5), Vector3(0.4, H, 9.4))
+
+
+## Muros, tejado y forjado con grosor real por fuera de la sala (y del pasillo). Desde dentro no se ven,
+## pero tapan el sol: sin ellos la luz y la iluminación global atravesaban las paredes finas.
+func _shell() -> void:
+	var sm := Kit.plaster(Color("d9cdb2"))
+	var t := SHELL
+	var y0 := -0.6
+	var y1 := H + 0.6
+	# fachada: rodea el ventanal (con holgura para no pelearse con el derrame) y la boca del pasillo
+	for r in subtract(X0 - t, X1 + t, y0, y1, [WINDOW.grow(0.05), Rect2(-1.3, 0.0, 2.6, 3.0)]):
+		var rr: Rect2 = r
+		b.cube(Vector3(rr.get_center().x, rr.get_center().y, Z0 - 0.01 - t * 0.5), Vector3(rr.size.x, rr.size.y, t), sm)
+	b.cube(Vector3(0, (y0 + y1) * 0.5, Z1 + 0.01 + t * 0.5), Vector3(X1 - X0 + t * 2.0, y1 - y0, t), sm)
+	b.cube(Vector3(X0 - 0.01 - t * 0.5, (y0 + y1) * 0.5, (Z0 + Z1) * 0.5), Vector3(t, y1 - y0, Z1 - Z0 + t * 2.0), sm)
+	b.cube(Vector3(X1 + 0.01 + t * 0.5, (y0 + y1) * 0.5, (Z0 + Z1) * 0.5), Vector3(t, y1 - y0, Z1 - Z0 + t * 2.0), sm)
+	b.cube(Vector3(0, H + 0.11 + t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
+	b.cube(Vector3(0, -0.11 - t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
+	# pasillo: muros laterales, techo, suelo y fondo
+	var cz0 := -9.0
+	var mid := (Z0 + cz0) * 0.5
+	var clen := Z0 - cz0 + t
+	for sx in [-1.0, 1.0]:
+		b.cube(Vector3(sx * (1.31 + t * 0.5), 1.5, mid - t * 0.5), Vector3(t, 3.8, clen), sm)
+	b.cube(Vector3(0, 3.06 + t * 0.5, mid - t * 0.5), Vector3(2.62 + t * 2.0, t, clen), sm)
+	b.cube(Vector3(0, -0.05 - t * 0.5, mid - t * 0.5), Vector3(2.62 + t * 2.0, t, clen), sm)
+	b.cube(Vector3(0, 1.5, cz0 - 0.01 - t * 0.5), Vector3(2.62 + t * 2.0, 3.8, t), sm)
 
 
 # ------------------------------------------------------------------ ventana
@@ -268,8 +311,6 @@ func _window() -> void:
 	var y0 := WINDOW.position.y
 	var y1 := WINDOW.end.y
 	var ws := WINDOW.size
-	window_quad = Kit.mesh(root, Kit.quad_mesh(Vector2(2.3, 2.64)), null, Vector3(c.x, c.y, Z0 - 0.33))
-	window_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# derrame
 	b.cube(Vector3(x0 - 0.03, c.y, Z0 - 0.16), Vector3(0.06, ws.y + 0.12, 0.32), m["cream"])
 	b.cube(Vector3(x1 + 0.03, c.y, Z0 - 0.16), Vector3(0.06, ws.y + 0.12, 0.32), m["cream"])
@@ -278,6 +319,8 @@ func _window() -> void:
 	# hojas de la ventana: bastidor, cristal y junquillos
 	var glass := Kit.mesh(root, Kit.quad_mesh(ws), m["glass"], Vector3(c.x, c.y, Z0 - 0.2))
 	glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# el cristal también para objetos lanzados y al presidente
+	Kit.solid(root, Vector3(c.x, c.y, Z0 - 0.2), Vector3(ws.x, ws.y, 0.06))
 	b.frame(Transform3D(Basis(), Vector3(c.x, c.y, Z0 - 0.22)), ws.x, ws.y, [Vector2(0, 0), Vector2(0, 0.04), Vector2(0.01, 0.05), Vector2(0.05, 0.05), Vector2(0.06, 0.035), Vector2(0.065, 0.0)], m["cream"])
 	b.cube(Vector3(c.x, c.y, Z0 - 0.19), Vector3(0.07, ws.y - 0.1, 0.06), m["cream"], Vector3.ZERO, 1.0, 0.01)
 	for i in [1, 2]:
@@ -290,9 +333,16 @@ func _window() -> void:
 	b.cube(Vector3(c.x, y0 - 0.025, Z0 + 0.12), Vector3(ws.x + 0.44, 0.05, 0.28), m["cream"], Vector3.ZERO, 1.0, 0.012, 2)
 	b.cube(Vector3(c.x, y0 - 0.11, Z0 + 0.02), Vector3(ws.x + 0.3, 0.12, 0.04), m["cream"], Vector3.ZERO, 1.0, 0.008)
 	Kit.solid(root, Vector3(c.x, y0 - 0.025, Z0 + 0.12), Vector3(ws.x + 0.44, 0.05, 0.28))
-	# cortinas recogidas, galería con flecos y alzapaños con borla
-	_curtain(x0 - 0.68, x0 + 0.12)
-	_curtain(x1 + 0.68, x1 - 0.12)
+	# cortinas (recogidas o cerradas), galería con flecos y alzapaños con borla
+	_curtain(x0 - 0.68, x0 + 0.12, c.x + 0.03)
+	_curtain(x1 + 0.68, x1 - 0.12, c.x - 0.03)
+	set_curtains(0.0)
+	curtain_body = StaticBody3D.new()
+	curtain_body.collision_layer = 4
+	curtain_body.collision_mask = 0
+	curtain_body.position = Vector3(c.x, 1.7, Z0 + 0.1)
+	root.add_child(curtain_body)
+	Kit.add_shape(curtain_body, Kit.shape_box(Vector3(ws.x + 1.3, 3.3, 0.12)))
 	var vw := ws.x + 1.55
 	b.cube(Vector3(c.x, 3.25, Z0 + 0.14), Vector3(vw, 0.42, 0.14), m["valance"], Vector3.ZERO, 1.0, 0.03, 2)
 	b.molding(Transform3D(Basis(), Vector3(c.x, 3.44, Z0 + 0.21)), -vw * 0.5, vw * 0.5, [Vector2(0, 0), Vector2(0.015, 0.005), Vector2(0.02, 0.02), Vector2(0.0, 0.03)], m["gold"], true)
@@ -304,57 +354,93 @@ func _window() -> void:
 		Kit.mesh(root, Kit.torus_mesh(0.05, 0.075, 20), m["gold"], Vector3(sx, 1.25, Z0 + 0.17), Vector3(PI / 2.0, 0, 0))
 		b.segment(Vector3(sx, 1.2, Z0 + 0.2), Vector3(sx, 1.0, Z0 + 0.21), 0.006, m["gold"])
 		b.lathe(Transform3D(Basis(), Vector3(sx, 0.86, Z0 + 0.21)), [Vector2(0.035, 0.0), Vector2(0.045, 0.06), Vector2(0.03, 0.12), Vector2(0.012, 0.14), Vector2(0.0, 0.15)], m["gold"], 12)
-	# luz que entra por la ventana
-	window_light = SpotLight3D.new()
-	window_light.position = LIGHT_POS
+	# el sol (de noche, la luna): luz direccional que solo entra por el ventanal
+	window_light = DirectionalLight3D.new()
 	root.add_child(window_light)
-	window_light.look_at_from_position(LIGHT_POS, LIGHT_AIM)
-	window_light.spot_angle = 21.0
-	window_light.spot_range = 16.0
-	window_light.spot_attenuation = 0.6
+	window_light.look_at_from_position(Vector3.ZERO, SUN_DIR.normalized(), Vector3.UP)
 	window_light.shadow_enabled = true
-	window_light.light_size = 0.4
+	window_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	window_light.directional_shadow_max_distance = 24.0
+	window_light.directional_shadow_split_1 = 0.35
+	window_light.light_angular_distance = 0.6
+	window_light.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
 	window_light.light_color = Color(1.0, 0.95, 0.86)
-	window_light.light_energy = 5.0
+	window_light.light_energy = 3.0
 
 
-## Cortina de terciopelo con pliegues, recogida a media altura hacia el lado exterior
-func _curtain(outer: float, inner: float) -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+## Cortina de terciopelo con pliegues. Recogida (0) se ciñe al alzapaños hacia el lado exterior;
+## cerrada (1) cae recta hasta el centro del ventanal.
+func _curtain(outer: float, inner_open: float, inner_closed: float) -> void:
+	var mi := MeshInstance3D.new()
+	mi.mesh = ArrayMesh.new()
+	mi.material_override = m["curtain"]
+	root.add_child(mi)
+	curtains.append({"mi": mi, "outer": outer, "open": inner_open, "closed": inner_closed})
+
+
+## Abre o cierra las cortinas (0 = recogidas, 1 = cerradas) regenerando sus mallas
+func set_curtains(amount: float) -> void:
+	curtain_amount = clampf(amount, 0.0, 1.0)
+	var k := curtain_amount * curtain_amount * (3.0 - 2.0 * curtain_amount)
+	for cd in curtains:
+		var inner: float = lerpf(cd["open"], cd["closed"], k)
+		_curtain_arrays(cd["mi"], cd["outer"], inner, k)
+
+
+func _curtain_arrays(mi: MeshInstance3D, outer: float, inner: float, closed: float) -> void:
 	var cols := 36
 	var rows := 24
 	var top := 3.36
 	var bot := 0.02
-	var pts := []
+	var grid := []
 	for j in rows + 1:
 		var row := []
 		var y := lerpf(top, bot, float(j) / rows)
-		var gather := 1.0 - 0.52 * exp(-pow((y - 1.25) / 0.42, 2.0))
-		var flare := 1.0 + 0.12 * clampf((0.9 - y) / 0.9, 0.0, 1.0)
+		var gather := 1.0 - 0.52 * exp(-pow((y - 1.25) / 0.42, 2.0)) * (1.0 - closed)
+		var flare := 1.0 + 0.12 * clampf((0.9 - y) / 0.9, 0.0, 1.0) * (1.0 - closed)
+		var folds := lerpf(1.3 - gather * 0.6, 0.85, closed)
 		for i in cols + 1:
 			var u := float(i) / cols
 			var x := outer + (inner - outer) * u * gather * flare
-			var depth := (sin(u * PI * 11.0) * 0.042 + sin(u * PI * 4.0 + 0.7) * 0.015) * (1.3 - gather * 0.6)
+			var depth := (sin(u * PI * 11.0) * 0.042 + sin(u * PI * 4.0 + 0.7) * 0.015) * folds
 			row.append([Vector3(x, y, Z0 + 0.1 + depth), Vector2(u * 1.6, (top - y))])
-		pts.append(row)
+		grid.append(row)
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var tans := PackedFloat32Array()
+	var uvs := PackedVector2Array()
 	for j in rows:
 		for i in cols:
-			var q := [pts[j][i], pts[j][i + 1], pts[j + 1][i + 1], pts[j + 1][i]]
+			var q := [grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]]
 			for tri in [[q[0], q[1], q[2]], [q[0], q[2], q[3]]]:
 				var p0: Vector3 = tri[0][0]
 				var n := ((tri[1][0] as Vector3) - p0).cross((tri[2][0] as Vector3) - p0).normalized()
+				var order := [0, 1, 2]
 				if n.z < 0.0:
+					# la cara delantera tiene que mirar a la sala: si no, se ve la trasera y la luz la
+					# trata como si mirase a la pared (la cortina izquierda salía rosa pálido)
 					n = -n
-				for v in tri:
-					st.set_normal(n)
-					st.set_uv(v[1])
-					st.add_vertex(v[0])
-	st.generate_tangents()
-	var mi := MeshInstance3D.new()
-	mi.mesh = st.commit()
-	mi.material_override = m["curtain"]
-	root.add_child(mi)
+					order = [0, 2, 1]
+				# tangente: hacia donde crece u (a lo ancho, a la derecha o a la izquierda según la cortina);
+				# la v crece hacia abajo
+				var du: Vector3 = (grid[0][cols][0] as Vector3) - (grid[0][0][0] as Vector3)
+				var tg := (Vector3(signf(du.x), 0, 0) - n * n.x * signf(du.x)).normalized()
+				var w := -1.0 if du.x > 0.0 else 1.0
+				for k in order:
+					var v: Array = tri[k]
+					verts.append(v[0])
+					norms.append(n)
+					uvs.append(v[1])
+					tans.append_array([tg.x, tg.y, tg.z, w])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_TANGENT] = tans
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	var am := mi.mesh as ArrayMesh
+	am.clear_surfaces()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 
 
 # ------------------------------------------------------------------ puerta y pasillo
@@ -415,13 +501,15 @@ func _leaf(hinge: Vector3, dir: float) -> Node3D:
 	pivot.add_child(body)
 	var lb := Batch.new()
 	var cx := 0.4 * dir
-	lb.cube(Vector3(cx, 1.3, 0), Vector3(0.79, 2.6, 0.05), m["caoba"], Vector3.ZERO, 1.0, 0.006)
+	# madera satinada, sin laca: la laca reflejaba la lámpara de araña como un sol sobre la puerta
+	var door_wood := Kit.pbr("wood", Tex.wood_params("caoba"), 0.6, 0.5, Color.WHITE, 0.8)
+	lb.cube(Vector3(cx, 1.3, 0), Vector3(0.79, 2.6, 0.05), door_wood, Vector3.ZERO, 1.0, 0.006)
 	for pnl in [[1.92, 1.0], [0.66, 0.8]]:
 		for face in [1.0, -1.0]:
 			var fz: float = 0.025 * face
 			var xf := Transform3D(Basis(Vector3.UP, 0.0 if face > 0 else PI), Vector3(cx, pnl[0], fz))
 			lb.frame(xf, 0.6, pnl[1], Kit.FRAME_PANEL, m["panel_d"])
-			lb.box(xf * Transform3D(Basis(), Vector3(0, 0, 0.006)), Vector3(0.5, pnl[1] - 0.1, 0.014), m["caoba"], 1.0, 0.012, 2)
+			lb.box(xf * Transform3D(Basis(), Vector3(0, 0, 0.006)), Vector3(0.5, pnl[1] - 0.1, 0.014), door_wood, 1.0, 0.012, 2)
 	for face2 in [1.0, -1.0]:
 		var hz: float = 0.03 * face2
 		lb.cube(Vector3(0.72 * dir, 1.05, hz), Vector3(0.05, 0.22, 0.01), m["gold"], Vector3.ZERO, 1.0, 0.004)
@@ -607,7 +695,7 @@ func _fireplace() -> void:
 	fire_light.omni_range = 4.6
 	fire_light.light_energy = 1.3
 	fire_light.light_color = Color(1.0, 0.55, 0.22)
-	fire_light.light_size = 0.2
+	fire_light.light_size = 0.06
 	root.add_child(fire_light)
 	# guardafuegos de latón y atizadores
 	b.segment(Vector3(x + 0.72, 0.13, cz - 0.82), Vector3(x + 0.72, 0.13, cz + 0.82), 0.012, m["gold"], 12)
@@ -718,12 +806,24 @@ func _back_wall() -> void:
 	var z := Z1
 	var bxf := Transform3D(Basis(Vector3.UP, PI), Vector3(0, 2.15, z))
 	b.frame(bxf, 2.8, 1.68, Kit.FRAME_ORNATE, m["gold"])
-	var map := Kit.mesh(root, Kit.quad_mesh(Vector2(2.64, 1.52)), null, Vector3(0, 2.15, z - 0.012), Vector3(0, PI, 0))
-	var sm := ShaderMaterial.new()
-	sm.shader = load("res://shaders/globe3d.gdshader")
-	sm.set_shader_parameter("map_tex", load("res://art/maps/world_ids.png"))
-	sm.set_shader_parameter("flat_map", true)
-	map.material_override = sm
+	map_mesh = Kit.mesh(root, Kit.quad_mesh(Vector2(2.64, 1.52)), null, Vector3(0, 2.15, z - 0.012), Vector3(0, PI, 0))
+	map_mat = ShaderMaterial.new()
+	map_mat.shader = load("res://shaders/globe3d.gdshader")
+	map_mat.set_shader_parameter("map_tex", load("res://art/maps/world_ids.png"))
+	map_mat.set_shader_parameter("flat_map", true)
+	map_mesh.material_override = map_mat
+	# lámpara de cuadro sobre el mapa
+	b.cube(Vector3(0, 3.1, z - 0.1), Vector3(0.9, 0.04, 0.05), m["gold"], Vector3.ZERO, 1.0, 0.012)
+	b.cube(Vector3(0, 3.078, z - 0.1), Vector3(0.86, 0.004, 0.04), Kit.emissive(Color(1.0, 0.9, 0.7), 2.5))
+	b.segment(Vector3(0, 3.2, z), Vector3(0, 3.12, z - 0.1), 0.008, m["gold"], 8)
+	var ml := SpotLight3D.new()
+	root.add_child(ml)
+	ml.look_at_from_position(Vector3(0, 3.06, z - 0.5), Vector3(0, 1.9, z), Vector3.UP)
+	ml.spot_angle = 48.0
+	ml.spot_range = 3.2
+	ml.light_energy = 1.4
+	ml.light_color = Color(1.0, 0.86, 0.62)
+	ml.light_volumetric_fog_energy = 0.0
 	# consola con patas torneadas
 	var cw: Material = m["caoba"]
 	b.cube(Vector3(0, 0.825, z - 0.26), Vector3(2.3, 0.045, 0.48), m["marble"], Vector3.ZERO, 1.0, 0.012, 2)
@@ -751,8 +851,8 @@ func _back_wall() -> void:
 		cloth.mesh = qm
 		cloth.position = Vector3(sx + (0.33 if sx < 0 else -0.33), 1.98, pz - 0.02)
 		cloth.rotation = Vector3(0, PI, 0)
-		if sx > 0.0:
-			cloth.scale = Vector3(-1, 1, 1)
+		# el lado de la driza (donde no ondea) va pegado al mástil: en la de la izquierda se invierte la tela
+		cloth.set_meta("flip_u", sx < 0.0)
 		root.add_child(cloth)
 		flag_cloths.append(cloth)
 		b.segment(Vector3(sx, 2.66, pz - 0.02), Vector3(sx + (0.1 if sx < 0 else -0.1), 2.3, pz - 0.05), 0.004, m["gold"], 6)
@@ -783,11 +883,15 @@ func _seating() -> void:
 	for dz2 in [-1.0, 1.0]:
 		for dx in [-0.36, 0.36]:
 			b.lathe(Transform3D(Basis(), Vector3(sx + dx, 0.0, cz + dz2)), [Vector2(0.03, 0.0), Vector2(0.045, 0.04), Vector2(0.04, 0.07), Vector2(0.03, 0.09), Vector2(0.0, 0.09)], m["caoba"], 14)
-	Kit.solid(root, Vector3(sx, 0.27, cz), Vector3(0.86, 0.54, 2.1))
-	Kit.solid(root, Vector3(sx + 0.33, 0.68, cz), Vector3(0.2, 0.62, 2.1))
+	# el asiento a la altura de los cojines (0,44 m; antes la colisión llegaba a 0,54 y lo que se dejaba encima flotaba)
+	var sofa := Kit.solid(root, Vector3(sx, 0.22, cz), Vector3(0.86, 0.44, 2.1))
+	Kit.add_shape(sofa, Kit.shape_box(Vector3(0.2, 0.62, 2.1)), Vector3(0.33, 0.46, 0))
 	for dz3 in [-1.13, 1.13]:
-		Kit.solid(root, Vector3(sx, 0.4, cz + dz3), Vector3(0.86, 0.6, 0.2))
+		Kit.add_shape(sofa, Kit.shape_box(Vector3(0.86, 0.6, 0.2)), Vector3(0, 0.18, dz3))
 	Kit.blob(root, Vector3(sx, 0, cz), 1.1, 2.5, 0.6)
+	# el sofá: se sienta en el cojín central mirando a la sala; al levantarse sale junto a la mesa baja
+	seats.append({"pos": Vector3(sx - 0.02, 0, cz), "yaw": PI / 2.0, "eye": 1.06, "stand": Vector3(2.75, 0, cz), "body": sofa,
+		"title": "Sofá Chesterfield · clic para sentarse", "key": "sofa"})
 	# cuadro sobre el sofá
 	b.frame(Transform3D(Basis(Vector3.UP, -PI / 2.0), Vector3(X1, 1.85, cz)), 1.66, 1.1, Kit.FRAME_ORNATE, m["gold"])
 	Kit.mesh(root, Kit.quad_mesh(Vector2(1.49, 0.93)), Kit.tex_mat(_landscape_tex(), 0.85), Vector3(X1 - 0.012, 1.85, cz), Vector3(0, -PI / 2.0, 0))
@@ -865,10 +969,16 @@ func _armchair(pos: Vector3, yaw: float) -> void:
 		b.lathe(xf * Transform3D(Basis(), c), [Vector2(0.022, 0.0), Vector2(0.03, 0.03), Vector2(0.02, 0.07), Vector2(0.026, 0.1), Vector2(0.0, 0.1)], m["caoba"], 12)
 	var body := StaticBody3D.new()
 	body.transform = xf
-	Kit.add_shape(body, Kit.shape_box(Vector3(0.74, 0.6, 0.72)), Vector3(0, 0.3, 0))
+	# asiento a la altura del cojín (0,51 m) y brazos aparte (antes una caja de 0,6 m: lo dejado encima flotaba)
+	Kit.add_shape(body, Kit.shape_box(Vector3(0.74, 0.51, 0.72)), Vector3(0, 0.255, 0))
+	for sx2 in [-0.32, 0.32]:
+		Kit.add_shape(body, Kit.shape_box(Vector3(0.12, 0.7, 0.7)), Vector3(sx2, 0.35, 0.0))
 	Kit.add_shape(body, Kit.shape_box(Vector3(0.74, 0.74, 0.16)), Vector3(0, 0.8, -0.3))
 	root.add_child(body)
 	Kit.blob(root, pos, 0.95, 0.95, 0.55, yaw)
+	# se puede sentar en él (mirando hacia delante del sillón); al levantarse sale hacia el centro de la sala
+	seats.append({"pos": xf * Vector3(0, 0, 0.06), "yaw": wrapf(yaw + PI, -PI, PI), "eye": 1.12, "stand": pos + Vector3(-0.75, 0, 0), "body": body,
+		"title": "Sillón · clic para sentarse", "key": "armchair_%d" % seats.size()})
 
 
 # ------------------------------------------------------------------ escritorio y sillón
@@ -986,9 +1096,10 @@ func _plant(pos: Vector3) -> void:
 	leaf_m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	leaf_m.alpha_scissor_threshold = 0.5
 	leaf_m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	leaf_m.roughness = 0.45
+	leaf_m.albedo_color = Color(0.68, 0.76, 0.66)
+	leaf_m.roughness = 0.6
 	leaf_m.rim_enabled = true
-	leaf_m.rim = 0.3
+	leaf_m.rim = 0.12
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(pos.x * 100 + pos.z * 7)
 	var lm := _leaf_mesh()
@@ -1098,7 +1209,8 @@ func _chandelier() -> void:
 	chandelier_light.omni_attenuation = 0.8
 	chandelier_light.light_energy = 1.5
 	chandelier_light.light_color = Color(1.0, 0.86, 0.66)
-	chandelier_light.light_size = 0.5
+	# fuente pequeña (las velas): con 0,5 m su reflejo en la puerta era un gran disco blanco
+	chandelier_light.light_size = 0.08
 	root.add_child(chandelier_light)
 	alert_light = OmniLight3D.new()
 	alert_light.position = c + Vector3(0, -0.4, 0.5)
@@ -1138,11 +1250,13 @@ func _sconces() -> void:
 func _light_shaft() -> void:
 	var corners := [Vector3(WINDOW.position.x, WINDOW.position.y, Z0), Vector3(WINDOW.end.x, WINDOW.position.y, Z0), Vector3(WINDOW.end.x, WINDOW.end.y, Z0), Vector3(WINDOW.position.x, WINDOW.end.y, Z0)]
 	var floor_pts := []
+	var sd := SUN_DIR.normalized()
 	for c in corners:
-		var d: Vector3 = (c as Vector3) - LIGHT_POS
-		var t := -LIGHT_POS.y / d.y if d.y < -0.001 else 3.0
-		var p: Vector3 = LIGHT_POS + d * t
-		p.y = 0.02
+		# hasta el suelo o, si el rayo es muy rasante, hasta 7 m dentro de la sala
+		var cc: Vector3 = c
+		var t := minf(-cc.y / sd.y, 7.0) if sd.y < -0.001 else 7.0
+		var p: Vector3 = cc + sd * t
+		p.y = maxf(p.y, 0.02)
 		floor_pts.append(p)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)

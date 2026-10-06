@@ -12,6 +12,8 @@ const Interactable := preload("res://scripts/office3d/interactable.gd")
 const Player := preload("res://scripts/office3d/player.gd")
 const Visitor3D := preload("res://scripts/office3d/visitor_3d.gd")
 const PaperView := preload("res://scripts/office3d/paper_views.gd")
+const Exterior := preload("res://scripts/office3d/exterior_3d.gd")
+const Aquarium := preload("res://scripts/office3d/aquarium_3d.gd")
 const WindowView := preload("res://scripts/office/window_view.gd")
 const TvView := preload("res://scripts/office/tv_view.gd")
 const MonitorView := preload("res://scripts/office/monitor_view.gd")
@@ -25,7 +27,7 @@ const Batch := Kit.Batch
 const INTERACT_RANGE := 12.0
 const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!"]
 const PARROT_MEME := ["¡Un vaso es un vaso!", "¡Sé fuerte!", "¡Con cebolla!", "¡Sin cebolla!", "¡Me gusta la fruta!", "¡Plasma! ¡Plasma!", "¡Bueno... eso!", "¡Es muy difícil todo esto!"]
-const HELP := "Ratón: mirar   ·   Clic: usar   ·   Clic derecho: coger / soltar (clic para lanzar)   ·   WASD: levantarse y andar (Mayús: correr)\nF: sentarse / levantarse   ·   R: ordenar la mesa   ·   Tab: liberar el cursor   ·   Espacio: pausa   ·   1-3: velocidad   ·   H: mostrar u ocultar esta ayuda"
+const HELP := "Ratón: mirar   ·   Clic: usar   ·   Clic derecho: coger / soltar (clic para lanzar)   ·   WASD: levantarse y andar (Mayús: correr)\nF: sentarse (sillón, sillones o sofá) / levantarse   ·   R: ordenar la mesa   ·   Tab: liberar el cursor   ·   Espacio: pausa   ·   1-3: velocidad   ·   H: mostrar u ocultar esta ayuda"
 
 ## El controlador principal lo consulta para ocultar su fondo 2D
 var is_3d := true
@@ -95,6 +97,20 @@ var screen_scale := 1.0
 var _live_vps := []
 var _frame := 0
 var _probe: ReflectionProbe
+## Ciudad, plaza y clima que se ven por el ventanal
+var exterior
+var sky_mat: ShaderMaterial
+var _flag_mat: Material
+var _cloud_shift := 0.0
+var _cloud_t := 0.0
+## Pecera 3D (si la mascota es la tortuga)
+var aquarium
+## Cortinas: objetivo (0 abiertas, 1 cerradas) y posición actual
+var _curtain_target := 0.0
+var _sky_state := Vector4(-1, -1, -1, -1)
+## Asiento que ocupa el presidente ({} de pie). El sillón presidencial es "chair"
+var seat_now := {}
+var pres_seat := {"pos": Room.SEAT, "yaw": 0.0, "eye": Player.EYE_SIT, "stand": Room.STAND, "key": "chair"}
 
 
 func _ready() -> void:
@@ -110,8 +126,12 @@ func _ready() -> void:
 	room = Room.new(world)
 	room.build()
 	_screens()
+	exterior = Exterior.new()
+	world.add_child(exterior)
+	exterior.build(Vector3(Room.WINDOW.get_center().x, 0.0, Room.Z0), -Room.SUN_DIR.normalized(), _flag_mat)
 	_desk_objects()
 	_globe()
+	_world_map()
 	_room_objects()
 	_decor_props()
 	_pet()
@@ -123,6 +143,7 @@ func _ready() -> void:
 	player.sens = float(Sfx.settings.get("mouse_sens", 1.0))
 	world.add_child(player)
 	player.global_position = Room.SEAT
+	seat_now = pres_seat
 	visitor3d = Visitor3D.new()
 	world.add_child(visitor3d)
 	visitor3d.cam = player.cam
@@ -225,9 +246,10 @@ func apply_quality() -> void:
 	_lamp_light.shadow_enabled = not low_quality
 	room.chandelier_light.shadow_enabled = advanced and hi
 	room.fire_light.shadow_enabled = advanced and hi
-	room.window_light.light_volumetric_fog_energy = 3.0
+	room.window_light.light_volumetric_fog_energy = 1.0
 	room.chandelier_light.light_volumetric_fog_energy = 0.3
 	room.fire_light.light_volumetric_fog_energy = 0.6
+	room.corridor_light.light_volumetric_fog_energy = 0.0
 	for l in room.sconce_lights:
 		(l as Light3D).visible = not low_quality
 		(l as Light3D).shadow_enabled = advanced and ultra
@@ -252,16 +274,22 @@ func apply_quality() -> void:
 
 func _environment() -> void:
 	env = Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.02, 0.02, 0.03)
+	# el cielo de verdad (sol, nubes, estrellas) solo se ve por el ventanal; para los reflejos del interior
+	# el shader devuelve los tonos cálidos del despacho
+	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
-	var psm := ProceduralSkyMaterial.new()
-	psm.sky_top_color = Color(0.5, 0.42, 0.34)
-	psm.sky_horizon_color = Color(0.85, 0.7, 0.5)
-	psm.ground_horizon_color = Color(0.5, 0.36, 0.24)
-	psm.ground_bottom_color = Color(0.16, 0.1, 0.07)
-	sky.sky_material = psm
+	sky_mat = ShaderMaterial.new()
+	sky_mat.shader = load("res://shaders/sky3d.gdshader")
+	sky.sky_material = sky_mat
+	sky.radiance_size = Sky.RADIANCE_SIZE_256
+	sky.process_mode = Sky.PROCESS_MODE_REALTIME if advanced else Sky.PROCESS_MODE_AUTOMATIC
 	env.sky = sky
+	# bruma lejana: da profundidad a la ciudad; dentro de la sala apenas se nota
+	env.fog_enabled = true
+	env.fog_density = 0.002
+	env.fog_sky_affect = 0.0
+	env.fog_aerial_perspective = 0.0
+	env.fog_light_color = Color(0.66, 0.75, 0.86)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.52, 0.42)
 	env.ambient_light_energy = 0.5
@@ -270,9 +298,10 @@ func _environment() -> void:
 	env.tonemap_exposure = 1.0 if advanced else 1.05
 	env.tonemap_white = 6.0
 	env.glow_enabled = true
-	env.glow_intensity = 0.5
-	env.glow_bloom = 0.03
-	env.glow_hdr_threshold = 1.15
+	env.glow_intensity = 0.4
+	env.glow_bloom = 0.02
+	# solo brilla lo muy luminoso (sol, llamas, pantallas); los reflejos ya no se convierten en bolas blancas
+	env.glow_hdr_threshold = 1.45
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT if not advanced else Environment.GLOW_BLEND_MODE_SCREEN
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.06
@@ -301,6 +330,16 @@ func _environment() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	world.add_child(we)
+	# sin niebla volumétrica fuera del edificio ni en el pasillo: iluminada por el sol se colaba por el
+	# ventanal y velaba la ciudad (solo en el motor avanzado: el compatible no tiene niebla volumétrica)
+	if advanced:
+		var no_fog := FogVolume.new()
+		no_fog.size = Vector3(90.0, 50.0, 46.0)
+		no_fog.position = Vector3(0.0, 10.0, Room.Z0 - 0.4 - 23.0)
+		var fmt := FogMaterial.new()
+		fmt.density = -1.0
+		no_fog.material = fmt
+		world.add_child(no_fog)
 	if advanced:
 		# sonda de reflejos de la sala: metales, madera barnizada y suelo reflejan el despacho
 		_probe = ReflectionProbe.new()
@@ -340,10 +379,10 @@ func _paper(kind: String, sz: Vector2i, transparent := false, mode := SubViewpor
 
 ## Vistas 2D del juego proyectadas en pantallas y lienzos 3D
 func _screens() -> void:
+	# la vista 2D de la ventana ya no se pinta (la ventana es 3D), pero sigue llevando el estado de fuera:
+	# hora del día, nubes, tormenta y relámpagos (con su trueno), manifestaciones y celebraciones
 	window_view = WindowView.new()
-	var wvp := _viewport(Vector2i(408, 470), window_view)
-	_live_vps.append(wvp)
-	room.window_quad.material_override = Kit.screen_mat(wvp.get_texture(), 1.15)
+	_viewport(Vector2i(408, 470), window_view, false, SubViewport.UPDATE_DISABLED)
 	tv = TvView.new()
 	var tvp := _viewport(Vector2i(376, 226), tv)
 	_live_vps.append(tvp)
@@ -370,8 +409,11 @@ func _screens() -> void:
 	var fm := ShaderMaterial.new()
 	fm.shader = load("res://shaders/flag3d.gdshader")
 	fm.set_shader_parameter("flag_tex", (fl[0] as SubViewport).get_texture())
+	var fm_flip := fm.duplicate() as ShaderMaterial
+	fm_flip.set_shader_parameter("flip_u", true)
 	for c in room.flag_cloths:
-		(c as MeshInstance3D).material_override = fm
+		(c as MeshInstance3D).material_override = fm_flip if c.get_meta("flip_u", false) else fm
+	_flag_mat = fm
 
 
 func _obj(key: String, body: CollisionObject3D, title: String, shake: Node3D = null, badge_h := 0.25) -> Node:
@@ -403,7 +445,7 @@ func _desk_objects() -> void:
 	var top: float = Room.DESK_TOP
 	var dz: float = Room.DESK_Z
 	var gold := Kit.gold()
-	var black := Kit.mat(Color("121316"), 0.28)
+	var black := Kit.mat(Color("121316"), 0.42)
 	# --- lámpara de banquero (fija)
 	var lamp_col: Array = OfficeArt.LAMPS.get(Perfil.equipped_data("lampara").get("lamp", "verde"), OfficeArt.LAMPS["verde"])
 	var lamp := _static(Vector3(-1.12, top, dz - 0.4))
@@ -437,7 +479,7 @@ func _desk_objects() -> void:
 	_lamp_light.look_at_from_position(lamp.global_position + Vector3(0, 0.27, 0.05), Vector3(-0.45, top, dz + 0.25))
 	_lamp_light.spot_angle = 62.0
 	_lamp_light.spot_range = 2.4
-	_lamp_light.light_energy = 2.2
+	_lamp_light.light_energy = 1.25
 	_lamp_light.light_color = Color(1.0, 0.84, 0.6)
 	_lamp_light.light_size = 0.08
 	_lamp_light.shadow_enabled = true
@@ -653,7 +695,8 @@ func _desk_objects() -> void:
 	Kit.add_shape(ink, Kit.shape_box(Vector3(0.24, 0.08, 0.13)), Vector3(0, 0.04, 0))
 	# --- juguetes físicos: plumas estilográficas, sello, pisapapeles, portarretratos y bolas de papel
 	for i in 2:
-		var pen := _prop(Kit.rigid(world, Vector3(-0.22 + i * 0.05, top + 0.008, dz + 0.5 + i * 0.03), Kit.shape_cyl(0.007, 0.14), 0.03, Vector3(0, 0.3 + i * 0.25, PI / 2.0)))
+		# forma de caja: un cilindro tumbado rodaba solo por la mesa
+		var pen := _prop(Kit.rigid(world, Vector3(-0.22 + i * 0.05, top + 0.0072, dz + 0.5 + i * 0.03), Kit.shape_box(Vector3(0.013, 0.14, 0.013)), 0.03, Vector3(0, 0.3 + i * 0.25, PI / 2.0)))
 		var penb := Batch.new()
 		var body_m := Kit.mat(Color("0e0e10") if i == 0 else Color("1d3557"), 0.08)
 		penb.lathe(Transform3D(Basis(), Vector3(0, -0.07, 0)), [Vector2(0.0, 0.0), Vector2(0.003, 0.004), Vector2(0.006, 0.014), Vector2(0.0068, 0.03), Vector2(0.007, 0.08), Vector2(0.0072, 0.12), Vector2(0.006, 0.137), Vector2(0.0, 0.14)], body_m, 14)
@@ -670,8 +713,9 @@ func _desk_objects() -> void:
 	stb.commit(stamp)
 	var pw := _prop(Kit.rigid(world, Vector3(-0.78, top + 0.036, dz - 0.02), _sphere_shape(0.035), 0.4))
 	Kit.mesh(pw, Kit.sphere_mesh(0.035, 28), Kit.glass(Color(0.75, 0.88, 1.0, 0.3)))
-	Kit.mesh(pw, Kit.sphere_mesh(0.016, 12), Kit.emissive(Color(1.0, 0.7, 0.25), 0.8))
-	var photo := _prop(Kit.rigid(world, Vector3(0.68, top + 0.09, dz - 0.42), Kit.shape_box(Vector3(0.14, 0.18, 0.03)), 0.3, Vector3(-0.15, -0.35, 0)))
+	Kit.mesh(pw, Kit.sphere_mesh(0.016, 12), Kit.emissive(Color(1.0, 0.7, 0.25), 0.3))
+	# apenas inclinado: con más inclinación se volcaba al empezar
+	var photo := _prop(Kit.rigid(world, Vector3(0.68, top + 0.0917, dz - 0.42), Kit.shape_box(Vector3(0.14, 0.18, 0.03)), 0.3, Vector3(-0.05, -0.35, 0)))
 	var phb := Batch.new()
 	phb.frame(Transform3D(Basis(), Vector3(0, 0, -0.006)), 0.14, 0.18, [Vector2(0, 0), Vector2(0.002, 0.008), Vector2(0.01, 0.012), Vector2(0.016, 0.008), Vector2(0.02, 0.0)], gold)
 	phb.cube(Vector3(0, 0, -0.008), Vector3(0.14, 0.18, 0.004), Kit.wood("ebano"), Vector3.ZERO, 1.0, 0.0015)
@@ -740,6 +784,43 @@ func _globe() -> void:
 	_obj("globe", g, "Globo terráqueo · Diplomacia", null, 1.35)
 
 
+## Colores de los países (índice = id del mapa): cada uno con su color, suavizado hacia el pergamino;
+## Valdoria en dorado y las tierras sin nombre en tonos de pergamino
+static func _world_palette() -> ImageTexture:
+	var img := Image.create(16, 1, false, Image.FORMAT_RGBA8)
+	var parch := Color(0.86, 0.78, 0.6)
+	for i in 16:
+		img.set_pixel(i, 0, parch.darkened(0.05 * (i % 4)))
+	for c in W.COUNTRIES.keys():
+		img.set_pixel(int(W.COUNTRIES[c]["map"]), 0, Color(W.COUNTRIES[c]["color"]).lerp(parch, 0.3))
+	img.set_pixel(1, 0, Color(0.97, 0.74, 0.27))
+	return ImageTexture.create_from_image(img)
+
+
+## Mapa del mundo de la pared del fondo y globo: países coloreados y, en el mapa, sus nombres
+func _world_map() -> void:
+	var pal := _world_palette()
+	for mt in [room.map_mat, globe_mat]:
+		(mt as ShaderMaterial).set_shader_parameter("pal", pal)
+		(mt as ShaderMaterial).set_shader_parameter("tex_size", Vector2(1600, 900))
+	var names := {1: "VALDORIA"}
+	for c in W.COUNTRIES.keys():
+		names[int(W.COUNTRIES[c]["map"])] = String(W.COUNTRIES[c]["name"]).to_upper()
+	var info: Dictionary = DB.world_map_info.get("countries", {})
+	# ajustes para que Valdoria y Sarvenia, vecinas, no se pisen (en píxeles del mapa de 1600 × 900)
+	var nudge := {1: Vector2(14, 30), 2: Vector2(-40, -18)}
+	for k in info.keys():
+		var id := int(k)
+		if not names.has(id):
+			continue
+		var at: Vector2 = Vector2(float(info[k]["x"]), float(info[k]["y"])) + nudge.get(id, Vector2.ZERO)
+		var u := at.x / 1600.0
+		var v := at.y / 900.0
+		var l := Kit.label(room.map_mesh, names[id], UI.f_serif_b, 44, Color(1.0, 0.95, 0.82) if id != 1 else Color(1.0, 0.86, 0.45), Vector3((u - 0.5) * 2.64, (0.5 - v) * 1.52, 0.003), Vector3.ZERO, 0.0012)
+		l.outline_size = 14
+		l.outline_modulate = Color(0.08, 0.05, 0.03, 0.9)
+
+
 ## Objetos de la habitación que ya construyó Room: puerta, televisor, reloj y sillón
 func _room_objects() -> void:
 	var door_hot := StaticBody3D.new()
@@ -761,6 +842,15 @@ func _room_objects() -> void:
 	clock.collect(room.clock_minute)
 	var chair = _obj("chair", room.chair_body, "Sillón presidencial · clic para sentarse", null, 1.8)
 	chair.glow_color = Color(1.0, 0.9, 0.7)
+	# cortinas del ventanal: se abren y se cierran
+	var cur = _obj("curtains", room.curtain_body, "Cortinas", null, 3.5)
+	cur.glow_color = Color(1.0, 0.8, 0.7)
+	for cd in room.curtains:
+		cur.collect(cd["mi"])
+	# sofá y sillones de la zona de estar: se puede sentar en ellos
+	for s in room.seats:
+		var so = _obj(s["key"], s["body"], s["title"], null, 1.2)
+		so.glow_color = Color(1.0, 0.9, 0.7)
 
 
 ## Objetos físicos repartidos por la sala (para jugar con ellos)
@@ -769,9 +859,10 @@ func _decor_props() -> void:
 	# revistas, licorera y vasos en la mesa baja
 	var cols := [Color("8e2a22"), Color("1f3552"), Color("e9dcc0")]
 	for i in 3:
-		var mg := _prop(Kit.rigid(world, Vector3(3.45 + i * 0.05, 0.475 + i * 0.012, -0.95 + i * 0.12), Kit.shape_box(Vector3(0.22, 0.008, 0.3)), 0.25, Vector3(0, i * 0.4 - 0.3, 0)))
+		# apiladas justo una encima de otra (antes aparecían flotando y caían)
+		var mg := _prop(Kit.rigid(world, Vector3(3.45 + i * 0.05, 0.4642 + i * 0.0082, -0.95 + i * 0.12), Kit.shape_box(Vector3(0.22, 0.008, 0.3)), 0.25, Vector3(0, i * 0.4 - 0.3, 0)))
 		Kit.mesh(mg, _box(Vector3(0.22, 0.008, 0.3)), Kit.mat(cols[i], 0.6))
-	var dec := _prop(Kit.rigid(world, Vector3(3.55, 0.57, -0.25), Kit.shape_cyl(0.055, 0.2), 0.9))
+	var dec := _prop(Kit.rigid(world, Vector3(3.55, 0.561, -0.25), Kit.shape_cyl(0.055, 0.2), 0.9))
 	var db := Batch.new()
 	var crystal := Kit.mat(Color(0.75, 0.82, 0.86), 0.05, 0.4)
 	db.cyl(Vector3(0, -0.03, 0), 0.055, 0.055, 0.14, crystal, Vector3.ZERO, 8)
@@ -787,7 +878,8 @@ func _decor_props() -> void:
 	# cojines en el sofá
 	var vel := Kit.velvet(Color(OfficeArt.THEMES.get(Perfil.office_theme(), OfficeArt.THEMES["clasico"])["curt"][2]))
 	for dz in [-1.25, 0.05]:
-		var cu := _prop(Kit.rigid(world, Vector3(4.66, 0.78, dz), Kit.shape_box(Vector3(0.12, 0.38, 0.38)), 0.4, Vector3(0, 0, 0.3)))
+		# apoyados en el asiento y recostados en el respaldo (inclinados lo justo para no caerse hacia delante)
+		var cu := _prop(Kit.rigid(world, Vector3(4.661, 0.639, dz), Kit.shape_box(Vector3(0.12, 0.38, 0.38)), 0.4, Vector3(0, 0, -0.4)))
 		Kit.mesh(cu, _box(Vector3(0.12, 0.38, 0.38)), vel)
 		var cb := Batch.new()
 		cb.cube(Vector3(0, 0, 0), Vector3(0.125, 0.39, 0.02), gold)
@@ -814,12 +906,13 @@ func _decor_props() -> void:
 	Kit.mesh(statue, Kit.sphere_mesh(0.035, 12), bronze, Vector3(0, 0.1, 0))
 	# portarretratos en la consola del fondo
 	for fx in [-0.75, 0.75]:
-		var fr := _prop(Kit.rigid(world, Vector3(fx, 0.95, 3.72), Kit.shape_box(Vector3(0.2, 0.25, 0.03)), 0.3, Vector3(-0.12, PI + (0.25 if fx < 0 else -0.25), 0)))
+		# sobre el mármol (antes aparecían hundidos en él y saltaban)
+		var fr := _prop(Kit.rigid(world, Vector3(fx, 0.978, 3.72), Kit.shape_box(Vector3(0.2, 0.25, 0.03)), 0.3, Vector3(-0.06, PI + (0.25 if fx < 0 else -0.25), 0)))
 		Kit.mesh(fr, _box(Vector3(0.2, 0.25, 0.02)), gold)
 		Kit.mesh(fr, Kit.quad_mesh(Vector2(0.16, 0.21)), Kit.tex_mat(Room._landscape_tex(), 0.4), Vector3(0, 0, 0.0105))
 	# candelabros sobre la chimenea
 	for cz in [-1.95, -0.45]:
-		var cs := _prop(Kit.rigid(world, Vector3(Room.X0 + 0.3, 1.36, cz), Kit.shape_cyl(0.035, 0.32), 0.8))
+		var cs := _prop(Kit.rigid(world, Vector3(Room.X0 + 0.3, 1.367, cz), Kit.shape_cyl(0.035, 0.32), 0.8))
 		var csb := Batch.new()
 		csb.cyl(Vector3(0, -0.14, 0), 0.045, 0.05, 0.03, gold, Vector3.ZERO, 16)
 		csb.cyl(Vector3(0, -0.01, 0), 0.012, 0.018, 0.24, gold, Vector3.ZERO, 12)
@@ -831,14 +924,24 @@ func _pet() -> void:
 	pet_kind = Perfil.equipped_data("mascota").get("pet", "")
 	if pet_kind == "":
 		return
+	if pet_kind == "tortuga":
+		# pecera 3D en la esquina trasera izquierda de la mesa, entre la lámpara y la bandeja
+		aquarium = Aquarium.new()
+		world.add_child(aquarium)
+		aquarium.position = Vector3(-0.82, Room.DESK_TOP, Room.DESK_Z - 0.36)
+		aquarium.build()
+		var ao = _obj("pet", aquarium.body, "Trámite, la tortuga", null, 0.36)
+		ao.glow_color = Color(0.7, 0.95, 1.0)
+		ao.status = "Clic para mimarla (baja el estrés)"
+		return
 	var px: Vector2 = PetArt.ref_size(pet_kind)
+	# en la mesa, por delante de la placa con el nombre (antes la pisaban y la empujaban al empezar)
 	var spec: Dictionary = {
-		"gato": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.38), "w": 0.5},
+		"gato": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.5},
 		"perro": {"pos": Vector3(1.45, 0.0, 0.35), "w": 0.62},
 		"loro": {"pos": Vector3(2.2, 2.47, Room.Z0 + 0.2), "w": 0.36},
-		"pez": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.4), "w": 0.26},
-		"tortuga": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.4), "w": 0.42},
-	}.get(pet_kind, {"pos": Vector3(0, Room.DESK_TOP, Room.DESK_Z - 0.4), "w": 0.4})
+		"pez": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.26},
+	}.get(pet_kind, {"pos": Vector3(0, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.4})
 	_pet_view = PaperView.new()
 	_pet_view.kind = "pet"
 	_pet_view.pet_kind = pet_kind
@@ -974,6 +1077,7 @@ func _refresh() -> void:
 	objs["mug"].status = "Un café para el estrés"
 	objs["tv"].status = "Noticias y encuestas"
 	objs["clock"].status = "Tiempo en marcha" if GS.speed > 0 else "Tiempo detenido"
+	objs["curtains"].status = "Clic para abrirlas" if _curtain_target > 0.5 else "Clic para cerrarlas"
 	for k in ["globe", "folder", "mic", "phone"]:
 		var lk := _lock_key(k)
 		var locked := lk != "" and not GS.is_unlocked(lk)
@@ -1072,7 +1176,11 @@ func _on_object(key: String) -> void:
 			_lamp_on = not _lamp_on
 			Sfx.play("click", -2.0, 0.7)
 		"chair":
-			player.sit()
+			_sit_on(pres_seat)
+		"curtains":
+			_curtain_target = 0.0 if _curtain_target > 0.5 else 1.0
+			Sfx.play("whoosh", -12.0, 0.55)
+			_refresh()
 		"pet":
 			_pet_happy = 2.5
 			if _pet_view != null:
@@ -1085,6 +1193,31 @@ func _on_object(key: String) -> void:
 				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
 				_parrot_t = 4.0
 			Sfx.play("notify", -10.0, 1.6 if pet_kind != "perro" else 0.7)
+		_:
+			for s in room.seats:
+				if s["key"] == key:
+					_sit_on(s)
+
+
+## Se sienta en un asiento (sillón presidencial, sillones o sofá)
+func _sit_on(s: Dictionary) -> void:
+	if player.seated and seat_now.get("key", "") == s["key"]:
+		return
+	seat_now = s
+	player.stand_pos = s["stand"]
+	player.sit_at(s["pos"], s["yaw"], s["eye"])
+
+
+## Asiento más cercano al presidente (a menos de `max_d` metros) o {}
+func _nearest_seat(max_d: float) -> Dictionary:
+	var best := {}
+	var bd := max_d
+	for s in [pres_seat] + room.seats:
+		var d: float = player.global_position.distance_to(s["pos"])
+		if d < bd:
+			bd = d
+			best = s
+	return best
 
 
 # ------------------------------------------------------------------ visitas
@@ -1158,10 +1291,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F:
 				if player.seated:
 					_stand()
-				elif player.global_position.distance_to(Room.SEAT) < 2.4:
-					player.sit()
 				else:
-					GS.toast.emit("Acérquese a su sillón para sentarse.", "info", "info")
+					var s := _nearest_seat(2.4)
+					if s.is_empty():
+						GS.toast.emit("Acérquese a un sillón o al sofá para sentarse.", "info", "info")
+					else:
+						_sit_on(s)
 				get_viewport().set_input_as_handled()
 			KEY_R:
 				_tidy()
@@ -1174,8 +1309,15 @@ func _unhandled_input(event: InputEvent) -> void:
 					_stand()
 
 
-## Se levanta del sillón giratorio hacia donde mira; si delante está la mesa, sale por detrás
+## Se levanta del sillón giratorio hacia donde mira; si delante está la mesa, sale por detrás.
+## De los sillones y el sofá sale a un sitio despejado junto a ellos.
 func _stand() -> void:
+	if seat_now.get("key", "chair") != "chair":
+		player.stand_pos = seat_now["stand"]
+		seat_now = {}
+		player.stand()
+		return
+	seat_now = {}
 	var fwd := Vector3(-sin(player.yaw), 0, -cos(player.yaw))
 	var p: Vector3 = Room.SEAT + fwd * 0.8
 	if _blocked_spot(p):
@@ -1243,7 +1385,7 @@ func _update_hover() -> void:
 			var col: Object = hit["collider"]
 			if col != null and col.has_meta("obj"):
 				var o = col.get_meta("obj")
-				if is_instance_valid(o) and not (o.key == "chair" and player.seated):
+				if is_instance_valid(o) and not (player.seated and o.key == seat_now.get("key", "")):
 					new_hover = o
 			if col is RigidBody3D and player.can_grab(col):
 				new_grab = col
@@ -1303,9 +1445,16 @@ func _process(delta: float) -> void:
 				_parrot_t = randf_range(18.0, 35.0)
 		if _parrot_lbl != null:
 			_parrot_lbl.text = _parrot_line
-	# el sillón gira con el presidente sentado
-	if player.seated:
+	# el sillón gira con el presidente sentado en él
+	if player.seated and seat_now.get("key", "") == "chair":
 		room.chair_body.rotation.y = lerp_angle(room.chair_body.rotation.y, player.yaw, minf(1.0, delta * 10.0))
+	# cortinas
+	if not is_equal_approx(room.curtain_amount, _curtain_target):
+		room.set_curtains(move_toward(room.curtain_amount, _curtain_target, delta / 1.3))
+	# pecera
+	if aquarium != null:
+		aquarium.happy = _pet_happy > 0.0
+		aquarium.update(delta)
 	# puerta
 	room.door_l.rotation.y = _door_open * deg_to_rad(100.0)
 	room.door_r.rotation.y = -_door_open * deg_to_rad(100.0)
@@ -1335,6 +1484,13 @@ func _process(delta: float) -> void:
 			protest = maxf(protest, 0.85)
 	window_view.protest_target = protest
 	_lighting(alert)
+	var month: int = UI.date_dict(GS.day)["month"] if GS.active else 5
+	exterior.update(delta, window_view.protest, celebrate, window_view.weather, clampf((window_view.tod - 0.45) * 2.0, 0.0, 1.0), month)
+	# nubes: avanzan despacio (en el motor compatible, a saltos cada pocos segundos para no recalcular el cielo)
+	_cloud_t += delta * 0.006
+	if advanced or absf(_cloud_t - _cloud_shift) > 0.02:
+		_cloud_shift = _cloud_t
+		sky_mat.set_shader_parameter("cloud_shift", _cloud_shift)
 	# reloj real, péndulo y globo
 	var now := Time.get_time_dict_from_system()
 	var hr := (float(now["hour"] % 12) + float(now["minute"]) / 60.0) / 12.0 * TAU
@@ -1362,8 +1518,24 @@ func _lighting(alert: bool) -> void:
 	var storm: float = window_view.storm
 	var flash: float = window_view.get("_flash") if window_view.get("_flash") != null else 0.0
 	var day := clampf(1.0 - wt * 1.6, 0.0, 1.0)
-	room.window_light.light_energy = (5.0 * day + 1.2 * clampf(1.0 - absf(wt - 0.5) * 3.0, 0.0, 1.0)) * (1.0 - storm * 0.6) + flash * 8.0
-	room.window_light.light_color = Color(1.0, 0.95, 0.86).lerp(Color(1.0, 0.62, 0.38), clampf((wt - 0.2) * 2.5, 0.0, 1.0)).lerp(Color(0.55, 0.62, 0.9), night)
+	var dusk := clampf(1.0 - absf(wt - 0.5) * 3.0, 0.0, 1.0)
+	# con las cortinas cerradas apenas entra luz
+	var open: float = 1.0 - room.curtain_amount * 0.92
+	# sol de día, sol bajo y anaranjado al atardecer, luna de noche (la misma luz direccional)
+	var sun_e := (1.7 * day + 1.0 * dusk) * (1.0 - storm * 0.75)
+	room.window_light.light_energy = (maxf(sun_e, 0.3 * night) + flash * 6.0) * open
+	room.window_light.light_color = Color(1.0, 0.95, 0.86).lerp(Color(1.0, 0.6, 0.36), clampf((wt - 0.2) * 2.5, 0.0, 1.0)).lerp(Color(0.62, 0.7, 0.96), night)
+	# cielo y bruma lejana (solo cuando cambian: así el cielo no se recalcula en cada fotograma)
+	var sky_state := Vector4(wt, window_view.clouds, storm, flash)
+	if not sky_state.is_equal_approx(_sky_state):
+		_sky_state = sky_state
+		sky_mat.set_shader_parameter("tod", wt)
+		sky_mat.set_shader_parameter("clouds", window_view.clouds)
+		sky_mat.set_shader_parameter("storm", storm)
+		sky_mat.set_shader_parameter("flash", flash * 0.6)
+		var hz := Color(0.66, 0.75, 0.86).lerp(Color(0.95, 0.6, 0.42), dusk).lerp(Color(0.05, 0.07, 0.12), night)
+		env.fog_light_color = hz.lerp(Color(0.4, 0.42, 0.46) * (1.0 - night * 0.8), storm)
+		env.fog_density = {"clear": 0.0018, "clouds": 0.0025, "rain": 0.005, "storm": 0.007, "snow": 0.006, "fog": 0.02}.get(window_view.weather, 0.002)
 	room.chandelier_light.light_energy = 1.3 + night * 0.9
 	for l in room.sconce_lights:
 		(l as OmniLight3D).light_energy = 0.5 + night * 0.6
@@ -1371,9 +1543,9 @@ func _lighting(alert: bool) -> void:
 	var amb := 0.3 if env.sdfgi_enabled else 1.0
 	env.ambient_light_energy = lerpf(0.62, 0.36, night) * amb
 	env.ambient_light_color = Color(0.62, 0.52, 0.42).lerp(Color(0.4, 0.42, 0.55), night * 0.6)
-	room.beam_mat.set_shader_parameter("strength", day * (1.0 - storm * 0.7))
-	room.dust.emitting = day > 0.3
-	room.dust.visible = day > 0.05 and not low_quality
+	room.beam_mat.set_shader_parameter("strength", day * (1.0 - storm * 0.7) * open)
+	room.dust.emitting = day > 0.3 and open > 0.5
+	room.dust.visible = day > 0.05 and not low_quality and open > 0.3
 	env.volumetric_fog_density = 0.018 * (0.4 + 0.6 * day)
 	room.alert_light.light_energy = maxf(0.0, sin(_t * 3.2)) * 1.4 if alert else 0.0
 	room.fire_light.light_energy = 1.25 + sin(_t * 13.0) * 0.12 + sin(_t * 7.3) * 0.1 + randf() * 0.08

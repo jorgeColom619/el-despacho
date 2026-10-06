@@ -16,6 +16,8 @@ var cam: Camera3D
 var seated := true
 var seat_pos := Vector3.ZERO
 var seat_yaw := 0.0
+## Altura de los ojos en el asiento actual (sillón presidencial, sillones, sofá)
+var seat_eye := EYE_SIT
 var stand_pos := Vector3.ZERO
 var yaw := 0.0
 var pitch := 0.0
@@ -48,7 +50,8 @@ func _ready() -> void:
 	cam = Camera3D.new()
 	cam.fov = 70.0
 	cam.near = 0.03
-	cam.far = 60.0
+	# la ciudad que se ve por el ventanal llega a varios cientos de metros
+	cam.far = 800.0
 	cam.current = true
 	head.add_child(cam)
 	_apply_seat_state(true)
@@ -65,8 +68,17 @@ func _apply_seat_state(instant: bool) -> void:
 	else:
 		collision_mask = 1 | 2
 	if instant:
-		_eye = EYE_SIT if seated else EYE_STAND
+		_eye = seat_eye if seated else EYE_STAND
 		head.position.y = _eye
+
+
+## Se sienta en otro asiento (aunque ya esté sentado en uno)
+func sit_at(pos: Vector3, yaw_v: float, eye: float) -> void:
+	seat_pos = pos
+	seat_yaw = yaw_v
+	seat_eye = eye
+	seated = false
+	sit()
 
 
 func sit() -> void:
@@ -76,12 +88,13 @@ func sit() -> void:
 	_drop()
 	var t := create_tween().set_parallel(true)
 	t.tween_property(self, "global_position", seat_pos, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	t.tween_property(self, "_eye", EYE_SIT, 0.45).set_trans(Tween.TRANS_CUBIC)
+	t.tween_property(self, "_eye", seat_eye, 0.45).set_trans(Tween.TRANS_CUBIC)
 	_transition = 0.45
 	collision_mask = 0
 	velocity = Vector3.ZERO
 	_focus_yaw = seat_yaw
-	_focus_pitch = deg_to_rad(-18.0)
+	# en el sillón presidencial mira a la mesa; en sillones y sofá, a la sala
+	_focus_pitch = deg_to_rad(-18.0 if seat_eye >= EYE_SIT else -6.0)
 	_focus_active = true
 	Sfx.play("paper2", -14.0, 0.5)
 	sat_changed.emit(true)

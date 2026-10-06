@@ -54,8 +54,10 @@ func _act(label: String) -> void:
 		"Guardar y salir al menú":
 			GS.save_game()
 			close()
+			# la función del controlador principal, no una anónima de esta pantalla: la pausa se destruye
+			# al cerrarse (0,22 s) antes de que la transición la llame (0,35 s) y entonces se ignoraba
 			if main != null:
-				main.transition(func(): main.show_menu())
+				main.transition(main.show_menu)
 		"Salir del juego":
 			GS.save_game()
 			get_tree().quit()

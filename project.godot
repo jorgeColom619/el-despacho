@@ -35,6 +35,10 @@ window/stretch/aspect="keep"
 
 common/drop_mouse_on_gui_input_disabled=true
 
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
 [rendering]
 
 rendering_device/fallback_to_opengl3=true
