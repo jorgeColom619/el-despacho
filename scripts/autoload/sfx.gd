@@ -9,7 +9,7 @@ var _music_a: AudioStreamPlayer
 var _music_b: AudioStreamPlayer
 var _music_on_a := true
 var current_music := ""
-var settings := {"master": 0.85, "music": 0.55, "sfx": 0.9, "fullscreen": false, "grain": true, "text_speed": 1.0}
+var settings := {"master": 0.85, "music": 0.55, "sfx": 0.9, "fullscreen": false, "grain": true, "text_speed": 1.0, "view3d": true, "mouse_sens": 1.0, "gfx": "auto", "engine": "auto"}
 
 
 func _ready() -> void:
@@ -29,6 +29,7 @@ func _ready() -> void:
 	_music_b.bus = "Music"
 	add_child(_music_b)
 	load_settings()
+	_check_renderer()
 
 
 func _bus(bus_name: String) -> void:
@@ -178,3 +179,76 @@ func load_settings() -> void:
 		for k in settings.keys():
 			settings[k] = cf.get_value("settings", k, settings[k])
 	_apply()
+
+
+# ------------------------------------------------------------------ gráficos
+
+## Calidad gráfica efectiva del despacho 3D: "baja", "media", "alta" o "ultra"
+func gfx_preset() -> String:
+	var g: String = str(settings.get("gfx", "auto"))
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--gfx="):
+			g = a.substr(6)
+	if g in ["baja", "media", "alta", "ultra"]:
+		return g
+	if software_renderer():
+		return "baja"
+	return "alta" if RenderingServer.get_current_rendering_method() == "forward_plus" else "media"
+
+
+## Motor gráfico que debería usarse según las opciones ("forward_plus" o "gl_compatibility")
+func wanted_renderer() -> String:
+	match str(settings.get("engine", "auto")):
+		"avanzado":
+			return "forward_plus"
+		"compatible":
+			return "gl_compatibility"
+	return "gl_compatibility" if software_renderer() else "forward_plus"
+
+
+## Escribe override.cfg con el motor gráfico elegido (se aplica al arrancar el juego)
+func write_renderer_override(method: String) -> bool:
+	var path := ProjectSettings.globalize_path("res://override.cfg")
+	if OS.has_feature("template"):
+		path = OS.get_executable_path().get_base_dir().path_join("override.cfg")
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_string("; Motor gráfico elegido en Opciones de El Despacho\n[rendering]\n\nrenderer/rendering_method=\"%s\"\n" % method)
+	f.close()
+	return true
+
+
+## Reinicia el juego (para cambiar de motor gráfico)
+func restart_game() -> void:
+	var args := OS.get_cmdline_args()
+	if not "--" in args:
+		args.append("--")
+	if not "--gfx-restarted" in args:
+		args.append("--gfx-restarted")
+	OS.set_restart_on_exit(true, args)
+	get_tree().quit()
+
+
+## Al arrancar: si el motor gráfico no es el adecuado (p. ej. Forward+ sin tarjeta gráfica, que iría a 1-2 FPS),
+## guarda el correcto y reinicia una sola vez
+func _check_renderer() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var user := OS.get_cmdline_user_args()
+	if "--gfx-restarted" in user or "--no-gfx-guard" in user or "--rendering-method" in OS.get_cmdline_args():
+		return
+	var want := wanted_renderer()
+	if RenderingServer.get_current_rendering_method() == want:
+		return
+	if write_renderer_override(want):
+		restart_game()
+
+
+## true si no hay aceleración gráfica (máquina virtual, controlador básico de Windows...)
+static func software_renderer() -> bool:
+	var n := RenderingServer.get_video_adapter_name().to_lower()
+	for s in ["basic render", "llvmpipe", "swiftshader", "softpipe", "warp"]:
+		if s in n:
+			return true
+	return false

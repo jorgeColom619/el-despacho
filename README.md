@@ -13,6 +13,31 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 | ![Gabinete de crisis](docs/capturas/crisis.png) | ![Congreso](docs/capturas/congreso.png) |
 | ![Documentos](docs/capturas/documentos.png) | ![Tienda del Palacio](docs/capturas/tienda.png) |
 
+## Novedades: el despacho en 3D
+
+- **El despacho es ahora un espacio 3D en primera persona**: empiezas sentado en el sillón presidencial,
+  puedes mirar a tu alrededor con el ratón y **levantarte para andar** por toda la sala (chimenea,
+  librerías, sofá, ventana con vistas a la ciudad, banderas, mapa del mundo, reloj de pie...).
+- **Objetos con físicas**: el periódico, los teléfonos, la carpeta, la taza, el calendario, las plumas,
+  el sello, los libros, los cojines... se pueden coger, lanzar y tirar al suelo. Hay una papelera
+  donde encestar bolas de papel. Los teléfonos dan saltitos sobre la mesa cuando suenan.
+- Los visitantes **entran por la puerta** y caminan hasta tu mesa; el retrato oficial que cuelga sobre
+  la chimenea es el tuyo.
+- Los minijuegos y paneles siguen siendo los mismos (en 2D, por encima del despacho).
+- En **Opciones** puedes volver al despacho 2D clásico, ajustar la sensibilidad del ratón y activar
+  los **gráficos 3D reducidos** (se activan solos en equipos sin aceleración gráfica, como máquinas virtuales).
+
+| Control | Acción |
+|---|---|
+| Ratón | Mirar |
+| Clic | Usar el objeto apuntado (abre su panel) |
+| Clic derecho | Coger / soltar un objeto (con un objeto en la mano, clic para lanzarlo; rueda para acercarlo) |
+| WASD / flechas | Levantarse y andar (Mayús: correr) |
+| F | Sentarse / levantarse (o clic en el sillón) |
+| R | Ordenar la mesa (todo vuelve a su sitio) |
+| Tab | Liberar el cursor para usar los botones de la barra superior |
+| H | Mostrar u ocultar la ayuda de controles |
+
 ## Novedades de la versión 2.0
 
 - **Tres modos de juego**: *Clásico* (una legislatura), *Infinito* (legislaturas encadenadas hasta
@@ -131,7 +156,11 @@ a su sustituto entre tres candidatos.
 - `scripts/autoload/` — estado del juego, simulación, datos, audio, interfaz, perfil del jugador y pagos.
 - `scripts/data/` — eventos, países, leyes, crisis, preguntas de prensa, discursos y catálogo de la tienda.
 - `scripts/screens/` — menú, nueva partida, tienda y pantalla final.
-- `scripts/office/` — el despacho (arte vectorial generado por código, ventana, TV, HUD).
+- `scripts/office/` — el despacho 2D clásico (arte vectorial generado por código, ventana, TV, HUD).
+- `scripts/office3d/` — el despacho 3D: `office_3d.gd` (lógica y objetos), `room_3d.gd` (la sala),
+  `player.gd` (primera persona, coger y lanzar), `visitor_3d.gd`, `interactable.gd` y `kit.gd`
+  (geometría, materiales y texturas generadas por código). Sombreadores en `shaders/*3d.gdshader`.
+- Para capturas del 3D: `godot --path . -- --shot=office --cam=x,y,z,giro,inclinación`.
 - `scripts/overlays/` — cada minijuego y panel.
 - `scripts/data/scenarios_data.gd` — escenarios iniciales y tramas; `events_tramas.gd`, `events_extra.gd`
   y `events_meme.gd` — eventos de las tramas, eventos adicionales y modo meme.

@@ -10,3 +10,6 @@ docs/**/*.import
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Motor gráfico elegido en esta máquina (lo escribe el juego)
+override.cfg

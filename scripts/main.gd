@@ -2,6 +2,9 @@ extends Control
 ## Controlador principal: pantallas, superposiciones, transiciones y atajos.
 
 const Office := preload("res://scripts/office/office.gd")
+const Office3D := preload("res://scripts/office3d/office_3d.gd")
+const Tex3D := preload("res://scripts/office3d/tex3d.gd")
+const OfficeArt := preload("res://scripts/office/office_art.gd")
 const Toasts := preload("res://scripts/ui/toasts.gd")
 
 const OVERLAYS := {
@@ -44,6 +47,7 @@ const TIPS := {
 	"debate": "Elija la réplica adecuada: datos contra cifras, empatía contra emoción, elegancia contra ataques personales y realismo contra promesas imposibles.",
 }
 
+var bg: ColorRect
 var screen_holder: Control
 var overlay_layer: Control
 var toasts: Control
@@ -61,7 +65,7 @@ func _ready() -> void:
 	theme = UI.theme
 	UI.full(self)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bg := ColorRect.new()
+	bg = ColorRect.new()
 	bg.color = UI.NAVY
 	UI.full(bg)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -97,6 +101,8 @@ func _ready() -> void:
 	if "--check" in args:
 		_check_scripts()
 		return
+	# texturas del despacho 3D: se preparan en segundo plano mientras se ve el menú
+	Tex3D.prewarm(Tex3D.default_specs(OfficeArt.THEMES.get(Perfil.office_theme(), OfficeArt.THEMES["clasico"]), Perfil.wood()))
 	for a in args:
 		if a.begins_with("--shot="):
 			debug_shot = a.substr(7)
@@ -144,6 +150,8 @@ func change_screen(c: Control) -> void:
 		screen.queue_free()
 	screen = c
 	screen_holder.add_child(c)
+	# el despacho 3D se ve a través del fondo 2D
+	bg.visible = c.get("is_3d") != true
 
 
 func transition(callable: Callable) -> void:
@@ -214,11 +222,27 @@ func continue_game() -> void:
 
 func _show_office() -> void:
 	_clear_overlays()
-	office = Office.new()
-	office.request.connect(open_overlay)
-	change_screen(office)
+	_make_office()
 	Sfx.music("music_campaign" if GS.campaign else "music_office")
 	Sfx.loop_start("room", "room", -14.0, "Amb")
+
+
+func _make_office() -> void:
+	office = Office3D.new() if Sfx.settings.get("view3d", true) else Office.new()
+	if "main" in office:
+		office.main = self
+	office.request.connect(open_overlay)
+	change_screen(office)
+
+
+## Cambia entre el despacho 2D y el 3D sin cerrar las pantallas abiertas (desde Opciones)
+func swap_office() -> void:
+	if office == null or not GS.active:
+		return
+	var want3d: bool = Sfx.settings.get("view3d", true)
+	if (office.get("is_3d") == true) == want3d:
+		return
+	_make_office()
 
 
 func _clear_overlays() -> void:
@@ -332,12 +356,12 @@ func _on_deltas(items: Array) -> void:
 			# relaciones con países: junto al globo
 			var lbl: String = GS.label_of(k)
 			fmt = func(x: float) -> String: return "%s %s" % [lbl, UI.signed(x, 0)]
-			pos = Vector2(1784, 560)
+			pos = office.screen_anchor("globe", Vector2(1784, 560)) if office.has_method("screen_anchor") else Vector2(1784, 560)
 		elif GS.parties.has(k):
 			# relaciones con partidos: junto al ordenador
 			var lbl2: String = GS.label_of(k)
 			fmt = func(x: float) -> String: return "%s %s" % [lbl2, UI.signed(x, 0)]
-			pos = Vector2(1410, 520)
+			pos = office.screen_anchor("monitor", Vector2(1410, 520)) if office.has_method("screen_anchor") else Vector2(1410, 520)
 		elif k == "pc":
 			good = UI.GOLD_L
 		toasts.float_delta(k, pos, v, fmt, good, BAD)

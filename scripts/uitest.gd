@@ -44,6 +44,23 @@ func run(m: Node) -> void:
 
 
 func _suite() -> void:
+	# despacho 3D: levantarse, coger y lanzar un objeto físico, ordenar la mesa y volver a sentarse
+	if main.office != null and main.office.get("is_3d") == true:
+		var of = main.office
+		of.player.stand()
+		await _wait(0.7)
+		var news: RigidBody3D = of.objs["newspaper"].body
+		var start: Vector3 = news.global_position
+		of.player.grab(news)
+		await _wait(0.6)
+		of.player.throw_held()
+		await _wait(1.2)
+		var moved := news.global_position.distance_to(start)
+		of._tidy()
+		await _wait(0.2)
+		of.player.sit()
+		await _wait(0.7)
+		print("OK despacho 3D · periódico lanzado %.2f m · sentado: %s · vuelto a su sitio: %s" % [moved, of.player.seated, news.global_position.distance_to(start) < 0.05])
 	# documentos de todos los tipos
 	for id in ["doc_honor", "doc_indulto_banquero", "doc_operacion_halcon", "doc_carta_nina", "doc_contrato_cazas", "doc_nombramiento_bc"]:
 		GS.spawn(DB.event(id))
