@@ -15,6 +15,9 @@ const PaperView := preload("res://scripts/office3d/paper_views.gd")
 const Exterior := preload("res://scripts/office3d/exterior_3d.gd")
 const Aquarium := preload("res://scripts/office3d/aquarium_3d.gd")
 const Parrot3D := preload("res://scripts/office3d/parrot_3d.gd")
+const Cat3D := preload("res://scripts/office3d/cat_3d.gd")
+const Dog3D := preload("res://scripts/office3d/dog_3d.gd")
+const Fishbowl3D := preload("res://scripts/office3d/fishbowl_3d.gd")
 const WindowView := preload("res://scripts/office/window_view.gd")
 const TvView := preload("res://scripts/office/tv_view.gd")
 const MonitorView := preload("res://scripts/office/monitor_view.gd")
@@ -121,6 +124,9 @@ var _cloud_t := 0.0
 ## Pecera 3D (si la mascota es la tortuga)
 var aquarium
 var parrot3d
+var cat3d
+var dog3d
+var fishbowl3d
 ## Cortinas: objetivo (0 abiertas, 1 cerradas) y posición actual
 var _curtain_target := 0.0
 var _sky_state := Vector4(-1, -1, -1, -1)
@@ -1001,6 +1007,9 @@ func _decor_props() -> void:
 
 func _pet() -> void:
 	pet_kind = Perfil.equipped_data("mascota").get("pet", "")
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--pet="):
+			pet_kind = a.substr(6)
 	if pet_kind == "":
 		return
 	if pet_kind == "tortuga":
@@ -1034,34 +1043,32 @@ func _pet() -> void:
 		_parrot_lbl.position = Vector3(0, 0.22, 0.06)
 		parrot3d.body.add_child(_parrot_lbl)
 		return
-	var px: Vector2 = PetArt.ref_size(pet_kind)
-	# en la mesa, por delante de la placa con el nombre (antes la pisaban y la empujaban al empezar)
-	var spec: Dictionary = {
-		"gato": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.5},
-		"perro": {"pos": Vector3(1.45, 0.0, 0.35), "w": 0.62},
-		"pez": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.26},
-	}.get(pet_kind, {"pos": Vector3(0, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.4})
-	_pet_view = PaperView.new()
-	_pet_view.kind = "pet"
-	_pet_view.pet_kind = pet_kind
-	var vp := _viewport(Vector2i(int(px.x), int(px.y)), _pet_view, true, SubViewport.UPDATE_ALWAYS)
-	var w: float = spec["w"]
-	var ps := w / px.x
-	var h := px.y * ps
-	var body := _static(spec["pos"])
-	var sp := Sprite3D.new()
-	sp.texture = vp.get_texture()
-	sp.pixel_size = ps
-	sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-	sp.shaded = true
-	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-	sp.position = Vector3(0, h * 0.5, 0)
-	body.add_child(sp)
-	Kit.add_shape(body, Kit.shape_box(Vector3(w * 0.8, h * 0.9, 0.22)), Vector3(0, h * 0.45, 0))
-	var titles := {"gato": "Decreto, el gato", "perro": "Tribuno, el perro", "pez": "El pez dorado", "tortuga": "Trámite, la tortuga"}
-	var po = _obj("pet", body, titles.get(pet_kind, "Mascota"), null, h + 0.12)
-	po.glow_color = Color(1.0, 0.9, 0.7)
-	po.status = "Clic para mimarla (baja el estrés)"
+	if pet_kind == "gato":
+		cat3d = Cat3D.new()
+		world.add_child(cat3d)
+		cat3d.position = Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3)
+		cat3d.build()
+		var co = _obj("pet", cat3d.body, "Decreto, el gato", null, 0.3)
+		co.glow_color = Color(1.0, 0.9, 0.7)
+		co.status = "Clic para mimarla (baja el estrés)"
+		return
+	if pet_kind == "perro":
+		dog3d = Dog3D.new()
+		world.add_child(dog3d)
+		dog3d.position = Vector3(1.45, 0.0, 0.35)
+		dog3d.build()
+		var dob = _obj("pet", dog3d.body, "Tribuno, el perro", null, 0.46)
+		dob.glow_color = Color(1.0, 0.9, 0.7)
+		dob.status = "Clic para mimarla (baja el estrés)"
+		return
+	if pet_kind == "pez":
+		fishbowl3d = Fishbowl3D.new()
+		world.add_child(fishbowl3d)
+		fishbowl3d.position = Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3)
+		fishbowl3d.build()
+		var fo = _obj("pet", fishbowl3d.body, "El pez dorado", null, 0.3)
+		fo.glow_color = Color(0.7, 0.95, 1.0)
+		fo.status = "Clic para mimarla (baja el estrés)"
 
 
 func _box(s: Vector3) -> BoxMesh:
@@ -1573,6 +1580,15 @@ func _process(delta: float) -> void:
 	if parrot3d != null:
 		parrot3d.happy = _pet_happy > 0.0
 		parrot3d.update(delta)
+	if cat3d != null:
+		cat3d.happy = _pet_happy > 0.0
+		cat3d.update(delta)
+	if dog3d != null:
+		dog3d.happy = _pet_happy > 0.0
+		dog3d.update(delta)
+	if fishbowl3d != null:
+		fishbowl3d.happy = _pet_happy > 0.0
+		fishbowl3d.update(delta)
 	# puerta
 	room.door_l.rotation.y = _door_open * deg_to_rad(100.0)
 	room.door_r.rotation.y = -_door_open * deg_to_rad(100.0)

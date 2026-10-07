@@ -463,14 +463,17 @@ func _curtain_arrays(mi: MeshInstance3D, outer: float, inner: float, closed: flo
 func _door_and_corridor() -> void:
 	var zf := Z0
 	b.frame(Transform3D(Basis(), Vector3(0, 1.39, zf)), 1.96, 2.78, Kit.FRAME_CASING, m["cream"], [false, true, true, true])
+	# bloques del zócalo: un poco más adelantados que el marco (a la misma altura, competían con
+	# el relieve de la moldura justo ahí)
 	for sx in [-0.9, 0.9]:
-		b.cube(Vector3(sx, 0.12, zf + 0.025), Vector3(0.2, 0.24, 0.05), m["cream"], Vector3.ZERO, 1.0, 0.008)
+		b.cube(Vector3(sx, 0.12, zf + 0.055), Vector3(0.2, 0.24, 0.05), m["cream"], Vector3.ZERO, 1.0, 0.008)
 	b.cube(Vector3(0, 2.96, zf + 0.03), Vector3(2.2, 0.3, 0.06), m["cream"], Vector3.ZERO, 1.0, 0.01)
 	b.molding(Transform3D(Basis(), Vector3(0, 3.1, zf + 0.03)), -1.15, 1.15, Kit.PROFILE_CROWN, m["cream"], true)
 	b.molding(Transform3D(Basis(), Vector3(0, 2.79, zf + 0.06)), -1.1, 1.1, Kit.PROFILE_RAIL, m["cream"], true)
 	# umbral de mármol: antes era un listón casi de papel (2 cm) que, mirado hacia abajo en ángulo,
-	# se "estiraba" por la perspectiva hasta parecer una muesca oscura en el marco de la puerta
-	b.cube(Vector3(0, 0.02, Z0 - 0.05), Vector3(1.6, 0.04, 0.12), m["marble"])
+	# se "estiraba" por la perspectiva hasta parecer una muesca oscura en el marco de la puerta;
+	# con margen extra de grosor para que no vuelva a pasar en ningún ángulo
+	b.cube(Vector3(0, 0.03, Z0 - 0.05), Vector3(1.6, 0.06, 0.12), m["marble"])
 	var seal := Sprite3D.new()
 	seal.texture = OfficeArt.tex("seal", 1.5)
 	seal.pixel_size = 0.0013
