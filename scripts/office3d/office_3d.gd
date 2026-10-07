@@ -37,7 +37,8 @@ var room
 var player
 var visitor3d
 ## Retrato animado del visitante (lo controla el panel del asesor)
-var visitor: Control
+## Cara del visitante (talking / mood / anger), como el retrato del despacho 2D
+var visitor
 var window_view: Control
 var tv: Control
 var monitor: Control
@@ -147,7 +148,7 @@ func _ready() -> void:
 	visitor3d = Visitor3D.new()
 	world.add_child(visitor3d)
 	visitor3d.cam = player.cam
-	visitor = visitor3d.portrait
+	visitor = visitor3d
 	# capa 2D
 	light = ColorRect.new()
 	UI.full(light)
@@ -1232,7 +1233,7 @@ func enter_visitor(look: Dictionary) -> void:
 	t.tween_interval(1.5)
 	t.tween_property(self, "_door_open", 0.0, 0.6)
 	player.drop()
-	player.focus_on(Room.VISITOR_SPOT + Vector3(0, 1.45, 0), -0.2)
+	player.focus_on(Room.VISITOR_SPOT + Vector3(0, Visitor3D.FACE_H, 0), -0.2)
 
 
 func exit_visitor() -> void:

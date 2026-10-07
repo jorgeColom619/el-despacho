@@ -13,7 +13,8 @@ var tw: RichTextLabel
 var choices_box: VBoxContainer
 var timer: Control
 var decided := false
-var visitor: Control
+## Retrato 2D o visitante 3D: ambos exponen talking / mood / anger
+var visitor
 var reaction: Label
 
 
