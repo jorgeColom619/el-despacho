@@ -30,6 +30,8 @@ const CORRIDOR_START := Vector3(0, 0, -7.6)
 const SUN_DIR := Vector3(0.545, -0.218, 0.809)
 ## Pared exterior: grosor de los muros (evita que la luz de fuera se cuele por paredes finas)
 const SHELL := 0.34
+## Capa de render exclusiva del muro exterior macizo: se excluye de la cámara del espejo
+const SHELL_LAYER := 1 << 5
 
 var root: Node3D
 var theme: Dictionary
@@ -70,6 +72,12 @@ var flag_cloths: Array = []
 var beam_mat: ShaderMaterial
 var beam: MeshInstance3D
 var bodies := {}
+## Espejo de pared: superficie (se le asigna la textura de la cámara reflejada) y su cuerpo interactivo
+var mirror_quad: MeshInstance3D
+var mirror_body: StaticBody3D
+## Plano del espejo en coordenadas del mundo (punto y normal hacia dentro de la sala)
+var mirror_point := Vector3.ZERO
+var mirror_normal := Vector3.RIGHT
 
 
 func _init(parent: Node3D) -> void:
@@ -115,6 +123,7 @@ func build() -> void:
 	_bookcase(Transform3D(Basis(Vector3.UP, -PI / 2.0), Vector3(X1, 0, -3.2)), 1.9, 37)
 	_back_wall()
 	_seating()
+	_mirror()
 	_desk()
 	_chair()
 	_wastebasket()
@@ -278,6 +287,10 @@ func _walls() -> void:
 ## Muros, tejado y forjado con grosor real por fuera de la sala (y del pasillo). Desde dentro no se ven,
 ## pero tapan el sol: sin ellos la luz y la iluminación global atravesaban las paredes finas.
 func _shell() -> void:
+	# en su propio Batch (no en el compartido "b"): así se puede poner en una capa aparte y
+	# excluirla solo de la cámara del espejo, que queda fuera del edificio al reflejarse y, si no,
+	# se topaba con este muro macizo en vez de ver la sala
+	var sb := Batch.new()
 	var sm := Kit.plaster(Color("d9cdb2"))
 	var t := SHELL
 	var y0 := -0.6
@@ -285,21 +298,23 @@ func _shell() -> void:
 	# fachada: rodea el ventanal (con holgura para no pelearse con el derrame) y la boca del pasillo
 	for r in subtract(X0 - t, X1 + t, y0, y1, [WINDOW.grow(0.05), Rect2(-1.3, 0.0, 2.6, 3.0)]):
 		var rr: Rect2 = r
-		b.cube(Vector3(rr.get_center().x, rr.get_center().y, Z0 - 0.01 - t * 0.5), Vector3(rr.size.x, rr.size.y, t), sm)
-	b.cube(Vector3(0, (y0 + y1) * 0.5, Z1 + 0.01 + t * 0.5), Vector3(X1 - X0 + t * 2.0, y1 - y0, t), sm)
-	b.cube(Vector3(X0 - 0.01 - t * 0.5, (y0 + y1) * 0.5, (Z0 + Z1) * 0.5), Vector3(t, y1 - y0, Z1 - Z0 + t * 2.0), sm)
-	b.cube(Vector3(X1 + 0.01 + t * 0.5, (y0 + y1) * 0.5, (Z0 + Z1) * 0.5), Vector3(t, y1 - y0, Z1 - Z0 + t * 2.0), sm)
-	b.cube(Vector3(0, H + 0.11 + t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
-	b.cube(Vector3(0, -0.11 - t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
+		sb.cube(Vector3(rr.get_center().x, rr.get_center().y, Z0 - 0.01 - t * 0.5), Vector3(rr.size.x, rr.size.y, t), sm)
+	sb.cube(Vector3(0, (y0 + y1) * 0.5, Z1 + 0.01 + t * 0.5), Vector3(X1 - X0 + t * 2.0, y1 - y0, t), sm)
+	sb.cube(Vector3(X0 - 0.01 - t * 0.5, (y0 + y1) * 0.5, (Z0 + Z1) * 0.5), Vector3(t, y1 - y0, Z1 - Z0 + t * 2.0), sm)
+	sb.cube(Vector3(X1 + 0.01 + t * 0.5, (y0 + y1) * 0.5, (Z0 + Z1) * 0.5), Vector3(t, y1 - y0, Z1 - Z0 + t * 2.0), sm)
+	sb.cube(Vector3(0, H + 0.11 + t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
+	sb.cube(Vector3(0, -0.11 - t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
 	# pasillo: muros laterales, techo, suelo y fondo
 	var cz0 := -9.0
 	var mid := (Z0 + cz0) * 0.5
 	var clen := Z0 - cz0 + t
 	for sx in [-1.0, 1.0]:
-		b.cube(Vector3(sx * (1.31 + t * 0.5), 1.5, mid - t * 0.5), Vector3(t, 3.8, clen), sm)
-	b.cube(Vector3(0, 3.06 + t * 0.5, mid - t * 0.5), Vector3(2.62 + t * 2.0, t, clen), sm)
-	b.cube(Vector3(0, -0.05 - t * 0.5, mid - t * 0.5), Vector3(2.62 + t * 2.0, t, clen), sm)
-	b.cube(Vector3(0, 1.5, cz0 - 0.01 - t * 0.5), Vector3(2.62 + t * 2.0, 3.8, t), sm)
+		sb.cube(Vector3(sx * (1.31 + t * 0.5), 1.5, mid - t * 0.5), Vector3(t, 3.8, clen), sm)
+	sb.cube(Vector3(0, 3.06 + t * 0.5, mid - t * 0.5), Vector3(2.62 + t * 2.0, t, clen), sm)
+	sb.cube(Vector3(0, -0.05 - t * 0.5, mid - t * 0.5), Vector3(2.62 + t * 2.0, t, clen), sm)
+	sb.cube(Vector3(0, 1.5, cz0 - 0.01 - t * 0.5), Vector3(2.62 + t * 2.0, 3.8, t), sm)
+	for mi in sb.commit(root):
+		(mi as MeshInstance3D).layers = SHELL_LAYER
 
 
 # ------------------------------------------------------------------ ventana
@@ -453,7 +468,9 @@ func _door_and_corridor() -> void:
 	b.cube(Vector3(0, 2.96, zf + 0.03), Vector3(2.2, 0.3, 0.06), m["cream"], Vector3.ZERO, 1.0, 0.01)
 	b.molding(Transform3D(Basis(), Vector3(0, 3.1, zf + 0.03)), -1.15, 1.15, Kit.PROFILE_CROWN, m["cream"], true)
 	b.molding(Transform3D(Basis(), Vector3(0, 2.79, zf + 0.06)), -1.1, 1.1, Kit.PROFILE_RAIL, m["cream"], true)
-	b.cube(Vector3(0, -0.0, Z0 - 0.05), Vector3(1.6, 0.02, 0.12), m["marble"])
+	# umbral de mármol: antes era un listón casi de papel (2 cm) que, mirado hacia abajo en ángulo,
+	# se "estiraba" por la perspectiva hasta parecer una muesca oscura en el marco de la puerta
+	b.cube(Vector3(0, 0.02, Z0 - 0.05), Vector3(1.6, 0.04, 0.12), m["marble"])
 	var seal := Sprite3D.new()
 	seal.texture = OfficeArt.tex("seal", 1.5)
 	seal.pixel_size = 0.0013
@@ -908,6 +925,29 @@ func _seating() -> void:
 	Kit.blob(root, Vector3(tx, 0, cz), 0.95, 1.5, 0.45)
 	_armchair(Vector3(tx, 0, cz - 1.45), 0.0)
 	_armchair(Vector3(tx, 0, cz + 1.45), PI)
+
+
+## Espejo de pared, en el hueco libre de la pared izquierda entre la librería y el rincón:
+## marco dorado y una pequeña repisa de mármol. La superficie la pinta office_3d.gd con la
+## cámara que refleja la vista del jugador respecto al plano del cristal.
+func _mirror() -> void:
+	var x := X0
+	var cz := 2.6
+	var cy := 1.55
+	var fw := 0.84
+	var fh := 1.5
+	b.frame(Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(x, cy, cz)), fw, fh, Kit.FRAME_ORNATE, m["gold"])
+	b.cube(Vector3(x + 0.05, cy - fh / 2.0 - 0.025, cz), Vector3(0.16, 0.05, fw + 0.14), m["marble"], Vector3.ZERO, 1.0, 0.012, 2)
+	mirror_body = StaticBody3D.new()
+	mirror_body.position = Vector3(x + 0.05, cy, cz)
+	root.add_child(mirror_body)
+	Kit.add_shape(mirror_body, Kit.shape_box(Vector3(0.1, fh, fw)))
+	# el cristal cuelga del mismo cuerpo que la insignia/resalte usa para la mira (antes era un
+	# hijo suelto de root y el espejo nunca se resaltaba al mirarlo)
+	mirror_quad = Kit.mesh(mirror_body, Kit.quad_mesh(Vector2(fw - 0.1, fh - 0.1)), m["glass"], Vector3(-0.038, 0, 0), Vector3(0, PI / 2.0, 0))
+	mirror_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mirror_point = Vector3(x + 0.012, cy, cz)
+	mirror_normal = Vector3.RIGHT
 
 
 ## Paisaje al óleo para los cuadros

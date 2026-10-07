@@ -25,6 +25,7 @@ const OVERLAYS := {
 	"dashboard": "res://scripts/overlays/dashboard_overlay.gd",
 	"world": "res://scripts/overlays/world_overlay.gd",
 	"newspaper": "res://scripts/overlays/newspaper_overlay.gd",
+	"diary": "res://scripts/overlays/diary_overlay.gd",
 	"tv": "res://scripts/overlays/tv_overlay.gd",
 	"cabinet": "res://scripts/overlays/cabinet_overlay.gd",
 	"pause": "res://scripts/overlays/pause_overlay.gd",
@@ -475,6 +476,8 @@ func _debug_start() -> void:
 	GS.set_speed(0)
 	GS.push_news("El Gobierno aprueba el plan de digitalización", 2)
 	match debug_open:
+		"diary":
+			open_overlay("diary", {"seed": 1})
 		"":
 			GS.spawn(DB.event("doc_honor"))
 			GS.spawn(DB.event("fabrica_cierre"))

@@ -14,6 +14,7 @@ const Visitor3D := preload("res://scripts/office3d/visitor_3d.gd")
 const PaperView := preload("res://scripts/office3d/paper_views.gd")
 const Exterior := preload("res://scripts/office3d/exterior_3d.gd")
 const Aquarium := preload("res://scripts/office3d/aquarium_3d.gd")
+const Parrot3D := preload("res://scripts/office3d/parrot_3d.gd")
 const WindowView := preload("res://scripts/office/window_view.gd")
 const TvView := preload("res://scripts/office/tv_view.gd")
 const MonitorView := preload("res://scripts/office/monitor_view.gd")
@@ -25,6 +26,9 @@ const W := preload("res://scripts/data/world_data.gd")
 const Batch := Kit.Batch
 
 const INTERACT_RANGE := 12.0
+## Capa de render exclusiva del doble del jugador en el espejo: invisible para su propia cámara
+## en primera persona, visible para la cámara que pinta el reflejo
+const AVATAR_LAYER := 1 << 4
 const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!"]
 const PARROT_MEME := ["¡Un vaso es un vaso!", "¡Sé fuerte!", "¡Con cebolla!", "¡Sin cebolla!", "¡Me gusta la fruta!", "¡Plasma! ¡Plasma!", "¡Bueno... eso!", "¡Es muy difícil todo esto!"]
 const HELP := "Ratón: mirar   ·   Clic: usar   ·   Clic derecho: coger / soltar (clic para lanzar)   ·   WASD: levantarse y andar (Mayús: correr)\nF: sentarse (sillón, sillones o sofá) / levantarse   ·   R: ordenar la mesa   ·   Tab: liberar el cursor   ·   Espacio: pausa   ·   1-3: velocidad   ·   H: mostrar u ocultar esta ayuda"
@@ -71,6 +75,13 @@ var _news_vp: SubViewport
 var _news_view: Control
 var _cal_vp: SubViewport
 var _cal_view: Control
+var _diary_vp: SubViewport
+var _diary_view: Control
+var _diary_seed := 0
+## Espejo: cámara que renderiza el reflejo y doble del jugador que aparece en él
+var mirror_cam: Camera3D
+var mirror_vp: SubViewport
+var mirror_avatar
 var _tray_sheets := []
 var _tray_mark: MeshInstance3D
 var _phone_lcd: Label3D
@@ -97,6 +108,9 @@ var low_quality := false
 var screen_scale := 1.0
 var _live_vps := []
 var _frame := 0
+## Depuración: --pngshot=<ruta> guarda una captura a los pocos fotogramas y cierra el juego
+var _pngshot_path := ""
+var _pngshot_wait := -1
 var _probe: ReflectionProbe
 ## Ciudad, plaza y clima que se ven por el ventanal
 var exterior
@@ -106,6 +120,7 @@ var _cloud_shift := 0.0
 var _cloud_t := 0.0
 ## Pecera 3D (si la mascota es la tortuga)
 var aquarium
+var parrot3d
 ## Cortinas: objetivo (0 abiertas, 1 cerradas) y posición actual
 var _curtain_target := 0.0
 var _sky_state := Vector4(-1, -1, -1, -1)
@@ -127,6 +142,7 @@ func _ready() -> void:
 	room = Room.new(world)
 	room.build()
 	_screens()
+	_mirror_screen()
 	exterior = Exterior.new()
 	world.add_child(exterior)
 	exterior.build(Vector3(Room.WINDOW.get_center().x, 0.0, Room.Z0), -Room.SUN_DIR.normalized(), _flag_mat)
@@ -149,6 +165,14 @@ func _ready() -> void:
 	world.add_child(visitor3d)
 	visitor3d.cam = player.cam
 	visitor = visitor3d
+	# doble del jugador que se ve en el espejo: invisible para su propia cámara (capa exclusiva),
+	# visible para la cámara del reflejo
+	mirror_avatar = Visitor3D.new()
+	player.add_child(mirror_avatar)
+	mirror_avatar.dress(Perfil.apply_outfit(GS.pres.get("look", {})))
+	mirror_avatar.visible = not player.seated
+	_set_layer(mirror_avatar, AVATAR_LAYER)
+	player.cam.cull_mask &= ~AVATAR_LAYER
 	# capa 2D
 	light = ColorRect.new()
 	UI.full(light)
@@ -173,9 +197,9 @@ func _ready() -> void:
 	add_child(hud)
 	hud.menu_pressed.connect(func(): request.emit("pause", {}))
 	tip = PanelContainer.new()
-	tip.add_theme_stylebox_override("panel", UI.sb(Color(0.03, 0.05, 0.09, 0.9), 6, Color(UI.GOLD, 0.6), 1, 8, 10))
+	tip.add_theme_stylebox_override("panel", UI.sb(Color(0.03, 0.05, 0.09, 0.9), 6, Color(UI.GOLD, 0.6), 1, 4, 6))
 	tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tip_lbl = UI.lbl("", UI.f_sans_m, 17, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	tip_lbl = UI.lbl("", UI.f_sans_m, 13, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	tip.add_child(tip_lbl)
 	tip.visible = false
 	add_child(tip)
@@ -198,6 +222,9 @@ func _ready() -> void:
 				player.pitch = deg_to_rad(v[4])
 				player._eye = player.EYE_STAND
 			_hint_t = 0.0
+		elif a.begins_with("--pngshot="):
+			_pngshot_path = a.substr(10)
+			_pngshot_wait = 60
 
 
 func _exit_tree() -> void:
@@ -415,6 +442,38 @@ func _screens() -> void:
 	for c in room.flag_cloths:
 		(c as MeshInstance3D).material_override = fm_flip if c.get_meta("flip_u", false) else fm
 	_flag_mat = fm
+
+
+## Espejo de pared: una cámara 3D aparte (comparte el mundo de la sala, no duplica nada) que cada
+## fotograma se coloca en el reflejo de la cámara del jugador respecto al cristal; su imagen se
+## pinta en la superficie del espejo. Ver _update_mirror().
+func _mirror_screen() -> void:
+	mirror_vp = SubViewport.new()
+	var msz := Vector2i(int(420 * screen_scale), int(750 * screen_scale))
+	mirror_vp.size = msz
+	mirror_vp.disable_3d = false
+	mirror_vp.world_3d = get_viewport().world_3d
+	mirror_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(mirror_vp)
+	mirror_cam = Camera3D.new()
+	mirror_cam.fov = 60.0
+	mirror_cam.near = 0.05
+	mirror_cam.far = 25.0
+	mirror_cam.current = true
+	# la cámara reflejada queda detrás del cristal, fuera del edificio: sin excluir el muro
+	# exterior macizo (nunca pensado para verse) se vería ese muro en vez del reflejo de la sala
+	mirror_cam.cull_mask &= ~Room.SHELL_LAYER
+	mirror_vp.add_child(mirror_cam)
+	_live_vps.append(mirror_vp)
+	var mat := Kit.screen_mat(mirror_vp.get_texture(), 1.05)
+	# la cámara del reflejo se reconstruye con un giro "derecho" (looking_at), así que la imagen
+	# sale sin la inversión de un espejo real: se corrige volteando la U al pintarla
+	mat.uv1_scale.x = -1.0
+	mat.uv1_offset.x = 1.0
+	room.mirror_quad.material_override = mat
+	var mo = _obj("mirror", room.mirror_body, "Espejo", null, 1.05)
+	mo.glow_color = Color(0.85, 0.92, 1.0)
+	mo.status = "Se refleja el despacho"
 
 
 func _obj(key: String, body: CollisionObject3D, title: String, shake: Node3D = null, badge_h := 0.25) -> Node:
@@ -876,6 +935,25 @@ func _decor_props() -> void:
 		var glb := Batch.new()
 		glb.cyl(Vector3.ZERO, 0.032, 0.03, 0.075, crystal, Vector3.ZERO, 8)
 		glb.commit(gl)
+	# diarios de opinión: una pila interactiva, al otro lado de la mesa baja
+	var dcols := [Color("7a2f36"), Color("2d4a3a"), Color("8e742a")]
+	var diary_top: RigidBody3D
+	for i in 3:
+		diary_top = _prop(Kit.rigid(world, Vector3(3.72, 0.4642 + i * 0.0082, -0.15 + i * 0.03), Kit.shape_box(Vector3(0.22, 0.008, 0.28)), 0.25, Vector3(0, i * 0.3 - 0.25, 0)))
+		Kit.mesh(diary_top, _box(Vector3(0.22, 0.008, 0.28)), Kit.mat(dcols[i], 0.65))
+	var dv: Array = _paper("diary", Vector2i(260, 340))
+	_diary_vp = dv[0]
+	_diary_view = dv[1]
+	var dq := Kit.mesh(diary_top, Kit.quad_mesh(Vector2(0.21, 0.27)), Kit.tex_mat(_diary_vp.get_texture(), 0.9), Vector3(0, 0.0062, 0), Vector3(-PI / 2.0, 0, 0))
+	dq.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var dobj = _obj("diary", diary_top, "Diarios de opinión", null, 0.14)
+	dobj.glow_color = Color(0.9, 0.8, 0.6)
+	dobj.status = "Clic para leer"
+	dobj.redraw = func():
+		_diary_view.diary_seed = _diary_seed
+		_diary_view.queue_redraw()
+		_diary_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	dobj.queue_redraw()
 	# cojines en el sofá
 	var vel := Kit.velvet(Color(OfficeArt.THEMES.get(Perfil.office_theme(), OfficeArt.THEMES["clasico"])["curt"][2]))
 	for dz in [-1.25, 0.05]:
@@ -935,12 +1013,32 @@ func _pet() -> void:
 		ao.glow_color = Color(0.7, 0.95, 1.0)
 		ao.status = "Clic para mimarla (baja el estrés)"
 		return
+	if pet_kind == "loro":
+		# posado en lo alto de la cúpula del reloj de pie (cx=2.2, cz=Z0+0.2 en _clock(); la cúpula
+		# culmina sobre y=2.44 a radio 0.3)
+		parrot3d = Parrot3D.new()
+		world.add_child(parrot3d)
+		parrot3d.position = Vector3(2.2, 2.74, Room.Z0 + 0.2)
+		parrot3d.build()
+		var po2 = _obj("pet", parrot3d.body, "Senador, el loro", null, 0.3)
+		po2.glow_color = Color(1.0, 0.9, 0.7)
+		po2.status = "Clic para mimarla (baja el estrés)"
+		_parrot_lbl = Label3D.new()
+		_parrot_lbl.font = UI.f_sans_b
+		_parrot_lbl.font_size = 34
+		_parrot_lbl.outline_size = 14
+		_parrot_lbl.outline_modulate = Color(0.98, 0.97, 0.92)
+		_parrot_lbl.modulate = Color("1a1a1a")
+		_parrot_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_parrot_lbl.pixel_size = 0.0022
+		_parrot_lbl.position = Vector3(0, 0.22, 0.06)
+		parrot3d.body.add_child(_parrot_lbl)
+		return
 	var px: Vector2 = PetArt.ref_size(pet_kind)
 	# en la mesa, por delante de la placa con el nombre (antes la pisaban y la empujaban al empezar)
 	var spec: Dictionary = {
 		"gato": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.5},
 		"perro": {"pos": Vector3(1.45, 0.0, 0.35), "w": 0.62},
-		"loro": {"pos": Vector3(2.2, 2.47, Room.Z0 + 0.2), "w": 0.36},
 		"pez": {"pos": Vector3(0.05, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.26},
 	}.get(pet_kind, {"pos": Vector3(0, Room.DESK_TOP, Room.DESK_Z - 0.3), "w": 0.4})
 	_pet_view = PaperView.new()
@@ -960,21 +1058,10 @@ func _pet() -> void:
 	sp.position = Vector3(0, h * 0.5, 0)
 	body.add_child(sp)
 	Kit.add_shape(body, Kit.shape_box(Vector3(w * 0.8, h * 0.9, 0.22)), Vector3(0, h * 0.45, 0))
-	var titles := {"gato": "Decreto, el gato", "perro": "Tribuno, el perro", "loro": "Senador, el loro", "pez": "El pez dorado", "tortuga": "Trámite, la tortuga"}
+	var titles := {"gato": "Decreto, el gato", "perro": "Tribuno, el perro", "pez": "El pez dorado", "tortuga": "Trámite, la tortuga"}
 	var po = _obj("pet", body, titles.get(pet_kind, "Mascota"), null, h + 0.12)
 	po.glow_color = Color(1.0, 0.9, 0.7)
 	po.status = "Clic para mimarla (baja el estrés)"
-	if pet_kind == "loro":
-		_parrot_lbl = Label3D.new()
-		_parrot_lbl.font = UI.f_sans_b
-		_parrot_lbl.font_size = 34
-		_parrot_lbl.outline_size = 14
-		_parrot_lbl.outline_modulate = Color(0.98, 0.97, 0.92)
-		_parrot_lbl.modulate = Color("1a1a1a")
-		_parrot_lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		_parrot_lbl.pixel_size = 0.0022
-		_parrot_lbl.position = Vector3(0, h + 0.2, 0.1)
-		body.add_child(_parrot_lbl)
 
 
 func _box(s: Vector3) -> BoxMesh:
@@ -987,6 +1074,14 @@ func _sphere_shape(r: float) -> SphereShape3D:
 	var s := SphereShape3D.new()
 	s.radius = r
 	return s
+
+
+## Pone `n` y todo su árbol de mallas/sprites en una única capa de render (ver AVATAR_LAYER)
+func _set_layer(n: Node, layer: int) -> void:
+	if n is VisualInstance3D:
+		(n as VisualInstance3D).layers = layer
+	for c in n.get_children():
+		_set_layer(c, layer)
 
 
 ## Base cuyo eje Y apunta en la dirección d
@@ -1182,6 +1277,10 @@ func _on_object(key: String) -> void:
 			_curtain_target = 0.0 if _curtain_target > 0.5 else 1.0
 			Sfx.play("whoosh", -12.0, 0.55)
 			_refresh()
+		"diary":
+			request.emit("diary", {"seed": _diary_seed})
+		"mirror":
+			pass
 		"pet":
 			_pet_happy = 2.5
 			if _pet_view != null:
@@ -1246,6 +1345,15 @@ func exit_visitor() -> void:
 	t.tween_interval(1.6)
 	t.tween_callback(func(): visitor3d.hide_away())
 	t.tween_property(self, "_door_open", 0.0, 0.5)
+
+
+## Pasa a otra opinión del diario (la llama la pantalla de lectura en 2D) y actualiza la mesa baja
+func next_diary_opinion() -> int:
+	_diary_seed += 1
+	Sfx.play("paper", -10.0, 1.0)
+	if objs.has("diary"):
+		objs["diary"].queue_redraw()
+	return _diary_seed
 
 
 # ------------------------------------------------------------------ entrada
@@ -1402,6 +1510,12 @@ func _update_hover() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _pngshot_wait > 0:
+		_pngshot_wait -= 1
+		if _pngshot_wait == 0:
+			get_viewport().get_texture().get_image().save_png(_pngshot_path)
+			get_tree().quit()
+			return
 	# en calidad reducida, las pantallas (ventana, televisor, ordenador) se repintan una vez de cada cuatro
 	_frame += 1
 	if low_quality and _frame % 4 == 0:
@@ -1456,6 +1570,9 @@ func _process(delta: float) -> void:
 	if aquarium != null:
 		aquarium.happy = _pet_happy > 0.0
 		aquarium.update(delta)
+	if parrot3d != null:
+		parrot3d.happy = _pet_happy > 0.0
+		parrot3d.update(delta)
 	# puerta
 	room.door_l.rotation.y = _door_open * deg_to_rad(100.0)
 	room.door_r.rotation.y = -_door_open * deg_to_rad(100.0)
@@ -1511,6 +1628,38 @@ func _process(delta: float) -> void:
 		_phone_lcd.text = "LÍNEA LIBRE"
 		_phone_lcd.modulate = Color(0.5, 0.85, 0.55, 0.8)
 	_steam.emitting = _mug.global_transform.basis.y.dot(Vector3.UP) > 0.8 and _coffee_cd < 20.0
+	_update_mirror()
+
+
+## Coloca la cámara del espejo en el reflejo de la cámara del jugador respecto al plano del
+## cristal (punto + normal de room.mirror_point/mirror_normal), y sincroniza el andar del doble
+func _update_mirror() -> void:
+	if mirror_cam == null:
+		return
+	var p0: Vector3 = room.mirror_point
+	var n: Vector3 = room.mirror_normal
+	var cam: Camera3D = player.cam
+	var eye := cam.global_position
+	var fwd := -cam.global_transform.basis.z
+	var up := cam.global_transform.basis.y
+	var r_eye := eye - 2.0 * (eye - p0).dot(n) * n
+	var r_fwd := fwd - 2.0 * fwd.dot(n) * n
+	var r_up := up - 2.0 * up.dot(n) * n
+	var fwd_n := r_fwd.normalized()
+	# mirando casi derecho hacia arriba o abajo, "arriba" y la dirección de vista casi se alinean
+	# y looking_at() no sabe construir una base con eso: a falta de eso, se usa un "arriba" de recambio
+	# en vez de dejar la cámara congelada o con una orientación cualquiera durante ese fotograma
+	if absf(fwd_n.dot(r_up.normalized())) > 0.999:
+		r_up = Vector3.FORWARD if absf(fwd_n.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT
+	mirror_cam.global_transform = Transform3D(Basis.looking_at(r_fwd, r_up), r_eye)
+	mirror_cam.fov = cam.fov
+	if mirror_avatar != null:
+		# se recalcula cada fotograma (no solo al sentarse/levantarse) para que nunca se quede
+		# "colgado" visible u oculto si algo cambia el estado del jugador sin pasar por sit()/stand()
+		var should_show: bool = not player.seated
+		if mirror_avatar.visible != should_show:
+			mirror_avatar.visible = should_show
+		mirror_avatar.walking = should_show and Vector2(player.velocity.x, player.velocity.z).length() > 0.3
 
 
 func _lighting(alert: bool) -> void:
