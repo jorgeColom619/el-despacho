@@ -23,7 +23,25 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
   donde encestar bolas de papel. Los teléfonos dan saltitos sobre la mesa cuando suenan.
 - Los visitantes **entran por la puerta** y caminan hasta tu mesa; el retrato oficial que cuelga sobre
   la chimenea es el tuyo.
-- Los minijuegos y paneles siguen siendo los mismos (en 2D, por encima del despacho).
+- Los paneles del despacho siguen siendo los mismos (en 2D, por encima de la sala). Los cuatro minijuegos
+  de hablar y negociar son **en 3D y en primera persona**, sin paneles 2D: su interfaz va en una
+  **pantalla dentro de la escena** (el monitor del atril, la tableta de la mesa...) que se usa con el ratón:
+  - **Rueda de prensa**: hablas desde el atril, ante las filas de periodistas, los fotógrafos con sus
+    flashes y las cámaras de televisión; el periodista que pregunta alza la mano y las preguntas y
+    respuestas salen en el monitor del atril. El discurso a la nación se ve por televisión desde el fondo
+    de la sala, contigo en el atril.
+  - **Entrevista**: en el plató de Canal 7, sentado frente a la entrevistadora, con las cámaras, los
+    focos, el cartel de «En el aire» y la pantalla gigante detrás; las preguntas, en el monitor de la mesa.
+  - **Negociaciones**: sentado a la mesa, miras al otro líder (con sus asesores, sus banderas y su placa)
+    por encima de tu tableta, donde haces la oferta; si no hay acuerdo, se levanta y se va. En las
+    **cumbres**, mesa redonda con los tres líderes: eliges con quién hablas haciendo clic en él (o en su
+    tarjeta) y un foco lo ilumina.
+  - **Sesión de control en el Congreso**: hablas desde la tribuna del hemiciclo (con la Mesa, la galería
+    y unos 330 diputados). Cuando pregunta el líder de la oposición, la cámara le enfoca en pie en su
+    escaño; luego vuelves a tu atril, donde salen la pregunta, el tiempo y tus tres réplicas. Al
+    contestar se te ve de espaldas en la tribuna, por encima del hombro, frente al hemiciclo. Los dos
+    marcadores bajo la galería muestran la pregunta, quién tiene la palabra, cómo ha caído la réplica y
+    el combo, y aplaude la bancada que gana el turno.
 - En **Opciones** puedes volver al despacho 2D clásico, ajustar la sensibilidad del ratón y activar
   los **gráficos 3D reducidos** (se activan solos en equipos sin aceleración gráfica, como máquinas virtuales).
 
@@ -161,6 +179,14 @@ a su sustituto entre tres candidatos.
   `player.gd` (primera persona, coger y lanzar), `visitor_3d.gd`, `interactable.gd` y `kit.gd`
   (geometría, materiales y texturas generadas por código). Sombreadores en `shaders/*3d.gdshader`.
 - Para capturas del 3D: `godot --path . -- --shot=office --cam=x,y,z,giro,inclinación`.
+- `scripts/stages3d/` — los escenarios 3D de los minijuegos: `stage_3d.gd` (base: cámara, personajes, luces
+  y las pantallas con interfaz dentro de la escena, `screen()` / `pov_screen()`), `press_room_3d.gd`, `studio_3d.gd`,
+  `nego_room_3d.gd`, `congress_3d.gd` y `crowd_3d.gd` (público lejano). Capturas:
+  `godot --path . -- --shot=office --open=pressrun --stageshot=captura.png` (también `speech`, `nego`,
+  `summit`, `control`, `controlrun`, `controlreply`, `interviewrun`); con `--stageclick=x,y,fotograma`
+  se simula un clic en ese punto de la captura.
+- `tools/blender/gen_characters.py` — genera los personajes (`art/characters/visitor.glb`, con sus
+  animaciones) y los diputados lejanos (`crowd.glb`) con Blender 5.2.
 - `scripts/overlays/` — cada minijuego y panel.
 - `scripts/data/scenarios_data.gd` — escenarios iniciales y tramas; `events_tramas.gd`, `events_extra.gd`
   y `events_meme.gd` — eventos de las tramas, eventos adicionales y modo meme.

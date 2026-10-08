@@ -1,11 +1,14 @@
-"""Genera art/characters/visitor.glb: visitantes low-poly del despacho 3D.
+"""Genera art/characters/visitor.glb: visitantes low-poly del despacho 3D y de los escenarios.
 
 Un solo esqueleto compartido con todas las piezas (cuerpos H/M, cabezas, caras con blend shapes,
-peinados, barbas, gafas, corbata, perlas, uniforme) y las animaciones idle / walk / talk.
-visitor_3d.gd enseña las piezas y colorea los materiales según el `look` de cada personaje.
+peinados, barbas, gafas, corbata, perlas, uniforme) y las animaciones idle / walk / talk, más las de los
+escenarios 3D: sit, sit_talk, sit_write, sit_raise, sit_clap, clap, sit_table, sit_table_talk, photo,
+kneel_photo y operate. visitor_3d.gd enseña las piezas y colorea los materiales según el `look`.
+Junto a él escribe crowd.glb: diputados sentados, estáticos y simplificados, para el fondo del hemiciclo.
 
 Uso:
   blender -b --factory-startup -P tools/blender/gen_characters.py -- [salida.glb] [carpeta_previews]
+  (PREVIEW_ONLY=stage: solo la hoja de posturas de los escenarios)
 """
 import math
 import os
@@ -1072,9 +1075,137 @@ def build_anims(rig):
     }
     talk[72] = talk[0]
     make_action(rig, "talk", talk)
+    build_stage_anims(rig, base)
     for pb in rig.pose.bones:
         pb.rotation_quaternion = Quaternion()
         pb.location = Vector()
+
+
+# ------------------------------------------------------------------ posturas de los escenarios 3D
+# Rueda de prensa, negociación y Congreso. Sentado: asiento a 0,45 m bajo la cadera, muslos en horizontal
+# y espinillas casi en vertical; en la mesa, antebrazos sobre el tablero (0,76 m).
+
+SIT_Z = -0.42
+KNEEL_Z = -0.46
+
+
+def build_stage_anims(rig, base):
+    sit = {"spine": [("X", -2)], "chest": [("X", 2)], "head": [("X", 3)],
+           "thigh.L": [("X", -84), ("Z", 6)], "shin.L": [("X", 80)], "foot.L": [("X", 4)],
+           "upper_arm.L": [("X", -14), ("Y", 4)], "forearm.L": [("X", -62), ("Z", -14)]}
+    sit.update(mirror({b: r for b, r in sit.items() if b.endswith(".L")}))
+
+    def make(src, **kw):
+        d = {b: list(r) for b, r in src.items()}
+        for b, r in kw.items():
+            d[b.replace("_L", ".L").replace("_R", ".R")] = r
+        return d
+
+    def seat(**kw):
+        return make(sit, **kw)
+
+    def stand(**kw):
+        return make(base, **kw)
+
+    def both(d, bone, rots):
+        """La misma postura en los dos lados (la derecha, en espejo)."""
+        d[bone + ".L"] = rots
+        d.update(mirror({bone + ".L": rots}))
+        return d
+
+    def seated(name, keys):
+        make_action(rig, name, keys, hips_z={fr: SIT_Z for fr in keys})
+
+    # sentado, quieto
+    k = {0: seat(), 48: seat(chest=[("X", 3.5)], head=[("X", 4), ("Z", 5)])}
+    k[96] = k[0]
+    seated("sit", k)
+
+    # sentado, hablando: gesticula con la derecha
+    k = {
+        0: seat(upper_arm_R=[("X", -10), ("Y", 5), ("Z", 18)], forearm_R=[("X", -52)], head=[("X", 2)]),
+        12: seat(upper_arm_R=[("X", -16), ("Y", 9), ("Z", 26)], forearm_R=[("X", -66), ("Z", -10)], head=[("X", 4), ("Z", 2)], chest=[("X", 2), ("Z", -3)]),
+        24: seat(upper_arm_R=[("X", -12), ("Y", 5), ("Z", 20)], forearm_R=[("X", -56)], head=[("X", 1)]),
+        36: seat(upper_arm_R=[("X", -18), ("Y", 10), ("Z", 28)], forearm_R=[("X", -70), ("Z", 8)], upper_arm_L=[("X", -16), ("Y", -2), ("Z", -14)], forearm_L=[("X", -50)], head=[("X", 3), ("Z", -2)]),
+        48: seat(upper_arm_R=[("X", -9), ("Y", 5), ("Z", 16)], forearm_R=[("X", -48)], head=[("X", 1.5)]),
+    }
+    k[60] = k[0]
+    seated("sit_talk", k)
+
+    # sentado tomando notas: libreta en el regazo, la mano derecha escribe
+    def notes(dz, dx):
+        d = seat(head=[("X", 14)], chest=[("X", 5)])
+        both(d, "upper_arm", [("X", -20), ("Y", 8)])
+        both(d, "forearm", [("X", -78), ("Z", -20)])
+        d["forearm.R"] = [("X", -78 + dx), ("Z", 20 + dz)]
+        return d
+    k = {0: notes(0, 0), 6: notes(-5, 3), 12: notes(2, -2), 18: notes(-4, 2)}
+    k[24] = k[0]
+    seated("sit_write", k)
+
+    # sentado con la mano alzada para preguntar
+    k = {0: seat(upper_arm_R=[("X", -166), ("Z", -6)], forearm_R=[("X", -14)], head=[("X", -2)], chest=[("Z", 3)]),
+         20: seat(upper_arm_R=[("X", -170), ("Z", 5)], forearm_R=[("X", -20)], head=[("X", -1)], chest=[("Z", 2)])}
+    k[40] = k[0]
+    seated("sit_raise", k)
+
+    # aplausos: manos que se juntan y se separan delante del pecho
+    def clap(d, closed):
+        both(d, "upper_arm", [("X", -38), ("Y", 22)])
+        both(d, "forearm", [("X", -72), ("Z", -34 if closed else -10)])
+        both(d, "hand", [("X", 10)])
+        return d
+    k = {fr: clap(seat(head=[("X", 1)]), i % 2 == 0) for i, fr in enumerate(range(0, 17, 4))}
+    seated("sit_clap", k)
+    k = {fr: clap(stand(head=[("X", 1)]), i % 2 == 0) for i, fr in enumerate(range(0, 17, 4))}
+    make_action(rig, "clap", k)
+
+    # en la mesa de negociación: antebrazos sobre el tablero, algo inclinado hacia delante
+    def table(**kw):
+        d = seat(spine=[("X", 6)], chest=[("X", 3)], head=[("X", -4)])
+        both(d, "upper_arm", [("X", -30), ("Y", 8)])
+        both(d, "forearm", [("X", -60), ("Z", -26)])
+        for b, r in kw.items():
+            d[b.replace("_L", ".L").replace("_R", ".R")] = r
+        return d
+    k = {0: table(), 48: table(head=[("X", -2), ("Z", 4)], chest=[("X", 4)])}
+    k[96] = k[0]
+    seated("sit_table", k)
+    k = {
+        0: table(upper_arm_R=[("X", -40), ("Y", 4), ("Z", 14)], forearm_R=[("X", -78), ("Z", -4)]),
+        12: table(upper_arm_R=[("X", -46), ("Y", 8), ("Z", 22)], forearm_R=[("X", -92), ("Z", 6)], head=[("X", -2), ("Z", 2)]),
+        24: table(upper_arm_R=[("X", -42), ("Y", 4), ("Z", 16)], forearm_R=[("X", -82)]),
+        36: table(upper_arm_R=[("X", -50), ("Y", 10), ("Z", 26)], forearm_R=[("X", -96), ("Z", 10)], forearm_L=[("X", -70), ("Z", -12)], head=[("X", -5), ("Z", -2)]),
+    }
+    k[48] = k[0]
+    seated("sit_table_talk", k)
+
+    # fotógrafos: la cámara delante de la cara, de pie o con una rodilla en el suelo
+    def camera(d):
+        both(d, "upper_arm", [("X", -60), ("Y", 26)])
+        both(d, "forearm", [("X", -100), ("Z", -42)])
+        both(d, "hand", [("X", -24)])
+        d["head"] = [("X", 4)]
+        return d
+    k = {0: camera(stand()), 30: camera(stand(chest=[("Z", 4)]))}
+    k[60] = k[0]
+    make_action(rig, "photo", k)
+    kneel = {"spine": [("X", 8)], "thigh.L": [("X", -88), ("Z", 4)], "shin.L": [("X", 88)], "foot.L": [("X", 0)],
+             "thigh.R": [("X", 4), ("Z", -4)], "shin.R": [("X", 96)], "foot.R": [("X", 44)]}
+    k = {0: camera(make(kneel)), 30: camera(make(kneel, chest=[("Z", -4)]))}
+    k[60] = k[0]
+    make_action(rig, "kneel_photo", k, hips_z={fr: KNEEL_Z for fr in k})
+
+    # operador de cámara de televisión: manos en los mandos, la vista en el visor
+    def operate(d):
+        both(d, "upper_arm", [("X", -16), ("Y", 6)])
+        both(d, "forearm", [("X", -48), ("Z", -6)])
+        d["upper_arm.R"] = [("X", -10), ("Y", -14)]
+        d["head"] = [("X", 6)]
+        return d
+    k = {0: operate(stand()), 48: operate(stand(chest=[("Z", -3)]))}
+    k[96] = k[0]
+    make_action(rig, "operate", k)
 
 
 # ------------------------------------------------------------------ montaje y exportación
@@ -1194,6 +1325,19 @@ def look_mats(l):
 def apply_look(rig, l):
     l = defaults(l)
     g = l["g"]
+    vis = look_parts(l)
+    for o in bpy.data.objects:
+        if o.type == 'MESH':
+            o.hide_render = o.name not in vis
+    for n, (c, r, m) in look_mats(l).items():
+        if n in bpy.data.materials:
+            set_col(bpy.data.materials[n], c, r, m)
+    rig.scale = (0.96,) * 3 if g == "f" else (1.0,) * 3
+
+
+def look_parts(l):
+    """Piezas del modelo que lleva un aspecto (las mismas que enseña visitor_3d.gd)."""
+    g = l["g"]
     names = {o.name for o in bpy.data.objects}
     vis = {"Body_" + g.upper(), "Head_" + g.upper(), "Face_" + g.upper()}
     hn = "Hair_%s_f" % l["hair"]
@@ -1210,13 +1354,7 @@ def apply_look(rig, l):
         vis.add("Uniform")
     if l.get("acc"):
         vis.add("Acc_%s_%s" % (l["acc"], g.upper()))
-    for o in bpy.data.objects:
-        if o.type == 'MESH':
-            o.hide_render = o.name not in vis
-    for n, (c, r, m) in look_mats(l).items():
-        if n in bpy.data.materials:
-            set_col(bpy.data.materials[n], c, r, m)
-    rig.scale = (0.96,) * 3 if g == "f" else (1.0,) * 3
+    return vis
 
 
 def set_keys(vals):
@@ -1271,6 +1409,9 @@ def previews(rig, folder):
         rig.animation_data.action = bpy.data.actions[name]
         SCN.frame_set(frame)
 
+    if os.environ.get("PREVIEW_ONLY") == "stage":
+        stage_previews(rig, folder, shot, act)
+        return
     act("idle", 0)
     set_keys({})
     # accesorios de la tienda (sobre el aspecto del presidente)
@@ -1325,6 +1466,41 @@ def previews(rig, folder):
     act("idle", 0)
 
 
+def stage_previews(rig, folder, shot, act):
+    """Posturas de los escenarios 3D con una silla (asiento a 0,45 m) y una mesa (0,76 m) de referencia."""
+    def prop(name, loc, size, col):
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=loc)
+        ob = bpy.context.active_object
+        ob.name = name
+        ob.scale = size
+        m = bpy.data.materials.new(name)
+        set_col(m, col, 0.6, 0.0)
+        ob.data.materials.append(m)
+        return ob
+    chair = [prop("seat", (0, -0.1, 0.225), (0.46, 0.46, 0.45), (0.35, 0.12, 0.1)),
+             prop("back", (0, 0.16, 0.7), (0.46, 0.06, 0.5), (0.35, 0.12, 0.1))]
+    table = [prop("table", (0, -0.75, 0.74), (1.3, 0.9, 0.04), (0.3, 0.2, 0.12))]
+    poses = [("sit", 0, "c"), ("sit_talk", 12, "c"), ("sit_write", 6, "c"), ("sit_raise", 0, "c"), ("sit_clap", 0, "c"),
+             ("sit_clap", 4, "c"), ("sit_table", 0, "ct"), ("sit_table_talk", 12, "ct"), ("clap", 0, ""), ("photo", 0, ""),
+             ("kneel_photo", 0, ""), ("operate", 0, "")]
+    rows = []
+    for li, l in enumerate((LOOKS[1], LOOKS[6])):
+        apply_look(rig, l)
+        side, front = [], []
+        for i, (name, fr, props) in enumerate(poses):
+            for o in chair:
+                o.hide_render = "c" not in props
+            for o in table:
+                o.hide_render = "t" not in props
+            act(name, fr)
+            side.append(shot(os.path.join(folder, f"s{li}_{i}.png"), (2.6, -1.6, 1.1), (0, -0.2, 0.75), 50, (200, 300)))
+            front.append(shot(os.path.join(folder, f"f{li}_{i}.png"), (0.5, -3.0, 1.3), (0, -0.2, 0.8), 50, (200, 300)))
+        rows += [side, front]
+    make_sheet(rows, os.path.join(folder, "sheet_stage.png"))
+    for o in chair + table:
+        bpy.data.objects.remove(o)
+
+
 def make_sheet(rows, out):
     data = []
     for row in rows:
@@ -1349,8 +1525,84 @@ def make_sheet(rows, out):
     print("sheet:", out)
 
 
+# ------------------------------------------------------------------ público lejano (crowd.glb)
+# Diputados de las filas de atrás del hemiciclo: mallas estáticas ya sentadas, simplificadas y con las piezas
+# agrupadas por tipo de material, para que Godot las pinte por instancia (stages3d/crowd_3d.gd).
+
+CROWD_CATS = ["Suit", "Trousers", "Skin", "Hair", "Shirt", "Dark", "Tie", "Light"]
+CROWD_MAP = {"Suit": "Suit", "Lapel": "Suit", "Cap": "Suit", "Trousers": "Trousers", "Skin": "Skin", "Stubble": "Skin",
+             "Lip": "Skin", "Hair": "Hair", "Brow": "Hair", "Shirt": "Shirt", "Tie": "Tie", "Gold": "Tie", "Flag0": "Tie",
+             "Flag1": "Tie", "Flag2": "Tie", "Sclera": "Light", "Teeth": "Light", "Glint": "Light", "Pearl": "Light"}
+CROWD = [("Seated_M", {"g": "m", "hair": "short"}),
+         ("Seated_MB", {"g": "m", "hair": "balding", "glasses": 1, "tie": "22262b"}),
+         ("Seated_F", {"g": "f", "hair": "bob", "age": 0}),
+         ("Seated_FL", {"g": "f", "hair": "long", "age": 0})]
+
+
+def export_crowd(rig, path, ratio=0.3):
+    for tr in rig.animation_data.nla_tracks:
+        tr.mute = True
+    rig.animation_data.action = bpy.data.actions["sit"]
+    mats = []
+    for c in CROWD_CATS:
+        m = bpy.data.materials.new("C_" + c)
+        set_col(m, (0.5, 0.5, 0.5), 0.7, 0.0)
+        mats.append(m)
+    made = []
+    for name, look in CROWD:
+        l = defaults(look)
+        rig.scale = (0.96,) * 3 if l["g"] == "f" else (1.0,) * 3
+        SCN.frame_set(0)
+        bpy.context.view_layer.update()
+        dg = bpy.context.evaluated_depsgraph_get()
+        bm = bmesh.new()
+        for pn in sorted(look_parts(l)):
+            ob = bpy.data.objects.get(pn)
+            if ob is None:
+                continue
+            me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg), preserve_all_data_layers=False, depsgraph=dg)
+            me.transform(ob.matrix_world)
+            for p in me.polygons:
+                mn = me.materials[p.material_index].name if p.material_index < len(me.materials) else ""
+                p.material_index = CROWD_CATS.index(CROWD_MAP.get(mn, "Dark"))
+            bm.from_mesh(me)
+            bpy.data.meshes.remove(me)
+        mesh = bpy.data.meshes.new(name + "_full")
+        bm.to_mesh(mesh)
+        bm.free()
+        for m in mats:
+            mesh.materials.append(m)
+        ob = bpy.data.objects.new(name, mesh)
+        SCN.collection.objects.link(ob)
+        ob.modifiers.new("dec", 'DECIMATE').ratio = ratio
+        bpy.context.view_layer.update()
+        low = bpy.data.meshes.new_from_object(ob.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+        low.name = name
+        ob.modifiers.clear()
+        ob.data = low
+        print("crowd:", name, "tris:", sum(len(p.vertices) - 2 for p in low.polygons), "de", sum(len(p.vertices) - 2 for p in mesh.polygons))
+        made.append(ob)
+    bpy.ops.object.select_all(action='DESELECT')
+    for ob in made:
+        ob.select_set(True)
+    bpy.context.view_layer.objects.active = made[0]
+    bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_yup=True, export_apply=False,
+                              export_texcoords=False, export_normals=True, export_materials='EXPORT', export_skins=False,
+                              export_morph=False, export_animations=False, export_cameras=False, export_lights=False)
+    for ob in made:
+        bpy.data.objects.remove(ob)
+    rig.animation_data.action = None
+    for tr in rig.animation_data.nla_tracks:
+        tr.mute = False
+    rig.scale = (1.0,) * 3
+    for pb in rig.pose.bones:
+        pb.rotation_quaternion = Quaternion()
+        pb.location = Vector()
+
+
 RIG = build_all()
 export(OUT)
 verify(OUT)
+export_crowd(RIG, os.path.join(os.path.dirname(OUT), "crowd.glb"))
 if PREVIEW:
     previews(RIG, PREVIEW)

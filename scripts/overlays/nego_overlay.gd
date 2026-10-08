@@ -7,6 +7,7 @@ const Typewriter := preload("res://scripts/ui/typewriter.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const Flags := preload("res://scripts/ui/flags.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const NegoRoom := preload("res://scripts/stages3d/nego_room_3d.gd")
 
 const MAX_ATTEMPTS := 3
 
@@ -51,6 +52,15 @@ var panel_v: VBoxContainer
 var _drag := false
 var bar_w := 860.0
 var _t := 0.0
+## Salón de negociaciones 3D (con el despacho 3D): primera persona en la mesa y la interfaz en la tableta
+## (izquierda: el tema y los líderes; derecha: la oferta). Si no, la bandera y los retratos 2D de siempre
+var stage
+var host: Control
+## Columna del tema y los líderes (en 2D es el mismo panel_v)
+var info_v: VBoxContainer
+var leave_btn: Button
+var _col_w := 900.0
+var _wild_w := 280.0
 
 
 func build() -> void:
@@ -70,7 +80,14 @@ func build() -> void:
 	my_power = GS.meters["economia"] * 0.35 + GS.meters["prestigio"] * 0.35 + GS.budget["defensa"] * 20.0 + GS.treaty_count() * 3.0
 	offer = clampf(round(_min_of("lo") - 2.0), 0.0, 95.0)
 	Sfx.play("notify", -6.0, 0.8)
-	if summit == "":
+	if NegoRoom.enabled():
+		stage = NegoRoom.new()
+		stage.summit = summit != ""
+		for p in parties:
+			stage.parties.append({"look": p["ch"].get("look", {}), "country": p["country"], "name": p["ch"].get("name", ""), "role": p["ch"].get("role", "")})
+		root.add_child(stage)
+		_build_screen()
+	elif summit == "":
 		_build_feed(parties[0])
 		panel_v = UI.vbox(14)
 		panel_v.position = Vector2(930, 124)
@@ -83,6 +100,8 @@ func build() -> void:
 		panel_v.position = Vector2(70, 420)
 		panel_v.size = Vector2(1780, 580)
 		root.add_child(panel_v)
+	if info_v == null:
+		info_v = panel_v
 	_build_panel()
 	if summit == "":
 		_say(parties[0], OPENERS.get(parties[0]["pers_id"], "Hablemos, presidente."))
@@ -179,6 +198,89 @@ func _build_feed(p: Dictionary) -> void:
 	feed.add_child(frame)
 
 
+## En 3D, la tableta: a la izquierda el tema y los líderes (que están sentados enfrente, en la sala; en las
+## cumbres se elige a uno con su tarjeta o haciendo clic en él), a la derecha la oferta
+func _build_screen() -> void:
+	host = stage.ui
+	_col_w = 796.0
+	_wild_w = 230.0
+	bar_w = 740.0 if summit == "" else 640.0
+	var line := ColorRect.new()
+	line.color = Color(UI.GOLD, 0.3)
+	line.position = Vector2(412, 18)
+	line.size = Vector2(1, host.size.y - 36)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.add_child(line)
+	info_v = UI.vbox(6)
+	info_v.position = Vector2(22, 16)
+	info_v.size = Vector2(372, 0)
+	host.add_child(info_v)
+	panel_v = UI.vbox(10)
+	panel_v.position = Vector2(428, 16)
+	panel_v.size = Vector2(_col_w, 0)
+	host.add_child(panel_v)
+	if summit == "":
+		var p: Dictionary = parties[0]
+		info_v.add_child(UI.lbl("NEGOCIACIÓN · " + (W.COUNTRIES[p["country"]]["full"].to_upper() if p["country"] != "" else p["ch"].get("role", "").to_upper()), UI.f_sans_b, 14, UI.GOLD))
+	else:
+		info_v.add_child(UI.lbl("CUMBRE INTERNACIONAL", UI.f_sans_b, 14, UI.GOLD))
+	var tn := UI.lbl(topic["name"], UI.f_serif_b, 28 if summit == "" else 25, UI.CREAM)
+	tn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tn.custom_minimum_size = Vector2(372, 0)
+	info_v.add_child(tn)
+	var d := UI.lbl(GS.fmt(topic.get("desc", "")), UI.f_sans, 14, UI.DIM)
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	d.custom_minimum_size = Vector2(372, 0)
+	info_v.add_child(d)
+	var sep := ColorRect.new()
+	sep.color = Color(1, 1, 1, 0.1)
+	sep.custom_minimum_size = Vector2(372, 1)
+	info_v.add_child(sep)
+	if summit == "":
+		var p: Dictionary = parties[0]
+		p["portrait"] = stage.leaders[0]
+		info_v.add_child(UI.lbl(p["ch"].get("role", "").to_upper(), UI.f_sans_b, 13, UI.GOLD))
+		info_v.add_child(UI.lbl(p["ch"].get("name", ""), UI.f_serif_b, 28, UI.CREAM))
+		var ca := UI.lbl("Carácter: %s · %s" % [p["pers"]["name"], p["pers"]["desc"]], UI.f_sans, 14, UI.DIM)
+		ca.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ca.custom_minimum_size = Vector2(372, 0)
+		info_v.add_child(ca)
+		var say := Typewriter.new()
+		say.custom_minimum_size = Vector2(372, 0)
+		say.add_theme_font_override("normal_font", UI.f_serif)
+		say.add_theme_font_size_override("normal_font_size", 20)
+		info_v.add_child(say)
+		p["say"] = say
+	else:
+		info_v.add_child(UI.lbl("Haga clic en un líder (o en su tarjeta) para dirigirse a él", UI.f_sans_m, 13, UI.GOLD_L))
+		for i in parties.size():
+			var p: Dictionary = parties[i]
+			p["portrait"] = stage.leaders[i]
+			var country: String = p["country"]
+			var v := UI.vbox(1)
+			v.custom_minimum_size = Vector2(350, 0)
+			v.add_child(UI.lbl(p["ch"].get("name", ""), UI.f_serif_b, 19, UI.CREAM))
+			v.add_child(UI.lbl((W.COUNTRIES[country]["name"] + " · " if country != "" else "") + "Carácter: " + p["pers"]["name"], UI.f_sans_b, 12, UI.GOLD))
+			var say := UI.lbl("", UI.f_serif, 15, UI.TEXT)
+			say.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			say.custom_minimum_size = Vector2(350, 0)
+			v.add_child(say)
+			p["say"] = say
+			var idx := i
+			var card := Widgets.click_card(v, func(): _select(idx), 10)
+			p["card"] = card
+			info_v.add_child(card)
+		stage.leader_clicked.connect(_select)
+
+
+func _select(i: int) -> void:
+	if ended or i == sel:
+		return
+	sel = i
+	Sfx.play("click", -8.0)
+	_refresh()
+
+
 func _build_summit_row() -> void:
 	var head := UI.vbox(0)
 	head.position = Vector2(70, 112)
@@ -230,16 +332,17 @@ func _build_summit_row() -> void:
 
 
 func _build_panel() -> void:
-	if summit == "":
-		panel_v.add_child(UI.lbl("NEGOCIACIÓN · " + (W.COUNTRIES[parties[0]["country"]]["full"].to_upper() if parties[0]["country"] != "" else parties[0]["ch"].get("role", "").to_upper()), UI.f_sans_b, 15, UI.GOLD))
-		panel_v.add_child(UI.lbl(topic["name"], UI.f_serif_b, 40, UI.CREAM))
-	var d := UI.lbl(GS.fmt(topic.get("desc", "")), UI.f_sans, 18, UI.DIM)
-	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	d.custom_minimum_size = Vector2(900, 0)
-	panel_v.add_child(d)
-	var how := UI.lbl("Arrastra el marcador para elegir tu oferta. Verde: la aceptarán. Ámbar: su límite está en esa franja. Rojo: la rechazarán.", UI.f_sans_m, 16, Color(UI.GOLD_L, 0.9))
+	if host == null:
+		if summit == "":
+			panel_v.add_child(UI.lbl("NEGOCIACIÓN · " + (W.COUNTRIES[parties[0]["country"]]["full"].to_upper() if parties[0]["country"] != "" else parties[0]["ch"].get("role", "").to_upper()), UI.f_sans_b, 15, UI.GOLD))
+			panel_v.add_child(UI.lbl(topic["name"], UI.f_serif_b, 40, UI.CREAM))
+		var d := UI.lbl(GS.fmt(topic.get("desc", "")), UI.f_sans, 18, UI.DIM)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(900, 0)
+		panel_v.add_child(d)
+	var how := UI.lbl("Arrastra el marcador para elegir tu oferta. Verde: la aceptarán. Ámbar: su límite está en esa franja. Rojo: la rechazarán.", UI.f_sans_m, 16 if host == null else 15, Color(UI.GOLD_L, 0.9))
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	how.custom_minimum_size = Vector2(900, 0)
+	how.custom_minimum_size = Vector2(_col_w, 0)
 	panel_v.add_child(how)
 	meter = Control.new()
 	meter.custom_minimum_size = Vector2(bar_w + (140.0 if parties.size() > 1 else 40.0), 120 + (parties.size() - 1) * 26)
@@ -258,7 +361,7 @@ func _build_panel() -> void:
 	var fh := UI.hbox(10)
 	fh.add_child(UI.lbl("Si firmas esto:", UI.f_sans_m, 15, UI.DIM))
 	fx_box = HFlowContainer.new()
-	fx_box.custom_minimum_size = Vector2(760, 0)
+	fx_box.custom_minimum_size = Vector2(_col_w - 140.0, 0)
 	fh.add_child(fx_box)
 	panel_v.add_child(fh)
 	var ah := UI.hbox(16)
@@ -276,13 +379,18 @@ func _build_panel() -> void:
 	wild_box = UI.hbox(12)
 	panel_v.add_child(wild_box)
 	if summit != "":
-		lines_lbl = UI.rich("", 18, UI.TEXT, UI.f_serif)
-		lines_lbl.custom_minimum_size = Vector2(900, 0)
-		panel_v.add_child(lines_lbl)
-	var leave := UI.btn("Levantarse de la mesa", "ghost", 16)
-	leave.size_flags_horizontal = Control.SIZE_SHRINK_END
-	leave.pressed.connect(func(): _end(false, LINES["walk"].pick_random()))
-	panel_v.add_child(leave)
+		lines_lbl = UI.rich("", 18 if host == null else 16, UI.TEXT, UI.f_serif)
+		lines_lbl.custom_minimum_size = Vector2(_col_w if host == null else 372.0, 0)
+		info_v.add_child(lines_lbl)
+	leave_btn = UI.btn("Levantarse de la mesa", "ghost", 16)
+	leave_btn.pressed.connect(func(): _end(false, LINES["walk"].pick_random()))
+	if host != null:
+		# abajo a la izquierda de la tableta
+		host.add_child(leave_btn)
+		leave_btn.position = Vector2(22, host.size.y - leave_btn.get_combined_minimum_size().y - 14)
+	else:
+		leave_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+		panel_v.add_child(leave_btn)
 
 
 func _wild_cards() -> void:
@@ -299,14 +407,19 @@ func _wild_cards() -> void:
 	]
 	for s in specs:
 		var v := UI.vbox(4)
-		v.custom_minimum_size = Vector2(280, 86)
+		v.custom_minimum_size = Vector2(_wild_w, 86 if host == null else 74)
 		var h := UI.hbox(8)
 		h.add_child(UI.icon_rect(s[2], 24, UI.GOLD_L))
-		h.add_child(UI.lbl(s[1] + ((" → " + tn) if tn != "" else ""), UI.f_sans_b, 17, UI.TEXT))
+		var tl := UI.lbl(s[1] + ((" → " + tn) if tn != "" else ""), UI.f_sans_b, 17 if host == null else 16, UI.TEXT)
+		if host != null:
+			# en la tableta la columna es más estrecha: el título salta de línea en vez de ensanchar la tarjeta
+			tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			tl.custom_minimum_size = Vector2(_wild_w - 32.0, 0)
+		h.add_child(tl)
 		v.add_child(h)
-		var dl := UI.lbl(s[3], UI.f_sans, 14, UI.DIM)
+		var dl := UI.lbl(s[3], UI.f_sans, 14 if host == null else 13, UI.DIM)
 		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		dl.custom_minimum_size = Vector2(270, 0)
+		dl.custom_minimum_size = Vector2(_wild_w - 10.0, 0)
 		v.add_child(dl)
 		var wid: String = s[0]
 		var card := Widgets.click_card(v, func(): _wildcard(wid), 12)
@@ -353,7 +466,9 @@ func _refresh() -> void:
 	if summit != "":
 		for i in parties.size():
 			var card: PanelContainer = parties[i]["card"]
-			card.add_theme_stylebox_override("panel", UI.sb(Color(0.08, 0.12, 0.19, 0.95), 8, UI.GOLD if i == sel else Color(1, 1, 1, 0.1), 2 if i == sel else 1, 0, 12))
+			card.add_theme_stylebox_override("panel", UI.sb(Color(0.08, 0.12, 0.19, 0.95), 8, UI.GOLD if i == sel else Color(1, 1, 1, 0.1), 2 if i == sel else 1, 0, 12 if host == null else 10))
+		if stage != null:
+			stage.select(sel)
 	_wild_cards()
 	meter.queue_redraw()
 
@@ -480,6 +595,12 @@ func _say(p: Dictionary, text: String) -> void:
 	else:
 		s.text = "«" + GS.fmt(text) + "»"
 		UI.pop_in(s, 0.25)
+		# el líder 3D de la cumbre mueve la boca mientras se lee su frase
+		var por: Object = p["portrait"]
+		if stage != null and por != null:
+			por.talking = true
+			# ligado al propio personaje: si se cierra la sala antes, la conexión desaparece con él
+			get_tree().create_timer(clampf(text.length() * 0.05, 1.0, 3.0)).timeout.connect(por.set.bind("talking", false))
 
 
 func _line(text: String) -> void:
@@ -618,6 +739,8 @@ func _end(deal: bool, line: String) -> void:
 		Sfx.play("success", -2.0)
 		for p in parties:
 			_mood(p, 0.7, 0.0)
+		if stage != null:
+			stage.celebrate()
 		if summit != "":
 			var rel := {}
 			for p in parties:
@@ -643,6 +766,8 @@ func _end(deal: bool, line: String) -> void:
 		Sfx.play("fail", -2.0)
 		for p in parties:
 			_mood(p, -0.5, 0.4)
+		if stage != null:
+			stage.walk_out()
 		if summit != "":
 			var rel2 := {}
 			for p in parties:
@@ -662,6 +787,8 @@ func _end(deal: bool, line: String) -> void:
 	GS.log_history(topic.get("name", "Negociación"), ("Acuerdo: " + _term_text(offer)) if deal else "Sin acuerdo")
 	for c in panel_v.get_children():
 		c.queue_free()
+	if leave_btn != null:
+		leave_btn.visible = false
 	var res := UI.vbox(12)
 	var st := UI.lbl("ACUERDO FIRMADO" if deal else "SIN ACUERDO", UI.f_cond_b, 60, UI.GREEN if deal else UI.RED)
 	st.rotation = deg_to_rad(-2.5)
@@ -671,7 +798,7 @@ func _end(deal: bool, line: String) -> void:
 		var q := int(offer)
 		res.add_child(UI.lbl("Resultado para Valdoria: %d/100 · %s" % [q, "magistral" if q >= 85 else ("muy bueno" if q >= 65 else ("razonable" if q >= 40 else "modesto"))], UI.f_sans_m, 18, UI.GOLD_L))
 	var chips := Widgets.effect_chips(out, 16, 10)
-	chips.custom_minimum_size = Vector2(880, 0)
+	chips.custom_minimum_size = Vector2(minf(880.0, _col_w - 20.0), 0)
 	res.add_child(chips)
 	var b := UI.btn("Terminar", "gold", 20)
 	b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN

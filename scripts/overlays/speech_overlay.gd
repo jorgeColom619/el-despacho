@@ -7,6 +7,7 @@ const Portrait := preload("res://scripts/ui/portrait.gd")
 const Flags := preload("res://scripts/ui/flags.gd")
 const P := preload("res://scripts/data/press_data.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const PressRoom := preload("res://scripts/stages3d/press_room_3d.gd")
 
 const TARGET_X := 700.0
 const PROMPT_Y := 900.0
@@ -16,7 +17,8 @@ var occasion := "nacion"
 var sections := []
 var si := -1
 var scene: Control
-var pres: Control
+## Retrato 2D o presidente 3D en el atril: ambos exponen talking / mood
+var pres
 var choice_box: HBoxContainer
 var timer: Control
 var prompt: Control
@@ -35,6 +37,8 @@ var judge_lbl: Label
 var _t := 0.0
 var crowd := []
 var sec_lbl: Label
+## Sala de prensa 3D vista por televisión (con el despacho 3D; el mitin sigue en 2D)
+var stage
 
 
 func build() -> void:
@@ -47,22 +51,30 @@ func build() -> void:
 			sections = [["apertura", "Apertura"], ["campana", "Arenga"], ["promesa", "Promesa"], ["campana", "Remate"]]
 		_:
 			sections = [["apertura", "Apertura"], ["economia", "Economía"], ["social", "Sociedad"], ["promesa", "Promesa"], ["cierre", "Cierre"]]
-	scene = Control.new()
-	UI.full(scene)
-	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	scene.draw.connect(_draw_scene)
-	root.add_child(scene)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 11
-	if occasion == "campana":
-		for i in 90:
-			crowd.append({"p": Vector2(rng.randf_range(0, 1920), rng.randf_range(560, 820)), "c": Color.from_hsv(rng.randf(), 0.4, rng.randf_range(0.2, 0.5)), "ph": rng.randf() * TAU, "flag": rng.randf() < 0.3})
-	pres = Portrait.new()
-	pres.position = Vector2(560, 150) if occasion != "campana" else Vector2(690, 250)
-	pres.size = Vector2(560, 672) if occasion != "campana" else Vector2(540, 648)
-	pres.track_mouse = false
-	root.add_child(pres)
-	pres.setup(GS.pres["look"], true)
+	if occasion != "campana" and PressRoom.enabled():
+		stage = PressRoom.new()
+		stage.view = "tv"
+		stage.pres_look = Perfil.apply_outfit(GS.pres["look"])
+		stage.quiet = occasion == "tragedia"
+		root.add_child(stage)
+		pres = stage.president
+	else:
+		scene = Control.new()
+		UI.full(scene)
+		scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		scene.draw.connect(_draw_scene)
+		root.add_child(scene)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11
+		if occasion == "campana":
+			for i in 90:
+				crowd.append({"p": Vector2(rng.randf_range(0, 1920), rng.randf_range(560, 820)), "c": Color.from_hsv(rng.randf(), 0.4, rng.randf_range(0.2, 0.5)), "ph": rng.randf() * TAU, "flag": rng.randf() < 0.3})
+		pres = Portrait.new()
+		pres.position = Vector2(560, 150) if occasion != "campana" else Vector2(690, 250)
+		pres.size = Vector2(560, 672) if occasion != "campana" else Vector2(540, 648)
+		pres.track_mouse = false
+		root.add_child(pres)
+		pres.setup(GS.pres["look"], true)
 	pres.mood = 0.2 if occasion != "tragedia" else -0.4
 	var lower := Control.new()
 	lower.position = Vector2(0, 740)
@@ -233,7 +245,8 @@ func _process(delta: float) -> void:
 		if all_past and words.size() > 0:
 			_end_phrase()
 	prompt.queue_redraw()
-	scene.queue_redraw()
+	if scene != null:
+		scene.queue_redraw()
 	worm_ctrl.queue_redraw()
 
 
@@ -266,6 +279,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		perfects += 1
 		_judge("¡PERFECTO!", UI.GOLD_L, 7.0)
 		Sfx.play("applause", -12.0 if occasion != "campana" else -6.0)
+		if stage != null:
+			stage.burst(3)
 	elif bd < 80.0:
 		best["res"] = "good"
 		hits += 1

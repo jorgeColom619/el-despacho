@@ -6,6 +6,7 @@ const TimerBar := preload("res://scripts/ui/timer_bar.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const P := preload("res://scripts/data/press_data.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Congress := preload("res://scripts/stages3d/congress_3d.gd")
 
 const ROUNDS := 5
 const ROWS := 7
@@ -13,9 +14,17 @@ const HEMI_C := Vector2(960, 1010)
 const HEMI_SX := 1.5
 
 var opp_ch: Dictionary
-var me: Control
-var opp: Control
+## Retratos 2D o personajes 3D en el hemiciclo: todos exponen talking / mood / anger
+var me
+var opp
 var scene: Control
+## Hemiciclo 3D (con el despacho 3D): el presidente en la tribuna y la interfaz en la pantalla del atril y en
+## los marcadores. Si no, el dibujo 2D de siempre
+var stage
+var host: Control
+var turn_lbl: Label
+var speaker_lbl: Label
+var _rep_w := 440.0
 var rounds := []
 var ri := -1
 var combo := 0
@@ -49,6 +58,91 @@ func build() -> void:
 			var pos := HEMI_C + Vector2(cos(a) * r * HEMI_SX, sin(a) * r)
 			var side := 0 if pos.x < 960 else 1
 			seats.append({"p": pos, "side": side, "ph": rng.randf() * TAU})
+	if Congress.enabled():
+		stage = Congress.new()
+		stage.pres_look = Perfil.apply_outfit(GS.pres["look"])
+		stage.opp_look = opp_ch["look"]
+		root.add_child(stage)
+		me = stage.me
+		opp = stage.opp
+		_build_screen(stage.ui, stage.board)
+	else:
+		_build_2d()
+	var pool: Array = P.DEBATE.duplicate()
+	pool.shuffle()
+	for i in ROUNDS:
+		rounds.append(pool[i % pool.size()])
+	_intro()
+
+
+## En 3D: la pregunta, las réplicas y el tiempo en la pantalla del atril; en los marcadores del hemiciclo,
+## la pregunta en curso, quién tiene la palabra, el resultado de cada réplica y el combo
+func _build_screen(lectern: Control, board: Control) -> void:
+	host = lectern
+	var w := lectern.size.x
+	_rep_w = (w - 72.0 - 28.0) / 3.0
+	turn_lbl = UI.lbl("", UI.f_sans_b, 21, UI.GOLD)
+	turn_lbl.position = Vector2(36, 16)
+	lectern.add_child(turn_lbl)
+	var qv := UI.vbox(4)
+	qv.position = Vector2(36, 50)
+	qv.visible = false
+	lectern.add_child(qv)
+	qv.add_child(UI.lbl(opp_ch["name"].to_upper() + " PREGUNTA:", UI.f_sans_b, 21, UI.RED.lightened(0.3)))
+	q_lbl = UI.lbl("", UI.f_serif, 34, UI.TEXT)
+	q_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	q_lbl.custom_minimum_size = Vector2(w - 72, 0)
+	qv.add_child(q_lbl)
+	timer = TimerBar.new()
+	timer.position = Vector2(36, 300)
+	timer.visible = false
+	timer.size = Vector2(w - 72, 12)
+	lectern.add_child(timer)
+	timer.timeout.connect(func():
+		if not answered:
+			_answer(null))
+	replies = UI.hbox(14)
+	replies.position = Vector2(36, 326)
+	replies.size = Vector2(w - 72, 0)
+	lectern.add_child(replies)
+	var bw := board.size.x
+	var bh := UI.vbox(2)
+	bh.position = Vector2(0, 18)
+	bh.size = Vector2(bw, 0)
+	board.add_child(bh)
+	bh.add_child(UI.lbl("CONGRESO DE LOS DIPUTADOS · SESIÓN DE CONTROL AL GOBIERNO", UI.f_sans_b, 24, UI.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	topic_lbl = UI.lbl("", UI.f_serif_b, 50, UI.CREAM, HORIZONTAL_ALIGNMENT_CENTER)
+	bh.add_child(topic_lbl)
+	speaker_lbl = UI.lbl("", UI.f_sans_m, 32, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	bh.add_child(speaker_lbl)
+	feedback = UI.lbl("", UI.f_sans_b, 40, UI.GOLD_L, HORIZONTAL_ALIGNMENT_CENTER)
+	feedback.position = Vector2(0, 236)
+	feedback.size = Vector2(bw, 56)
+	board.add_child(feedback)
+	combo_lbl = UI.lbl("", UI.f_cond_b, 60, UI.GOLD_L, HORIZONTAL_ALIGNMENT_CENTER)
+	combo_lbl.position = Vector2(0, 294)
+	combo_lbl.size = Vector2(bw, 80)
+	combo_lbl.pivot_offset = Vector2(bw * 0.5, 40)
+	board.add_child(combo_lbl)
+
+
+## Pone un panel en el centro de la pantalla del atril (o donde iba en 2D)
+func _place(p: Control, pos2d: Vector2) -> void:
+	if host != null:
+		# en la pantalla 3D el panel se ve más grande (va dentro de un contenedor escalado: pop_in anima su escala)
+		var k := 1.3
+		var holder := Control.new()
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.scale = Vector2(k, k)
+		host.add_child(holder)
+		holder.add_child(p)
+		holder.position = ((host.size - p.get_combined_minimum_size() * k) * 0.5).floor()
+	else:
+		p.position = pos2d
+		root.add_child(p)
+
+
+func _build_2d() -> void:
 	scene = Control.new()
 	UI.full(scene)
 	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -121,16 +215,10 @@ func build() -> void:
 	replies.position = Vector2(240, 830)
 	replies.size = Vector2(1440, 0)
 	root.add_child(replies)
-	var pool: Array = P.DEBATE.duplicate()
-	pool.shuffle()
-	for i in ROUNDS:
-		rounds.append(pool[i % pool.size()])
-	_intro()
 
 
 func _intro() -> void:
 	intro = UI.panel(Color(0.03, 0.05, 0.09, 0.97), 12, Color(UI.GOLD, 0.6), 30)
-	intro.position = Vector2(560, 380)
 	intro.custom_minimum_size = Vector2(800, 0)
 	var v := UI.vbox(14)
 	intro.add_child(v)
@@ -141,7 +229,7 @@ func _intro() -> void:
 	t.custom_minimum_size = Vector2(740, 0)
 	v.add_child(t)
 	var h := UI.hbox(14)
-	var go := UI.btn("Subir al estrado", "gold", 22)
+	var go := UI.btn("Subir al estrado" if stage == null else "Tomar la palabra", "gold", 22)
 	go.pressed.connect(func():
 		intro.queue_free()
 		Sfx.play("gavel", -2.0)
@@ -154,7 +242,7 @@ func _intro() -> void:
 		close())
 	h.add_child(no)
 	v.add_child(h)
-	root.add_child(intro)
+	_place(intro, Vector2(560, 380))
 	UI.pop_in(intro)
 
 
@@ -179,9 +267,15 @@ func _next() -> void:
 	var r: Dictionary = rounds[ri]
 	topic_lbl.text = "Pregunta %d de %d · %s" % [ri + 1, rounds.size(), r["topic"]]
 	q_lbl.text = "«" + r["attack"] + "»"
+	if stage != null:
+		turn_lbl.text = "SESIÓN DE CONTROL · " + topic_lbl.text.to_upper()
+		q_lbl.get_parent().visible = true
+		timer.visible = true
+		speaker_lbl.text = "Tiene la palabra %s, líder de la oposición" % opp_ch["name"]
+		stage.turn("opp")
 	opp.talking = true
 	opp.mood = -0.2
-	get_tree().create_timer(1.0).timeout.connect(func(): opp.talking = false)
+	get_tree().create_timer(1.0 if stage == null else 2.0).timeout.connect(func(): opp.talking = false)
 	# tres réplicas: la mejor para este ataque + dos al azar
 	var best: Dictionary = P.DEBATE_REPLIES[0]
 	for rep in P.DEBATE_REPLIES:
@@ -194,23 +288,25 @@ func _next() -> void:
 	opts.append(others[0])
 	opts.append(others[1])
 	opts.shuffle()
+	var big := host != null
 	for rep in opts:
 		var v := UI.vbox(4)
-		v.custom_minimum_size = Vector2(440, 76)
+		v.custom_minimum_size = Vector2(_rep_w - (28.0 if big else 0.0), 150 if big else 76)
 		var h := UI.hbox(8)
-		h.add_child(UI.icon_rect(rep["icon"], 26, UI.GOLD_L))
-		h.add_child(UI.lbl(rep["name"], UI.f_sans_b, 20, UI.TEXT))
+		h.add_child(UI.icon_rect(rep["icon"], 38 if big else 26, UI.GOLD_L))
+		h.add_child(UI.lbl(rep["name"], UI.f_sans_b, 31 if big else 20, UI.TEXT))
 		v.add_child(h)
-		var d := UI.lbl(rep["desc"], UI.f_sans, 15, UI.DIM)
+		var d := UI.lbl(rep["desc"], UI.f_sans, 24 if big else 15, UI.DIM)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		d.custom_minimum_size = Vector2(420, 0)
+		d.custom_minimum_size = Vector2(_rep_w - (48.0 if big else 20.0), 0)
 		v.add_child(d)
 		var rr: Dictionary = rep
 		var card := Widgets.click_card(v, func(): _answer(rr), 14)
 		card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		replies.add_child(card)
 		UI.pop_in(card, 0.2)
-	timer.start(_seconds(), "SU TURNO")
+	# en 3D el reloj empieza con el plano del contrincante: cuenta también lo que dura su pregunta
+	timer.start(_seconds() + (Congress.OPP_SHOT if stage != null else 0.0), "SU TURNO")
 
 
 func _answer(rep) -> void:
@@ -223,6 +319,10 @@ func _answer(rep) -> void:
 		c.modulate.a = 0.35
 	var r: Dictionary = rounds[ri]
 	var s := 0.1
+	if stage != null:
+		# contraplano: el presidente en el atril, mirando al hemiciclo (si se queda callado, también)
+		speaker_lbl.text = "Tiene la palabra el presidente del Gobierno, %s" % GS.pres["name"]
+		stage.turn("me")
 	if rep != null:
 		s = float(rep["vs"].get(r["kind"], 0.5))
 		if rep.get("uses_meter", false):
@@ -243,6 +343,8 @@ func _answer(rep) -> void:
 		cheer_side = 0
 		cheer_t = 1.6
 		Sfx.play("applause", -6.0)
+		if stage != null:
+			stage.cheer(true)
 		me.mood = 0.7
 		opp.mood = -0.6
 		opp.anger = 0.5
@@ -259,6 +361,8 @@ func _answer(rep) -> void:
 		cheer_side = 1
 		cheer_t = 1.6
 		Sfx.play("crowd", -6.0, 1.2)
+		if stage != null:
+			stage.cheer(false)
 		me.mood = -0.5
 		opp.mood = 0.6
 	combo_lbl.text = ("COMBO x%d" % combo) if combo >= 2 else ""
@@ -274,6 +378,16 @@ func _answer(rep) -> void:
 func _finish() -> void:
 	var avg := points / float(rounds.size())
 	var won := avg >= 0.62
+	if stage != null:
+		stage.cheer(won)
+		stage.finish()
+		q_lbl.get_parent().visible = false
+		replies.visible = false
+		timer.visible = false
+		turn_lbl.text = ""
+		speaker_lbl.text = "Se levanta la sesión"
+		feedback.text = ""
+		combo_lbl.text = ""
 	var fx := {"approval": snappedf((avg - 0.55) * 7.0, 0.1), "estabilidad": 3 if won else -3}
 	var opp_party: String = W.PLAYER_PARTIES[GS.pres["party"]]["opp"]
 	fx["party"] = {GS.pres["party"]: 2.0 if won else -1.0, opp_party: -2.0 if won else 1.0}
@@ -285,7 +399,6 @@ func _finish() -> void:
 	if best_combo >= 3:
 		Perfil.unlock("martillo")
 	var p := UI.panel(Color(0.03, 0.05, 0.09, 0.97), 12, Color(UI.GOLD, 0.6), 30)
-	p.position = Vector2(560, 360)
 	p.custom_minimum_size = Vector2(800, 0)
 	var v := UI.vbox(14)
 	p.add_child(v)
@@ -298,7 +411,7 @@ func _finish() -> void:
 	b.size_flags_horizontal = Control.SIZE_SHRINK_END
 	b.pressed.connect(func(): close())
 	v.add_child(b)
-	root.add_child(p)
+	_place(p, Vector2(560, 360))
 	UI.pop_in(p)
 	Sfx.play("gavel", -2.0)
 
@@ -306,7 +419,8 @@ func _finish() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	cheer_t = maxf(0.0, cheer_t - delta)
-	scene.queue_redraw()
+	if scene != null:
+		scene.queue_redraw()
 
 
 func _draw_scene() -> void:

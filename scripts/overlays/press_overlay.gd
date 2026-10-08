@@ -7,6 +7,8 @@ const TimerBar := preload("res://scripts/ui/timer_bar.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const OfficeArt := preload("res://scripts/office/office_art.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const PressRoom := preload("res://scripts/stages3d/press_room_3d.gd")
+const Studio := preload("res://scripts/stages3d/studio_3d.gd")
 
 const TONE_NAMES := {"honesto": "Sincero", "evasivo": "Evasivo", "firme": "Firme", "humor": "Con humor", "ataque": "Al ataque"}
 const TONE_COLS := {"honesto": Color("5fb4e0"), "evasivo": Color("9aa4b5"), "firme": Color("e5a93a"), "humor": Color("7ed27e"), "ataque": Color("e2574c")}
@@ -15,7 +17,8 @@ var mode := "rueda"
 var scene: Control
 var questions := []
 var qi := -1
-var journalist: Control
+## Retrato 2D o periodista 3D que pregunta: los dos exponen talking / mood
+var journalist
 var j_name: Label
 var j_outlet: Label
 var q_text: RichTextLabel
@@ -34,11 +37,95 @@ var worm_ctrl: Control
 var feedback: Label
 var intro_panel: Control
 var qpanel: Control
+## Con el despacho 3D: la sala de prensa (o el plató de Canal 7) en primera persona, y toda la interfaz en la
+## pantalla del atril (o de la mesa). Si no, el dibujo 2D de siempre
+var stage
+## Donde van los paneles: la pantalla 3D o la superposición 2D
+var host: Control
+var _ans_font := 20
+var _ans_w := 840.0
 
 
 func build() -> void:
 	mode = data.get("mode", "rueda")
 	dim.color = Color(0.01, 0.015, 0.03, 0.94)
+	worm = [50.0]
+	if PressRoom.enabled():
+		stage = PressRoom.new() if mode == "rueda" else Studio.new()
+		root.add_child(stage)
+		_build_screen(stage.ui)
+	else:
+		_build_2d()
+	var n_q := 4 if mode == "rueda" else 5
+	questions = DB.press_questions(n_q)
+	_intro()
+
+
+## La interfaz en la pantalla 3D: quién pregunta y la pregunta arriba, el tiempo, las respuestas y la reacción
+func _build_screen(scr: Control) -> void:
+	host = scr
+	var w := scr.size.x
+	_ans_font = 29
+	_ans_w = w - 250.0
+	scr.add_child(_at(UI.lbl("RUEDA DE PRENSA · PALACIO DE GOBIERNO" if mode == "rueda" else "ENTREVISTA EN DIRECTO · CANAL 7", UI.f_sans_b, 21, UI.GOLD), Vector2(36, 16)))
+	worm_ctrl = Control.new()
+	worm_ctrl.position = Vector2(w - 360, 10)
+	worm_ctrl.size = Vector2(330, 96)
+	worm_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	worm_ctrl.draw.connect(_draw_worm)
+	scr.add_child(worm_ctrl)
+	var qv := UI.vbox(2)
+	qv.position = Vector2(36, 46)
+	qv.visible = false
+	qpanel = qv
+	scr.add_child(qv)
+	j_outlet = UI.lbl("", UI.f_sans_b, 21, UI.GOLD)
+	qv.add_child(j_outlet)
+	j_name = UI.lbl("", UI.f_serif_b, 32, UI.CREAM)
+	qv.add_child(j_name)
+	q_text = Typewriter.new()
+	q_text.custom_minimum_size = Vector2(w - 72, 0)
+	q_text.add_theme_font_override("normal_font", UI.f_serif)
+	q_text.add_theme_font_size_override("normal_font_size", 33)
+	q_text.add_theme_color_override("default_color", UI.TEXT)
+	qv.add_child(UI.spacer(0, 6))
+	qv.add_child(q_text)
+	feedback = UI.lbl("", UI.f_sans_b, 27, UI.GOLD_L)
+	feedback.position = Vector2(36, 252)
+	scr.add_child(feedback)
+	timer = TimerBar.new()
+	timer.position = Vector2(36, 298)
+	timer.size = Vector2(w - 72, 12)
+	scr.add_child(timer)
+	timer.timeout.connect(_on_timeout)
+	answers = UI.vbox(10)
+	answers.position = Vector2(36, 322)
+	answers.size = Vector2(w - 72, 0)
+	scr.add_child(answers)
+
+
+static func _at(c: Control, p: Vector2) -> Control:
+	c.position = p
+	return c
+
+
+## Pone un panel en el centro de la pantalla 3D (o donde iba en 2D)
+func _place(p: Control, pos2d: Vector2) -> void:
+	if host != null:
+		# en la pantalla 3D el panel se ve más grande (va dentro de un contenedor escalado: pop_in anima su escala)
+		var k := 1.3
+		var holder := Control.new()
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.scale = Vector2(k, k)
+		host.add_child(holder)
+		holder.add_child(p)
+		holder.position = ((host.size - p.get_combined_minimum_size() * k) * 0.5).floor()
+	else:
+		p.position = pos2d
+		root.add_child(p)
+
+
+func _build_2d() -> void:
 	scene = Control.new()
 	UI.full(scene)
 	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -113,15 +200,10 @@ func build() -> void:
 	worm_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	worm_ctrl.draw.connect(_draw_worm)
 	root.add_child(worm_ctrl)
-	worm = [50.0]
-	var n_q := 4 if mode == "rueda" else 5
-	questions = DB.press_questions(n_q)
-	_intro()
 
 
 func _intro() -> void:
 	intro_panel = UI.panel(Color(0.03, 0.05, 0.09, 0.97), 12, Color(UI.GOLD, 0.6), 30)
-	intro_panel.position = Vector2(560, 360)
 	intro_panel.custom_minimum_size = Vector2(800, 0)
 	var v := UI.vbox(16)
 	intro_panel.add_child(v)
@@ -146,7 +228,7 @@ func _intro() -> void:
 		close())
 	h.add_child(no)
 	v.add_child(h)
-	root.add_child(intro_panel)
+	_place(intro_panel, Vector2(560, 360))
 	UI.pop_in(intro_panel)
 
 
@@ -164,18 +246,28 @@ func _next() -> void:
 	if mode == "rueda":
 		outlet = W.OUTLETS.pick_random()
 		var g := "m" if randf() < 0.5 else "f"
-		journalist.setup(DB.rand_look(g), false)
+		if stage != null:
+			# alza la mano un periodista de la sala: el nombre va con su aspecto
+			journalist = stage.ask()
+			g = journalist.get_meta("g", g)
+		else:
+			journalist.setup(DB.rand_look(g), false)
+			raised = randi() % heads.size()
 		j_name.text = DB.rand_name(g)
-		raised = randi() % heads.size()
 	else:
 		outlet = {"name": "Canal 7", "bias": 0.0, "tag": "Televisión"}
-		journalist.setup(W.CHARACTERS["periodista"]["look"], false)
+		if stage != null:
+			journalist = stage.ask()
+		else:
+			journalist.setup(W.CHARACTERS["periodista"]["look"], false)
 		j_name.text = W.CHARACTERS["periodista"]["name"]
 	j_outlet.text = "%s · %s" % [outlet["name"].to_upper(), outlet["tag"]]
 	journalist.talking = true
 	q_text.play(GS.fmt(q["q"]), 50.0)
 	await q_text.typed
 	journalist.talking = false
+	if stage != null:
+		stage.stop_asking()
 	_show_answers(q)
 
 
@@ -184,20 +276,28 @@ func _show_answers(q: Dictionary) -> void:
 	opts = opts.filter(func(a): return not a.has("req_policy") or a["req_policy"] in GS.policies)
 	for i in opts.size():
 		var a: Dictionary = opts[i]
-		var v := UI.vbox(6)
-		var th := UI.hbox(10)
 		var tone: String = a.get("tone", "honesto")
-		th.add_child(Widgets.chip("", TONE_NAMES.get(tone, tone), TONE_COLS.get(tone, UI.GOLD), 14))
-		v.add_child(th)
-		var l := UI.lbl(GS.fmt(a["t"]), UI.f_sans_m, 20, UI.TEXT)
+		var l := UI.lbl(GS.fmt(a["t"]), UI.f_sans_m, _ans_font, UI.TEXT)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size = Vector2(840, 0)
+		l.custom_minimum_size = Vector2(_ans_w, 0)
+		# en la pantalla 3D el tono va a la izquierda de la frase (una línea por respuesta); en 2D, encima
+		var v: BoxContainer = UI.vbox(6) if host == null else UI.hbox(16)
+		var chip := Widgets.chip("", TONE_NAMES.get(tone, tone), TONE_COLS.get(tone, UI.GOLD), 14 if host == null else 19)
+		if host != null:
+			chip.custom_minimum_size = Vector2(150, 0)
+			chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			v.add_child(chip)
+		else:
+			var th := UI.hbox(10)
+			th.add_child(chip)
+			v.add_child(th)
 		v.add_child(l)
 		var idx := i
 		var card := Widgets.click_card(v, func(): _answer(opts[idx]), 14)
 		answers.add_child(card)
 		UI.pop_in(card, 0.25)
 	timer.start(13.0 * (0.8 if GS.stress > 75 else 1.0), "TIEMPO PARA RESPONDER")
+	timer.visible = true
 
 
 func _answer(a: Dictionary) -> void:
@@ -205,6 +305,8 @@ func _answer(a: Dictionary) -> void:
 		return
 	answered = true
 	timer.stop()
+	# en la pantalla del atril la reacción ocupa el sitio del reloj
+	timer.visible = host == null
 	for c in answers.get_children():
 		c.set_meta("enabled", false)
 		c.modulate.a = 0.4
@@ -237,8 +339,11 @@ func _answer(a: Dictionary) -> void:
 		feedback.text = "Murmullos en la sala. No ha convencido."
 		Sfx.play("crowd", -6.0, 1.2)
 		journalist.mood = -0.4
-	for i in 4:
-		flashes.append({"p": Vector2(randf_range(80, 1840), randf_range(520, 900)), "t": -i * 0.12})
+	if stage != null:
+		stage.react(s)
+	else:
+		for i in 4:
+			flashes.append({"p": Vector2(randf_range(80, 1840), randf_range(520, 900)), "t": -i * 0.12})
 	Sfx.play("flash", -6.0)
 	UI.pop_in(feedback)
 	await get_tree().create_timer(1.8).timeout
@@ -249,6 +354,7 @@ func _on_timeout() -> void:
 	if answered:
 		return
 	answered = true
+	timer.visible = host == null
 	score -= 5.0
 	worm.append(clampf(worm.back() - 16.0, 0.0, 100.0))
 	feedback.text = "Silencio incómodo... La prensa lo destrozará mañana."
@@ -272,8 +378,11 @@ func _finish() -> void:
 	var verdict := "Comparecencia brillante" if avg >= 3.5 else ("Comparecencia correcta" if avg >= 1.0 else "Comparecencia desastrosa")
 	GS.push_news("%s: %s" % ["Rueda de prensa del presidente" if mode == "rueda" else "Entrevista al presidente en Canal 7", verdict.to_lower()], 2)
 	GS.log_history("Rueda de prensa", verdict)
+	if host != null:
+		qpanel.visible = false
+		timer.visible = false
+		feedback.text = ""
 	var p := UI.panel(Color(0.03, 0.05, 0.09, 0.97), 12, Color(UI.GOLD, 0.6), 30)
-	p.position = Vector2(560, 360)
 	p.custom_minimum_size = Vector2(800, 0)
 	var v := UI.vbox(14)
 	p.add_child(v)
@@ -286,12 +395,15 @@ func _finish() -> void:
 	b.size_flags_horizontal = Control.SIZE_SHRINK_END
 	b.pressed.connect(func(): close())
 	v.add_child(b)
-	root.add_child(p)
+	_place(p, Vector2(560, 360))
 	UI.pop_in(p)
 
 
 func _process(delta: float) -> void:
 	_t += delta
+	worm_ctrl.queue_redraw()
+	if scene == null:
+		return
 	for f in flashes:
 		f["t"] += delta
 	flashes = flashes.filter(func(f): return f["t"] < 0.4)
@@ -300,7 +412,6 @@ func _process(delta: float) -> void:
 		if randf() < 0.3:
 			Sfx.play("flash", -14.0)
 	scene.queue_redraw()
-	worm_ctrl.queue_redraw()
 
 
 func _draw_scene() -> void:

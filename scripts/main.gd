@@ -4,6 +4,7 @@ extends Control
 const Office := preload("res://scripts/office/office.gd")
 const Office3D := preload("res://scripts/office3d/office_3d.gd")
 const Tex3D := preload("res://scripts/office3d/tex3d.gd")
+const Stage3D := preload("res://scripts/stages3d/stage_3d.gd")
 const OfficeArt := preload("res://scripts/office/office_art.gd")
 const Toasts := preload("res://scripts/ui/toasts.gd")
 
@@ -103,7 +104,7 @@ func _ready() -> void:
 		_check_scripts()
 		return
 	# texturas del despacho 3D: se preparan en segundo plano mientras se ve el menú
-	Tex3D.prewarm(Tex3D.default_specs(OfficeArt.THEMES.get(Perfil.office_theme(), OfficeArt.THEMES["clasico"]), Perfil.wood()))
+	Tex3D.prewarm(Tex3D.default_specs(OfficeArt.THEMES.get(Perfil.office_theme(), OfficeArt.THEMES["clasico"]), Perfil.wood()) + Stage3D.tex_specs())
 	for a in args:
 		if a.begins_with("--shot="):
 			debug_shot = a.substr(7)
@@ -505,6 +506,12 @@ func _debug_start() -> void:
 			open_overlay("campaign", {})
 		"control":
 			open_overlay("control", {})
+		"controlreply":
+			open_overlay("control", {})
+			current_overlay.intro.queue_free()
+			current_overlay._next()
+			var ov = current_overlay
+			get_tree().create_timer(1.5).timeout.connect(func(): ov._answer(DB.P.DEBATE_REPLIES[0]))
 		"controlrun":
 			open_overlay("control", {})
 			current_overlay.intro.queue_free()
@@ -520,6 +527,16 @@ func _debug_start() -> void:
 			open_overlay("crisis", {"item": GS.alerts[0], "autostart": true})
 		"vote":
 			open_overlay("vote", {"law": "vivienda"})
+		"interview":
+			open_overlay("press", {"mode": "entrevista"})
+		"interviewrun":
+			open_overlay("press", {"mode": "entrevista"})
+			current_overlay.intro_panel.queue_free()
+			current_overlay._next()
+		"pressrun":
+			open_overlay("press", {"mode": "rueda"})
+			current_overlay.intro_panel.queue_free()
+			current_overlay._next()
 		"press":
 			open_overlay("press", {"mode": "rueda"})
 		"speech":

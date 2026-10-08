@@ -21,6 +21,13 @@ var talking := false
 var mood := 0.0
 var anger := 0.0
 var surprise := 0.0
+## Animación en reposo y al hablar: de pie (idle / talk), sentado (sit / sit_talk) o en la mesa
+## (sit_table / sit_table_talk). Las pone seat().
+var rest_anim := "idle"
+var talk_anim := "talk"
+## Gesto que sustituye a la postura mientras no esté vacío (sit_clap, clap, sit_raise, photo...)
+var gesture := ""
+var anim_speed := 1.0
 
 var _model: Node3D
 var _anim: AnimationPlayer
@@ -44,9 +51,8 @@ func _ready() -> void:
 	var players := _model.find_children("*", "AnimationPlayer", true, false)
 	if players.size() > 0:
 		_anim = players[0]
-		for a in ["idle", "walk", "talk"]:
-			if _anim.has_animation(a):
-				_anim.get_animation(a).loop_mode = Animation.LOOP_LINEAR
+		for a in _anim.get_animation_list():
+			_anim.get_animation(a).loop_mode = Animation.LOOP_LINEAR
 	visible = false
 
 
@@ -152,7 +158,28 @@ func _paint(mi: MeshInstance3D, mats: Dictionary) -> void:
 func show_at(p: Vector3) -> void:
 	global_position = p
 	visible = true
-	_play("idle", 0.0)
+	_play(rest_anim, 0.0)
+
+
+## Postura: "sit" (silla), "table" (sentado con los brazos en la mesa) o de pie (cualquier otro valor)
+func seat(mode := "sit") -> void:
+	match mode:
+		"sit":
+			rest_anim = "sit"
+			talk_anim = "sit_talk"
+		"table":
+			rest_anim = "sit_table"
+			talk_anim = "sit_table_talk"
+		_:
+			rest_anim = "idle"
+			talk_anim = "talk"
+
+
+## Empieza la animación en un punto al azar y a un ritmo algo distinto, para que un grupo no se mueva a la vez
+func desync() -> void:
+	anim_speed = randf_range(0.85, 1.15)
+	if _anim != null and _anim.current_animation != "":
+		_anim.seek(randf() * _anim.current_animation_length, true)
 
 
 func hide_away() -> void:
@@ -181,7 +208,7 @@ func _process(delta: float) -> void:
 	if walking:
 		_play("walk", 0.15, _walk_speed)
 	else:
-		_play("talk" if talking else "idle", 0.35)
+		_play(gesture if gesture != "" else (talk_anim if talking else rest_anim), 0.35, anim_speed)
 		if cam != null:
 			var d := cam.global_position - global_position
 			rotation.y = lerp_angle(rotation.y, atan2(d.x, d.z), minf(1.0, delta * 6.0))
