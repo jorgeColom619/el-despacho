@@ -304,10 +304,13 @@ func _shell() -> void:
 	sb.cube(Vector3(X1 + 0.01 + t * 0.5, (y0 + y1) * 0.5, (Z0 + Z1) * 0.5), Vector3(t, y1 - y0, Z1 - Z0 + t * 2.0), sm)
 	sb.cube(Vector3(0, H + 0.11 + t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
 	sb.cube(Vector3(0, -0.11 - t * 0.5, (Z0 + Z1) * 0.5), Vector3(X1 - X0 + t * 2.0, t, Z1 - Z0 + t * 2.0), sm)
-	# pasillo: muros laterales, techo, suelo y fondo
+	# pasillo: muros laterales, techo, suelo y fondo. Acaban 2 cm por detrás de la pared del despacho:
+	# si llegaban a su mismo plano, el yeso y el papel pintado se peleaban y junto a la puerta
+	# salían franjas que parpadeaban
 	var cz0 := -9.0
-	var mid := (Z0 + cz0) * 0.5
-	var clen := Z0 - cz0 + t
+	var front := Z0 - 0.02
+	var mid := (front + cz0) * 0.5
+	var clen := front - cz0 + t
 	for sx in [-1.0, 1.0]:
 		sb.cube(Vector3(sx * (1.31 + t * 0.5), 1.5, mid - t * 0.5), Vector3(t, 3.8, clen), sm)
 	sb.cube(Vector3(0, 3.06 + t * 0.5, mid - t * 0.5), Vector3(2.62 + t * 2.0, t, clen), sm)

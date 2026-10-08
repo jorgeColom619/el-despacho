@@ -103,7 +103,8 @@ func _ready() -> void:
 		_check_scripts()
 		return
 	# texturas del despacho 3D: se preparan en segundo plano mientras se ve el menú
-	Tex3D.prewarm(Tex3D.default_specs(OfficeArt.THEMES.get(Perfil.office_theme(), OfficeArt.THEMES["clasico"]), Perfil.wood()))
+	if use_3d():
+		Tex3D.prewarm(Tex3D.default_specs(OfficeArt.THEMES.get(Perfil.office_theme(), OfficeArt.THEMES["clasico"]), Perfil.wood()))
 	for a in args:
 		if a.begins_with("--shot="):
 			debug_shot = a.substr(7)
@@ -228,8 +229,14 @@ func _show_office() -> void:
 	Sfx.loop_start("room", "room", -14.0, "Amb")
 
 
+## Despacho 3D o 2D clásico. En el navegador siempre el 2D: el 3D congela la página cerca de un
+## minuto la primera vez (compilación de shaders de WebGL, sin hilos)
+func use_3d() -> bool:
+	return Sfx.settings.get("view3d", true) and not OS.has_feature("web")
+
+
 func _make_office() -> void:
-	office = Office3D.new() if Sfx.settings.get("view3d", true) else Office.new()
+	office = Office3D.new() if use_3d() else Office.new()
 	if "main" in office:
 		office.main = self
 	office.request.connect(open_overlay)
@@ -240,7 +247,7 @@ func _make_office() -> void:
 func swap_office() -> void:
 	if office == null or not GS.active:
 		return
-	var want3d: bool = Sfx.settings.get("view3d", true)
+	var want3d := use_3d()
 	if (office.get("is_3d") == true) == want3d:
 		return
 	_make_office()

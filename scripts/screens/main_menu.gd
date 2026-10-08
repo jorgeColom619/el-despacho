@@ -46,7 +46,9 @@ func _ready() -> void:
 	_item("Tienda", func(): main.show_shop())
 	_item("Opciones", _open_settings)
 	_item("Créditos", _open_credits)
-	_item("Salir", func(): get_tree().quit())
+	# en el navegador salir solo dejaría la pantalla congelada: se cierra la pestaña
+	if not OS.has_feature("web"):
+		_item("Salir", func(): get_tree().quit())
 	var rec := float(Perfil.stats.get("record_anios", 0.0))
 	var bal := UI.lbl("%s Laureles  ·  %s Lingotes  ·  %d/%d logros%s" % [UI.num(Perfil.laureles), UI.num(Perfil.lingotes), Perfil.achievements.size(), Perfil.S.ACHIEVEMENTS.size(), ("  ·  Récord en modo infinito: %s años" % UI.num(rec, 1)) if rec > 0.0 else ""], UI.f_sans_m, 18, UI.GOLD_L)
 	bal.position = Vector2(150, 990)

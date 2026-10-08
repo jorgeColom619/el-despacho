@@ -26,7 +26,11 @@ func _menu() -> void:
 	v.add_child(UI.lbl("Pausa", UI.f_serif_b, 46, UI.CREAM, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UI.lbl(UI.date_long(GS.day), UI.f_sans_m, 17, UI.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UI.spacer(0, 10))
-	for spec in [["Continuar", "gold"], ["Guardar partida", "normal"], ["Opciones", "normal"], ["Guardar y salir al menú", "normal"], ["Salir del juego", "ghost"]]:
+	var specs := [["Continuar", "gold"], ["Guardar partida", "normal"], ["Opciones", "normal"], ["Guardar y salir al menú", "normal"]]
+	# en el navegador salir solo dejaría la pantalla congelada: se cierra la pestaña
+	if not OS.has_feature("web"):
+		specs.append(["Salir del juego", "ghost"])
+	for spec in specs:
 		var b := UI.btn(spec[0], spec[1], 21)
 		b.custom_minimum_size = Vector2(440, 54)
 		var label: String = spec[0]
