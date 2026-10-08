@@ -18,22 +18,9 @@ func _ready() -> void:
 	_slider(v, "Música", "music")
 	_slider(v, "Efectos", "sfx")
 	_slider(v, "Velocidad del texto", "text_speed", 0.5, 3.0)
-	# en el navegador solo hay despacho 2D y motor compatible: sin ajustes del 3D ni del motor gráfico
-	var web := OS.has_feature("web")
-	if not web:
-		_slider(v, "Sensibilidad del ratón", "mouse_sens", 0.2, 3.0)
+	_slider(v, "Sensibilidad del ratón", "mouse_sens", 0.2, 3.0)
 	_check(v, "Pantalla completa (F11)", "fullscreen")
 	_check(v, "Grano cinematográfico", "grain")
-	if not web:
-		_graphics(v)
-	var b := UI.btn("Aceptar", "gold", 20)
-	b.size_flags_horizontal = Control.SIZE_SHRINK_END
-	b.pressed.connect(func(): done.emit())
-	v.add_child(b)
-
-
-## Despacho 3D, calidad gráfica y motor gráfico (con el aviso de reinicio)
-func _graphics(v: Control) -> void:
 	_check(v, "Despacho en 3D (desactívelo en equipos lentos)", "view3d")
 	_option(v, "Calidad gráfica", "gfx", [["auto", "Automática (%s)" % Sfx.gfx_preset().capitalize()], ["baja", "Baja"], ["media", "Media"], ["alta", "Alta"], ["ultra", "Ultra"]])
 	_option(v, "Motor gráfico", "engine", [["auto", "Automático"], ["avanzado", "Avanzado (Forward+)"], ["compatible", "Compatible (sin tarjeta gráfica)"]])
@@ -63,6 +50,10 @@ func _graphics(v: Control) -> void:
 		rb.visible = cur != want
 	refresh.call()
 	set_meta("refresh", refresh)
+	var b := UI.btn("Aceptar", "gold", 20)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_END
+	b.pressed.connect(func(): done.emit())
+	v.add_child(b)
 
 
 func _slider(parent: Control, label: String, key: String, lo: float = 0.0, hi: float = 1.0) -> void:

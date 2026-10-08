@@ -198,9 +198,6 @@ func gfx_preset() -> String:
 
 ## Motor gráfico que debería usarse según las opciones ("forward_plus" o "gl_compatibility")
 func wanted_renderer() -> String:
-	# en el navegador solo existe el motor compatible (WebGL 2) y no se puede reiniciar el juego
-	if OS.has_feature("web"):
-		return "gl_compatibility"
 	match str(settings.get("engine", "auto")):
 		"avanzado":
 			return "forward_plus"
