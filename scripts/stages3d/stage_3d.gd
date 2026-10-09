@@ -1212,7 +1212,8 @@ func tag3d(title: String, sub: String, col: Color, pos: Vector3, width := 0.62) 
 	var v := UI.vbox(0)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	p.add_child(v)
-	v.add_child(UI.lbl(title, UI.f_sans_b, 40, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	# los nombres largos («El Observador Económico») en letra más pequeña, para que quepan en la placa
+	v.add_child(UI.lbl(title, UI.f_sans_b, 40 if title.length() <= 18 else (34 if title.length() <= 24 else 29), Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
 	if sub != "":
 		v.add_child(UI.lbl(sub, UI.f_sans_m, 28, Color(1, 1, 1, 0.85), HORIZONTAL_ALIGNMENT_CENTER))
 	var s := Sprite3D.new()

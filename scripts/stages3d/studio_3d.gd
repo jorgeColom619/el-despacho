@@ -27,7 +27,8 @@ func build() -> void:
 		"plat": Kit.mat(Color("161a24"), 0.3, 0.3),
 		"edge": Kit.emissive(Color(0.35, 0.6, 1.0), 2.2),
 		"desk": Kit.mat(Color("e9eef5"), 0.25, 0.1),
-		"desk_top": Kit.mat(Color("1b2233"), 0.15, 0.4),
+		# satinado: con un acabado de espejo, el foco de la entrevistadora dejaba manchas blancas junto a las tarjetas
+		"desk_top": Kit.mat(Color("1b2233"), 0.4, 0.15),
 		"black": Kit.mat(Color("121316"), 0.5, 0.3),
 		"truss": Kit.mat(Color("6c7078"), 0.35, 0.85),
 		"curtain": Kit.velvet(Color("12141c")),
