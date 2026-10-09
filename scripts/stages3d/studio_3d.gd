@@ -1,8 +1,9 @@
 extends "res://scripts/stages3d/stage_3d.gd"
 ## Plató de Canal 7 para las entrevistas: tarima circular con mesa curva, la entrevistadora enfrente, pantalla
 ## LED con el rótulo del canal y la ciudad detrás, cámaras de estudio con sus operadores, parrilla de focos y el
-## piloto de «EN EL AIRE». El presidente (la cámara) está sentado a la mesa; la pantalla de la mesa lleva
-## preguntas y respuestas. Expone la misma acción que la sala de prensa: ask(), stop_asking(), react(), burst().
+## piloto de «EN EL AIRE». El presidente (la cámara) está sentado a la mesa: las respuestas son tarjetas sobre ella
+## y la audiencia en directo sale en el monitor del plató. Expone la misma acción que la sala de prensa: ask(),
+## give_floor(), stop_asking(), react(), burst(), pov(), top_center() y monitor.
 
 const W := preload("res://scripts/data/world_data.gd")
 
@@ -11,7 +12,10 @@ const PLAT_H := 0.15
 const HOST := Vector3(0.38, PLAT_H, 1.78)
 
 var interviewer: Node3D
+## Monitor del plató con la audiencia en directo (lo dibuja el minijuego)
+var monitor: Control
 var _onair: MeshInstance3D
+var _yaw := 0.0
 var _m := {}
 var _rng := RandomNumberGenerator.new()
 
@@ -31,13 +35,17 @@ func build() -> void:
 		"chrome": Kit.chrome(),
 		"paper": Kit.mat(Color("f4f1e8"), 0.9),
 	}
+	eye = Vector3(0, PLAT_H + 1.2, 0.0)
+	_yaw = yaw_to(Vector3.ZERO, Vector3(HOST.x * 0.4, 0, HOST.z))
 	_plato()
 	_videowall()
 	_cameras()
 	_lights()
+	_monitor()
 	b.commit(world)
 	interviewer = person(W.CHARACTERS["periodista"]["look"], HOST, yaw_to(HOST, Vector3.ZERO), "table")
-	ui = pov_screen(Vector3(0, PLAT_H + 1.2, 0.0), yaw_to(Vector3.ZERO, Vector3(HOST.x * 0.4, 0, HOST.z)), Vector2i(1400, 640), 0.73)
+	time_strip(facing(Vector3(0.1, PLAT_H + 0.72, 1.02), eye), 0.5)
+	pov(false)
 
 
 func _plato() -> void:
@@ -129,7 +137,7 @@ func _cameras() -> void:
 		Kit.label(world, spec[1], UI.f_sans_b, 120, Color(1, 1, 1, 0.9), (cxf * Transform3D(Basis(), Vector3(0.152, 0.02, 0.0))).origin, Vector3(0, yaw + PI / 2.0, 0), 0.0015)
 		glow((cxf * Transform3D(Basis(), Vector3(0, 0.2, -0.28))).origin, 0.1, Color(1, 0.1, 0.05, 0.95))
 		var op_pos := base + Vector3(sin(yaw), 0, cos(yaw)) * 0.75
-		var op := person(rand_look(_rng), op_pos, yaw_to(op_pos, target), "", false)
+		var op := person(rand_look(_rng), op_pos, yaw_to(op_pos, target), "", false, 3)
 		op.rest_anim = "operate"
 
 
@@ -162,19 +170,71 @@ func _lights() -> void:
 	Kit.label(world, "EN EL AIRE", UI.f_sans_b, 64, Color.WHITE, Vector3(-3.4, 3.3, 5.94), Vector3(0, PI, 0), 0.002)
 
 
+
+# ------------------------------------------------------------------ primera persona
+
+## Centro y normal de la mesa delante del presidente (donde se reparten las tarjetas)
+func top_center() -> Vector3:
+	return Vector3(0.05, PLAT_H + 0.708, 0.62)
+
+
+func top_normal() -> Vector3:
+	return Vector3.UP
+
+
+## Sentado a la mesa: mirando las tarjetas (down) o a la entrevistadora
+func pov(down := true, at := Vector3.INF) -> void:
+	cam_pos = eye
+	var fwd := Vector3(sin(_yaw), 0, cos(_yaw))
+	if at != Vector3.INF:
+		cam_look = eye + (at - eye).normalized() * 10.0
+	else:
+		var pitch := deg_to_rad(21.0 if down else 4.0)
+		cam_look = eye + (fwd * cos(pitch) - Vector3.UP * sin(pitch)) * 10.0
+	cam.fov = 62.0
+	cam_speed = 2.2
+	sway = 0.0
+	look_range = Vector2(5.0, 3.0) if down else Vector2(8.0, 4.0)
+
+
+## Monitor de la audiencia en directo, en un pie a la derecha de la mesa
+func _monitor() -> void:
+	var c := Vector3(-0.95, PLAT_H + 1.05, 1.75)
+	var xf := facing(c, eye)
+	b.box(xf * Transform3D(Basis(), Vector3(0, 0, -0.035)), Vector3(0.74, 0.46, 0.05), _m["black"], 1.0, 0.012)
+	b.segment(xf * Vector3(0, -0.2, -0.05), Vector3(c.x, PLAT_H, c.z + 0.05), 0.025, _m["black"], 10)
+	b.cyl(Vector3(c.x, PLAT_H + 0.02, c.z + 0.05), 0.2, 0.22, 0.04, _m["black"], Vector3.ZERO, 20)
+	monitor = screen(Vector2i(800, 460), xf, 0.7, Color(0.02, 0.03, 0.06), 1.15)
+
+
 # ------------------------------------------------------------------ acción (la misma que la sala de prensa)
 
 func ask() -> Node3D:
 	return interviewer
 
 
+func give_floor(_j: Node3D) -> Node3D:
+	return interviewer
+
+
+func raise_hands(_n: int) -> Array:
+	return []
+
+
 func stop_asking() -> void:
 	interviewer.talking = false
 
 
-## La entrevistadora reacciona a la respuesta (en el plató no hay fotógrafos)
-func react(s: float) -> void:
-	interviewer.mood = 0.3 if s >= 4 else (-0.3 if s < 0 else 0.0)
+## La entrevistadora reacciona a la respuesta: asiente, se ríe o se cruza de brazos (en el plató no hay fotógrafos)
+func react(s: float, tone := "") -> void:
+	interviewer.mood = 0.35 if s >= 4 else (-0.4 if s < 0 else 0.0)
+	interviewer.anger = 0.3 if s < -2 else 0.0
+	if tone == "humor" and s >= 3:
+		gesture(interviewer, "sit_table_laugh", 1.8)
+	elif s >= 4:
+		gesture(interviewer, "sit_table_nod", 1.6)
+	elif s < 0:
+		gesture(interviewer, "sit_table_cross", 2.4)
 
 
 func burst(_n: int) -> void:

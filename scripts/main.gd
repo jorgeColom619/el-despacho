@@ -38,7 +38,7 @@ const TIPS := {
 	"doc": "Arrastre uno de los sellos sobre el papel para decidir. Active la lupa (tecla L) y pásela por el anexo: la letra pequeña esconde trampas... y a veces corrupción.",
 	"advisor": "Cada opción muestra sus efectos previstos (▲ mejora, ▼ empeora). Puede pulsar 1-4 para elegir. Si hay cuenta atrás y se agota, el ministro decidirá por usted.",
 	"call": "Atienda las llamadas antes de que dejen de sonar: una llamada perdida enfría la relación con ese país.",
-	"nego": "Lleve el marcador hacia la derecha (a su favor) sin agotar la paciencia ni el ánimo de su interlocutor. «Cerrar trato» solo funciona dentro de la zona verde. Las contraofertas son una salida segura.",
+	"nego": "Arrastre su oferta por la regla: en verde la aceptarán, en ámbar su límite está en esa franja y en rojo la rechazarán. Tiene tres intentos y tres comodines de un solo uso; aceptar su propuesta es la salida segura.",
 	"crisis": "Arrastre las unidades del panel derecho a las regiones en rojo. Puede redistribuirlas arrastrándolas de nuevo o retirarlas con clic derecho. Algunas unidades tienen efectos secundarios en la opinión pública.",
 	"vote": "Antes de votar, negocie con los grupos: enmiendas, inversión regional o presión. Necesita 176 votos a favor.",
 	"press": "Elija el tono de cada respuesta. Los medios hostiles castigan la evasión; el humor es una apuesta arriesgada. Si se queda callado, lo pagará.",
@@ -506,12 +506,13 @@ func _debug_start() -> void:
 			open_overlay("campaign", {})
 		"control":
 			open_overlay("control", {})
-		"controlreply":
+		"controlreply", "controlzasca":
 			open_overlay("control", {})
 			current_overlay.intro.queue_free()
 			current_overlay._next()
 			var ov = current_overlay
-			get_tree().create_timer(1.5).timeout.connect(func(): ov._answer(DB.P.DEBATE_REPLIES[0]))
+			var best := debug_open == "controlzasca"
+			get_tree().create_timer(1.5).timeout.connect(func(): ov._answer(ov.best_reply() if best else DB.P.DEBATE_REPLIES[0]))
 		"controlrun":
 			open_overlay("control", {})
 			current_overlay.intro.queue_free()

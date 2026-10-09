@@ -3,7 +3,9 @@ extends Node3D
 ## simplificados, un MultiMesh por modelo. Cada uno lleva su traje, tono de piel y color de pelo; cheer()
 ## hace botar a la bancada que aplaude.
 
-const SCENE := preload("res://art/characters/crowd.glb")
+## Se carga al montar la sala (no con preload): si el modelo no se ha importado, la sala sale sin público lejano en
+## vez de no poder abrirse
+const SCENE_PATH := "res://art/characters/crowd.glb"
 const SHADER := preload("res://shaders/crowd3d.gdshader")
 const W := preload("res://scripts/data/world_data.gd")
 ## Superficies de crowd.glb (un material por tipo de pieza, en el orden de crowd3d.gdshader)
@@ -14,7 +16,11 @@ var _mats: Array = []
 
 ## seats: [{"xf": Transform3D, "suit": Color, "f": bool}]
 func build(seats: Array, rng: RandomNumberGenerator) -> void:
-	var inst: Node = SCENE.instantiate()
+	var scene := load(SCENE_PATH) as PackedScene
+	if scene == null:
+		push_warning("No se ha podido cargar %s: hay que volver a importar el proyecto (Jugar.bat lo hace solo)." % SCENE_PATH)
+		return
+	var inst: Node = scene.instantiate()
 	var meshes := {}
 	for mi in inst.find_children("*", "MeshInstance3D", true, false):
 		meshes[String(mi.name)] = (mi as MeshInstance3D).mesh

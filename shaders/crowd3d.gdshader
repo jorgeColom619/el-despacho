@@ -37,7 +37,7 @@ void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	float amt = wp.x < 0.0 ? cheer_left : cheer_right;
 	float up = smoothstep(0.55, 1.0, VERTEX.y);
-	VERTEX.y += amt * abs(sin(TIME * 8.5 + float(INSTANCE_ID) * 2.39)) * 0.05 * up;
+	VERTEX.y += amt * abs(sin(TIME * 8.5 + float(INSTANCE_ID) * 2.39)) * 0.085 * up;
 }
 
 void fragment() {

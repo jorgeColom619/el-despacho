@@ -24,24 +24,39 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 - Los visitantes **entran por la puerta** y caminan hasta tu mesa; el retrato oficial que cuelga sobre
   la chimenea es el tuyo.
 - Los paneles del despacho siguen siendo los mismos (en 2D, por encima de la sala). Los cuatro minijuegos
-  de hablar y negociar son **en 3D y en primera persona**, sin paneles 2D: su interfaz va en una
-  **pantalla dentro de la escena** (el monitor del atril, la tableta de la mesa...) que se usa con el ratón:
-  - **Rueda de prensa**: hablas desde el atril, ante las filas de periodistas, los fotógrafos con sus
-    flashes y las cámaras de televisión; el periodista que pregunta alza la mano y las preguntas y
-    respuestas salen en el monitor del atril. El discurso a la nación se ve por televisión desde el fondo
-    de la sala, contigo en el atril.
-  - **Entrevista**: en el plató de Canal 7, sentado frente a la entrevistadora, con las cámaras, los
-    focos, el cartel de «En el aire» y la pantalla gigante detrás; las preguntas, en el monitor de la mesa.
-  - **Negociaciones**: sentado a la mesa, miras al otro líder (con sus asesores, sus banderas y su placa)
-    por encima de tu tableta, donde haces la oferta; si no hay acuerdo, se levanta y se va. En las
-    **cumbres**, mesa redonda con los tres líderes: eliges con quién hablas haciendo clic en él (o en su
-    tarjeta) y un foco lo ilumina.
-  - **Sesión de control en el Congreso**: hablas desde la tribuna del hemiciclo (con la Mesa, la galería
-    y unos 330 diputados). Cuando pregunta el líder de la oposición, la cámara le enfoca en pie en su
-    escaño; luego vuelves a tu atril, donde salen la pregunta, el tiempo y tus tres réplicas. Al
-    contestar se te ve de espaldas en la tribuna, por encima del hombro, frente al hemiciclo. Los dos
-    marcadores bajo la galería muestran la pregunta, quién tiene la palabra, cómo ha caído la réplica y
-    el combo, y aplaude la bancada que gana el turno.
+  de hablar y negociar son **en 3D y en primera persona, sin ventanas ni monitores con las opciones**: se
+  eligen **cosas de la propia escena** con el ratón (o con las teclas 1, 2, 3...), lo que dicen los personajes
+  sale en **subtítulos**, la pregunta que hay que contestar queda escrita arriba, el tiempo es una **luz en el
+  borde del atril** que se apaga y, al acabar, un rótulo pequeño abajo resume el resultado. Al mover el ratón la
+  cámara mira un poco hacia él.
+  - **Rueda de prensa**: desde el atril, ante los periodistas, los fotógrafos con sus flashes y las cámaras de
+    televisión. **Tres periodistas alzan la mano** con la acreditación de su medio encima (roja si es hostil,
+    verde si es afín, gris si es neutral) y **das la palabra haciendo clic en uno**: los hostiles castigan las
+    evasivas y aplauden ir al ataque, los afines te lo ponen fácil. Las respuestas son **tarjetas sobre el
+    atril**, cada una con su tono (sincero, evasivo, firme, con humor, al ataque); la sala asiente, se ríe o
+    murmura, y la reacción de la opinión pública sale en el monitor de la tarima. El discurso a la nación se ve
+    por televisión desde el fondo de la sala, contigo en el atril.
+  - **Entrevista**: en el plató de Canal 7, sentado frente a la entrevistadora, con las cámaras, los focos, el
+    cartel de «En el aire» y la pantalla gigante detrás. Las respuestas son tarjetas sobre la mesa; ella asiente,
+    se ríe o se cruza de brazos, y la audiencia en directo sale en el monitor del plató.
+  - **Negociaciones**: sentado a la mesa frente al otro líder (con sus asesores, sus banderas y su placa). La
+    oferta se fija **arrastrando la pluma por la regla del tratado**, un papel en una carpeta de cuero sobre la
+    mesa (también con la rueda del ratón o ← →), y **el otro reacciona en directo**: sonríe en verde, frunce el
+    ceño en ámbar y se cruza de brazos en rojo. **Se propone con el sello** (deja su marca en el tratado; él lo
+    lee y asiente o niega), **su propuesta es un cartel de su lado de la mesa** que se firma con un clic y los
+    comodines son **objetos de la mesa**: la condecoración en su estuche (halagar), el dosier «Confidencial»
+    (presionar) y un regalo (ofrecer algo a cambio), que al usarlos se deslizan hasta él. Con acuerdo firma y
+    te tiende la mano entre flashes; sin acuerdo, se levanta y se va. En las **cumbres**, mesa redonda con los
+    tres líderes, una fila de la regla para cada uno, y eliges a quién dirigirte haciendo clic en él (un foco lo
+    ilumina).
+  - **Sesión de control en el Congreso**: desde la tribuna del hemiciclo (con la Mesa, la galería y unos 330
+    diputados). La presidenta de la Cámara da la palabra y **el líder de la oposición se pone en pie y te señala**
+    mientras pregunta; luego miras tu atril, donde esperan **tres tarjetas con las réplicas** y la **chuleta del
+    gabinete** (qué réplica va mejor contra cada tipo de ataque) en una esquina. Al contestar se te ve de espaldas
+    en la tribuna; si la réplica es buena, **¡ZASCA!**: tu bancada se pone en pie, aplaude y alza los brazos y el
+    resto del hemiciclo bota en sus escaños; si es mala, la oposición se ríe y abuchea. La presidenta pide silencio
+    con el mazo y los marcadores bajo la galería llevan la pregunta, quién tiene la palabra, el **aplausómetro** y
+    el combo.
 - En **Opciones** puedes volver al despacho 2D clásico, ajustar la sensibilidad del ratón y activar
   los **gráficos 3D reducidos** (se activan solos en equipos sin aceleración gráfica, como máquinas virtuales).
 
@@ -72,7 +87,10 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 
 - Necesitas **[Godot 4.7](https://godotengine.org/download)** (versión estándar, no .NET).
 - Abre `project.godot` con Godot y pulsa **F5**. En Windows basta con hacer doble clic en
-  `Jugar.bat`: busca Godot en `%USERPROFILE%\Godot\` y en la carpeta de Descargas.
+  `Jugar.bat`: busca Godot en `%USERPROFILE%\Godot\` y en la carpeta de Descargas, y antes de jugar importa
+  los recursos si hay alguno nuevo o cambiado (por ejemplo, personajes regenerados con Blender). Si abres el
+  juego de otra forma después de cambiar un modelo, ábrelo una vez en el editor de Godot (o ejecuta
+  `godot --headless --path . --import`): sin eso se usan los modelos importados antes y faltan animaciones.
 - **F11**: pantalla completa · **Espacio**: pausa · **1 / 2 / 3**: velocidad · **Esc**: menú.
 - Usa el renderizador *Compatibility*, así que funciona incluso en equipos sin tarjeta gráfica dedicada.
 
@@ -179,14 +197,20 @@ a su sustituto entre tres candidatos.
   `player.gd` (primera persona, coger y lanzar), `visitor_3d.gd`, `interactable.gd` y `kit.gd`
   (geometría, materiales y texturas generadas por código). Sombreadores en `shaders/*3d.gdshader`.
 - Para capturas del 3D: `godot --path . -- --shot=office --cam=x,y,z,giro,inclinación`.
-- `scripts/stages3d/` — los escenarios 3D de los minijuegos: `stage_3d.gd` (base: cámara, personajes, luces
-  y las pantallas con interfaz dentro de la escena, `screen()` / `pov_screen()`), `press_room_3d.gd`, `studio_3d.gd`,
-  `nego_room_3d.gd`, `congress_3d.gd` y `crowd_3d.gd` (público lejano). Capturas:
+- `scripts/stages3d/` — los escenarios 3D de los minijuegos: `stage_3d.gd` (base: cámara, personajes, luces,
+  objetos que se pulsan con el ratón `add_pick()`, tarjetas `deal_cards()`, subtítulos `say()`, cita `caption()`,
+  golpes de efecto `big_text()`, luz del tiempo `time_strip()`, rótulo final `end_card()` y pantallas dentro de la
+  escena `screen()`), `card_3d.gd` (las tarjetas), `press_room_3d.gd`, `studio_3d.gd`, `nego_room_3d.gd`,
+  `congress_3d.gd` y `crowd_3d.gd` (público lejano). Capturas:
   `godot --path . -- --shot=office --open=pressrun --stageshot=captura.png` (también `speech`, `nego`,
-  `summit`, `control`, `controlrun`, `controlreply`, `interviewrun`); con `--stageclick=x,y,fotograma`
-  se simula un clic en ese punto de la captura.
+  `summit`, `control`, `controlrun`, `controlreply`, `controlzasca`, `interviewrun`); con
+  `--stageclick=x,y,fotograma` (se puede repetir) se simula un clic en ese punto de la captura, con
+  `--stagekey=n,fotograma` la tecla n, con `--stagemouse=x,y` el ratón queda quieto ahí y con
+  `--stageframes=f1,f2,...` sale una hoja con varias capturas de la misma partida.
 - `tools/blender/gen_characters.py` — genera los personajes (`art/characters/visitor.glb`, con sus
-  animaciones) y los diputados lejanos (`crowd.glb`) con Blender 5.2.
+  animaciones y los gestos de los escenarios: señalar, reírse, celebrar, abuchear, el atril, asentir, negar,
+  cruzarse de brazos, leer, firmar, tender la mano, el mazo...) y los diputados lejanos (`crowd.glb`) con
+  Blender 5.2. `PREVIEW_ONLY=stage PREVIEW_SET=gestos` saca la hoja de gestos.
 - `scripts/overlays/` — cada minijuego y panel.
 - `scripts/data/scenarios_data.gd` — escenarios iniciales y tramas; `events_tramas.gd`, `events_extra.gd`
   y `events_meme.gd` — eventos de las tramas, eventos adicionales y modo meme.

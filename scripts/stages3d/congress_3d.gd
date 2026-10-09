@@ -5,6 +5,9 @@ extends "res://scripts/stages3d/stage_3d.gd"
 ## filas son personajes completos; las de atrás, público ligero (crowd_3d.gd).
 ## La Mesa queda en z < 0; el hemiciclo se abre hacia +z. Mirando desde la Mesa, el Gobierno se sienta a la
 ## izquierda de la pantalla (x > 0) y la oposición a la derecha (x < 0).
+## La sesión de control se juega desde la tribuna: las réplicas son tarjetas sobre el atril (con la chuleta del
+## gabinete en una esquina y la luz del tiempo de palabra en el borde), el líder de la oposición se pone en pie y
+## señala, las bancadas aplauden, se ponen en pie o abuchean, y la presidenta de la Cámara pide silencio con el mazo.
 
 const Crowd3D := preload("res://scripts/stages3d/crowd_3d.gd")
 
@@ -29,8 +32,9 @@ const OPP_A := PI - 0.8
 ## Tribuna de oradores y sitio del presidente detrás del atril
 const TRIB_Z := -0.5
 const SPEAKER := Vector3(0, 0.3, -0.8)
-## Segundos del plano del contrincante preguntando, antes de volver al atril para elegir la réplica
-const OPP_SHOT := 2.4
+## Tablero del atril, inclinado hacia el orador: aquí van las tarjetas
+const TOP_XF := Transform3D(Basis(Vector3.RIGHT, -0.26), Vector3(0, 1.47, -0.28))
+const TOP_SIZE := Vector3(1.1, 0.04, 0.58)
 
 var gov_color := Color("e2574c")
 var opp_color := Color("2f6fd6")
@@ -39,15 +43,15 @@ var opp_look: Dictionary = {}
 ## El presidente (en la tribuna) y el líder de la oposición (en su escaño): exponen talking / mood / anger
 var me: Node3D
 var opp: Node3D
-## Marcadores del hemiciclo (dos pantallas grandes con lo mismo): pregunta, quién habla, resultado
+## Presidenta de la Cámara, en el centro de la Mesa
+var chair_pres: Node3D
+## Marcadores del hemiciclo (dos pantallas grandes con lo mismo): pregunta, quién habla, aplausómetro
 var board: Control
-var _pov := []
-var _turn_id := 0
 var deputies_gov: Array = []
 var deputies_opp: Array = []
 var crowd
+var _opp_seat := Vector3.ZERO
 var _cheer_t := 0.0
-var _cheer_gov := true
 var _rng := RandomNumberGenerator.new()
 var _m := {}
 
@@ -80,6 +84,7 @@ func build() -> void:
 		"black": Kit.mat(Color("141416"), 0.45, 0.3),
 		"lamp": Kit.emissive(Color(1.0, 0.86, 0.62), 3.0),
 	}
+	eye = SPEAKER + Vector3(0, 1.62, 0)
 	_floor_and_tiers()
 	_desks_and_seats()
 	_walls_and_gallery()
@@ -89,15 +94,24 @@ func build() -> void:
 	_lights()
 	b.commit(world)
 	_boards()
-	# el atril de la tribuna lleva la pantalla del minijuego; se empieza con un plano general desde la
-	# galería y la cámara baja hasta los ojos del presidente
-	ui = pov_screen(SPEAKER + Vector3(0, 1.62, 0), 0.0, Vector2i(1400, 580), 0.73, 11.0)
-	_pov = [cam_pos, cam_look]
+	time_strip(facing(TOP_XF * Vector3(0, 0.035, TOP_SIZE.z * 0.5 - 0.012), eye), 0.62)
+	shade_top = 0.45
+	shade_bottom = 0.5
 	wide()
-	get_tree().create_timer(1.3).timeout.connect(func():
-		if is_inside_tree() and _turn_id == 0:
-			cam_speed = 1.4
-			pov())
+
+
+## Centro y normal del tablero del atril (donde se reparten las tarjetas)
+func top_center() -> Vector3:
+	return TOP_XF * Vector3(0, TOP_SIZE.y * 0.5, 0.05)
+
+
+func top_normal() -> Vector3:
+	return TOP_XF.basis.y.normalized()
+
+
+## Punto del tablero del atril (x: hacia la izquierda del orador; z: hacia el hemiciclo)
+func top_point(x: float, z: float) -> Vector3:
+	return TOP_XF * Vector3(x, TOP_SIZE.y * 0.5, z)
 
 
 # ------------------------------------------------------------------ geometría curva
@@ -284,6 +298,11 @@ func _walls_and_gallery() -> void:
 	b.molding(mw * Transform3D(Basis(), Vector3(0, 2.17, 0)), -WALL_R, WALL_R, Kit.PROFILE_RAIL, _m["gold"])
 	_painting(Transform3D(Basis(), Vector3(0, 5.3, MESA_Z + 0.06)))
 	for sx in [-1.0, 1.0]:
+		# paredes laterales entre el hemiciclo y el muro de la Mesa (se ven en los planos de las bancadas)
+		var sw := Transform3D(Basis(Vector3.UP, -PI / 2.0 * sx), Vector3(sx * WALL_R, 0, MESA_Z * 0.5))
+		b.rects(sw, [Rect2(MESA_Z * 0.5, 0, -MESA_Z, 2.2)], _m["panel"], 1.0)
+		b.rects(sw, [Rect2(MESA_Z * 0.5, 2.2, -MESA_Z, CEIL - 2.2)], _m["plaster"], 2.0)
+		b.molding(sw * Transform3D(Basis(), Vector3(0, 2.17, 0)), MESA_Z * 0.5, -MESA_Z * 0.5, Kit.PROFILE_RAIL, _m["gold"])
 		flag_pole(Vector3(sx * 4.4, 0.6, MESA_Z + 0.5), "valdoria", 0.0 if sx > 0 else PI, 3.0)
 		# columnas pareadas a los lados del cuadro
 		for dx in [5.6, 6.4]:
@@ -346,16 +365,34 @@ func _mesa_and_tribune() -> void:
 	b.box(Transform3D(Basis(), Vector3(0, 1.2 + 0.75, dz)), Vector3(5.8, 0.05, 0.8), _m["wood"], 1.0, 0.012, 2)
 	for k in 7:
 		b.frame(Transform3D(Basis(), Vector3(-2.4 + k * 0.8, 1.57, dz + 0.355)), 0.6, 0.5, Kit.FRAME_PANEL, _m["gold"])
+	# el mazo de la presidenta, en la mesa
+	var gy := 1.2 + 0.775
+	b.cyl(Vector3(0.36, gy + 0.012, dz - 0.12), 0.05, 0.055, 0.024, _m["dark"], Vector3.ZERO, 20)
+	b.segment(Vector3(0.22, gy + 0.03, dz - 0.18), Vector3(0.42, gy + 0.03, dz - 0.04), 0.009, _m["wood"], 8)
+	b.cyl(Vector3(0.24, gy + 0.03, dz - 0.17), 0.026, 0.026, 0.11, _m["wood"], Vector3(0, 0.6, PI / 2.0), 14)
 	# tribuna de oradores, delante de la Mesa: el presidente habla desde aquí
 	var tz := TRIB_Z
 	b.cube(Vector3(0, 0.15, tz - 0.1), Vector3(1.6, 0.3, 1.2), _m["dark"])
 	b.box(Transform3D(Basis(), Vector3(0, 0.3 + 0.55, tz + 0.25)), Vector3(1.0, 1.1, 0.5), _m["wood"], 1.0, 0.02, 2)
-	b.box(Transform3D(Basis(Vector3.RIGHT, 0.25), Vector3(0, 1.43, tz + 0.2)), Vector3(1.1, 0.05, 0.6), _m["wood"], 1.0, 0.012, 2)
+	# frente y costados hasta el tablero inclinado
+	b.box(Transform3D(Basis(), Vector3(0, 1.47, -0.02)), Vector3(1.04, 0.16, 0.04), _m["wood"], 1.0, 0.01)
+	for sx in [-1.0, 1.0]:
+		b.box(Transform3D(Basis(Vector3.RIGHT, -0.26), Vector3(sx * 0.51, 1.43, -0.27)), Vector3(0.04, 0.1, 0.56), _m["wood"], 1.0, 0.01)
+	b.box(TOP_XF, TOP_SIZE, _m["wood"], 1.0, 0.012, 2)
+	b.box(TOP_XF * Transform3D(Basis(), Vector3(0, TOP_SIZE.y * 0.5 + 0.001, 0.0)), Vector3(0.94, 0.002, 0.5), Kit.pbr("velvet", {}, 0.3, 0.97, Color("1f3b2c"), 0.25))
+	# canto dorado para apoyar los papeles
+	b.box(TOP_XF * Transform3D(Basis(), Vector3(0, TOP_SIZE.y * 0.5 + 0.012, -TOP_SIZE.z * 0.5 + 0.02)), Vector3(1.0, 0.022, 0.016), _m["gold"], 1.0, 0.006)
 	star(Transform3D(Basis(), Vector3(0, 0.9, tz + 0.505)), 0.16, 0.07, _m["gold"], 8)
-	# micrófonos a los lados de la pantalla del atril
-	for sx in [-0.48, 0.48]:
-		var a := Vector3(sx, 1.45, tz + 0.3)
-		b.segment(a, a + Vector3(-sx * 0.12, 0.26, -0.16), 0.008, _m["black"], 8)
+	# micrófonos de cuello de cisne en las esquinas del atril
+	for sx in [-0.46, 0.46]:
+		var a := TOP_XF * Vector3(sx, TOP_SIZE.y * 0.5, 0.22)
+		var mid := a + Vector3(-sx * 0.05, 0.12, 0.0)
+		var tip := a + Vector3(-sx * 0.12, 0.17, -0.1)
+		b.cyl(a + Vector3(0, 0.01, 0), 0.02, 0.024, 0.02, _m["black"])
+		b.segment(a, mid, 0.005, _m["black"], 8)
+		b.segment(mid, tip, 0.005, _m["black"], 8)
+		b.sphere(tip, 0.014, Kit.mat(Color("101012"), 0.9), 10, 6, Vector3(1, 1, 1.6))
+		glow(a + Vector3(0, 0.025, 0), 0.025, Color(1, 0.2, 0.15, 0.9))
 	# mesa de los taquígrafos
 	b.box(Transform3D(Basis(), Vector3(0, 0.36, 0.75)), Vector3(1.8, 0.72, 0.7), _m["wood"], 1.0, 0.015, 2)
 	b.box(Transform3D(Basis(), Vector3(0, 0.74, 0.75)), Vector3(1.9, 0.04, 0.78), _m["wood"], 1.0, 0.01)
@@ -455,8 +492,11 @@ func _people() -> void:
 				continue
 			var gov: bool = a < PI * 0.5
 			if i < NEAR_ROWS:
-				var d := person(rand_look(_rng), pos, yaw, "sit", false)
+				var d := person(rand_look(_rng), pos, yaw, "sit", false, 2 + i)
 				d.rest_anim = ["sit", "sit_table", "sit_write", "sit"][_rng.randi() % 4]
+				# al ponerse en pie da un paso hacia el pupitre (si no, se metería en el escaño)
+				d.set_meta("seat", pos)
+				d.set_meta("stand", pos + Vector3(-cos(a), 0, -sin(a)) * 0.24)
 				(deputies_gov if gov else deputies_opp).append(d)
 			else:
 				far.append({"xf": Transform3D(Basis(Vector3.UP, yaw), pos), "suit": Color(gov_suits[_rng.randi() % gov_suits.size()]), "f": _rng.randf() < 0.42})
@@ -472,27 +512,34 @@ func _people() -> void:
 	crowd = Crowd3D.new()
 	world.add_child(crowd)
 	crowd.build(far, _rng)
-	# el presidente en la tribuna y el líder de la oposición en su escaño de la primera fila
+	# el presidente en la tribuna, con las manos en el atril, y el líder de la oposición en su escaño
 	me = person(pres_look, SPEAKER, 0.0, "")
-	opp = person(opp_look, _p(row_r(0), opp_a, row_h(0)), atan2(-cos(opp_a), -sin(opp_a)), "sit")
+	me.rest_anim = "lectern"
+	me.talk_anim = "lectern_talk"
+	_opp_seat = _p(row_r(0), opp_a, row_h(0))
+	opp = person(opp_look, _opp_seat, atan2(-cos(opp_a), -sin(opp_a)), "sit")
+	opp.set_meta("seat", _opp_seat)
+	opp.set_meta("stand", _opp_seat + Vector3(-cos(opp_a), 0, -sin(opp_a)) * 0.26)
 	# la Mesa: presidenta de la Cámara y secretarios, con sus sillones
 	for k in 5:
 		var x := -2.0 + k * 1.0
 		var y := 1.2 if absi(k - 2) <= 1 else 0.6
 		var z := MESA_Z + 0.75 if y > 1.0 else MESA_Z + 1.6
 		_seat(Vector3(x, y, z), -PI / 2.0, false)
-		var p := person(rand_look(_rng), Vector3(x, y, z), 0.0, "table", k == 2)
+		var p := person(rand_look(_rng), Vector3(x, y, z), 0.0, "table", k == 2, 3)
 		if absi(k - 2) > 1:
 			p.rest_anim = "sit_write"
+		if k == 2:
+			chair_pres = p
 	# taquígrafos (de espaldas al hemiciclo, mirando a la tribuna) y ujieres
 	for sx in [-0.45, 0.45]:
 		_seat(Vector3(sx, 0, 1.45), PI / 2.0, false)
-		person(rand_look(_rng), Vector3(sx, 0, 1.45), PI, "table", false).rest_anim = "sit_write"
+		person(rand_look(_rng), Vector3(sx, 0, 1.45), PI, "table", false, 3).rest_anim = "sit_write"
 	for sx in [-1.0, 1.0]:
 		var ul := rand_look(_rng)
 		ul["suit"] = "15171b"
 		ul["tie"] = "c9a55c"
-		var u := person(ul, Vector3(sx * 3.4, 0, -1.6), atan2(-sx, 1.0), "", false)
+		var u := person(ul, Vector3(sx * 3.4, 0, -1.6), atan2(-sx, 1.0), "", false, 3)
 		u.rest_anim = "idle"
 
 
@@ -520,13 +567,14 @@ func _lights() -> void:
 	spot(Vector3(0, CEIL - 0.6, 3.0), SPEAKER + Vector3(0, 1.5, 0), 3.0, 14.0, Color(1.0, 0.95, 0.86), not low, 16.0)
 	spot(Vector3(0, CEIL - 0.6, 5.0), Vector3(0, 1.4, MESA_Z + 1.0), 2.4, 40.0, Color(1.0, 0.93, 0.82), false, 16.0)
 	spot(Vector3(0, CEIL - 0.6, 3.0), Vector3(0, 5.0, MESA_Z), 1.8, 40.0, Color(1.0, 0.9, 0.75), false, 16.0)
+	# flexo sobre el atril: las tarjetas se leen bien
+	spot(SPEAKER + Vector3(0.0, 2.7, 0.1), top_center(), 0.8, 34.0, Color(1.0, 0.94, 0.84), false, 3.2)
 
 
-# ------------------------------------------------------------------ cámara y acción
+# ------------------------------------------------------------------ cámara
 
-## Marcadores colgados bajo la galería, a los dos lados, mirando a la tribuna
+## Marcadores colgados bajo la galería, a los dos lados, mirando a la tribuna (solo de ver)
 func _boards() -> void:
-	var eye := SPEAKER + Vector3(0, 1.6, 0)
 	var xfs := []
 	for a in [0.96, PI - 0.96]:
 		var p := _p(WALL_R - 1.55, a, GALLERY_Y - 0.85)
@@ -549,27 +597,45 @@ func wide() -> void:
 	cam.fov = 58.0
 	cam_speed = 1.1
 	sway = 0.04
+	look_range = Vector2.ZERO
 	me.visible = true
 
 
-## Los ojos del presidente en la tribuna, con la pantalla del atril y el hemiciclo delante
-func pov() -> void:
-	cam_pos = _pov[0]
-	cam_look = _pov[1]
-	cam.fov = 66.0
+## Los ojos del presidente en la tribuna. down: mirando las tarjetas del atril (con el hemiciclo arriba)
+func pov(down := true) -> void:
+	var pitch := deg_to_rad(20.0 if down else 6.0)
+	cam_pos = eye
+	cam_look = eye + (Vector3.BACK * cos(pitch) - Vector3.UP * sin(pitch)) * 10.0
+	cam.fov = 62.0
 	sway = 0.0
+	look_range = Vector2(5.0, 3.0) if down else Vector2(9.0, 4.0)
 	me.visible = false
 
 
-## Contraplano: el líder de la oposición de pie en su escaño, con su bancada detrás
+## Contraplano: el líder de la oposición de pie en su escaño, señalando, con su bancada detrás
 func shot_opp() -> void:
 	var head: Vector3 = opp.global_position + Vector3(0, 1.62, 0)
 	var to_trib := (SPEAKER - opp.global_position) * Vector3(1, 0, 1)
 	var side := to_trib.normalized().cross(Vector3.UP)
-	cam_pos = head + to_trib.normalized() * 2.5 + side * 0.7 + Vector3(0, 0.05, 0)
-	cam_look = head - Vector3(0, 0.25, 0)
-	cam.fov = 40.0
+	cam_pos = head + to_trib.normalized() * 2.6 + side * 0.75 + Vector3(0, 0.05, 0)
+	cam_look = head - Vector3(0, 0.3, 0)
+	cam.fov = 42.0
 	sway = 0.015
+	look_range = Vector2.ZERO
+	me.visible = true
+	cut()
+
+
+## Plano de reacción de una bancada (gov: la del Gobierno, a la izquierda vista desde la tribuna): las dos primeras
+## filas en pie o protestando y el resto del hemiciclo detrás
+func shot_bench(gov: bool) -> void:
+	var a := PI * (0.27 if gov else 0.73)
+	# desde el suelo del hemiciclo, en el lado de la otra bancada
+	cam_pos = Vector3(-signf(cos(a)) * 1.6, 1.7, 2.6)
+	cam_look = _p(row_r(1), a, row_h(1) + 0.95)
+	cam.fov = 52.0
+	sway = 0.02
+	look_range = Vector2.ZERO
 	me.visible = true
 	cut()
 
@@ -580,53 +646,138 @@ func shot_me() -> void:
 	cam_look = Vector3(-0.9, 1.2, 4.5)
 	cam.fov = 50.0
 	sway = 0.015
+	look_range = Vector2.ZERO
 	me.visible = true
 	cut()
 
 
-## Turno de palabra. "opp": el líder de la oposición se levanta y pregunta (plano de él) y luego se vuelve
-## a la tribuna para elegir la réplica. "me": el presidente responde desde el atril; el otro se sienta.
-func turn(who: String) -> void:
-	_turn_id += 1
-	var id := _turn_id
-	cam_speed = 2.5
-	if who == "opp":
-		opp.seat("")
-		opp.rotation.y = yaw_to(opp.global_position, SPEAKER)
-		me.rotation.y = yaw_to(SPEAKER, opp.global_position)
-		shot_opp()
-		get_tree().create_timer(OPP_SHOT).timeout.connect(func():
-			if id == _turn_id and is_inside_tree():
-				pov()
-				cut())
-	else:
-		me.rotation.y = 0.0
-		shot_me()
-		get_tree().create_timer(0.7).timeout.connect(func():
-			if is_instance_valid(opp):
-				opp.seat("sit")
-				opp.rotation.y = yaw_to(opp.global_position, Vector3.ZERO))
+# ------------------------------------------------------------------ acción
+
+## Pone en pie (o sienta) a un diputado de las primeras filas, con un paso hacia el pupitre
+func _stand(d: Node3D, up: bool) -> void:
+	if not is_instance_valid(d) or not d.has_meta("seat"):
+		return
+	var to: Vector3 = d.get_meta("stand") if up else d.get_meta("seat")
+	d.create_tween().tween_property(d, "global_position", to, 0.3).set_trans(Tween.TRANS_SINE)
 
 
-## Al acabar: de vuelta a la tribuna para ver el resultado en el atril
-func finish() -> void:
-	_turn_id += 1
-	pov()
-	cut()
-
-
-## Una bancada aplaude (gov = la del Gobierno) y la otra protesta
-func cheer(gov: bool) -> void:
-	_cheer_t = 1.8
-	_cheer_gov = gov
-	for d in deputies_gov:
-		d.gesture = "sit_clap" if gov else ""
-		d.talking = not gov and randf() < 0.4
+## El líder de la oposición se levanta, mira a la tribuna y señala al presidente
+func opp_ask() -> void:
+	opp.seat("")
+	_stand(opp, true)
+	opp.rotation.y = yaw_to(opp.get_meta("stand"), SPEAKER)
+	opp.mood = -0.2
+	opp.anger = 0.25
+	gesture(opp, "point")
+	me.rotation.y = yaw_to(SPEAKER, opp.get_meta("stand"))
+	# su bancada le jalea
 	for d in deputies_opp:
-		d.gesture = "" if gov else "sit_clap"
-		d.talking = gov and randf() < 0.4
+		if _rng.randf() < 0.3:
+			gesture(d, "sit_clap", randf_range(1.2, 2.2))
+		elif _rng.randf() < 0.3:
+			d.talking = true
+	_cheer_t = 2.0
+
+
+## El líder de la oposición se sienta (de mala gana si angry)
+func opp_sit(angry := false) -> void:
+	opp.gesture = ""
+	opp.talking = false
+	opp.seat("sit")
+	_stand(opp, false)
+	opp.rotation.y = yaw_to(_opp_seat, Vector3.ZERO)
+	opp.mood = -0.6 if angry else 0.0
+	opp.anger = 0.8 if angry else 0.0
+
+
+## El presidente contesta desde el atril, mirando al hemiciclo
+func me_reply() -> void:
+	me.rotation.y = 0.0
+	me.mood = 0.1
+	opp.gesture = ""
+
+
+## Reacción del hemiciclo a una réplica. kind: "zasca" (aplaude y se pone en pie el Gobierno), "ok" (murmullos y
+## algún aplauso), "boo" (la oposición se ríe y abuchea) o "silence" (el presidente se ha quedado en blanco)
+func react(kind: String) -> void:
+	_cheer_t = 2.6
+	var gov_win := kind in ["zasca", "ok", "win"]
+	for d in deputies_gov:
+		_react_one(d, kind, true)
+	for d in deputies_opp:
+		_react_one(d, kind, false)
+	match kind:
+		"zasca", "win":
+			crowd_cheer(0.0, 1.0)
+			opp_sit(true)
+			me.mood = 0.8
+			Sfx.play("cheer", -8.0)
+		"ok":
+			crowd_cheer(0.0, 0.35)
+			opp_sit(false)
+			me.mood = 0.3
+		"boo", "silence", "lose":
+			crowd_cheer(1.0, 0.0)
+			opp.anger = 0.0
+			opp.mood = 0.8
+			gesture(opp, "laugh", 2.0)
+			me.mood = -0.5
+	if not gov_win:
+		get_tree().create_timer(2.0).timeout.connect(func():
+			if is_instance_valid(opp) and opp.gesture == "":
+				opp_sit(false))
+
+
+func _react_one(d: Node3D, kind: String, gov: bool) -> void:
+	if not is_instance_valid(d):
+		return
+	var mine := gov == (kind in ["zasca", "ok", "win"])
+	var big := kind in ["zasca", "win", "boo", "lose"]
+	var r := _rng.randf()
+	d.talking = false
+	if mine:
+		if kind == "ok":
+			if r < 0.35:
+				gesture(d, "sit_clap", randf_range(1.0, 2.0))
+			return
+		# su bancada celebra: unos en pie aplaudiendo o con los brazos en alto, otros desde el escaño
+		if big and r < 0.42:
+			_stand(d, true)
+			gesture(d, "clap" if _rng.randf() < 0.6 else "cheer")
+		elif r < 0.75:
+			gesture(d, "sit_cheer" if kind in ["zasca", "win"] and _rng.randf() < 0.4 else "sit_clap")
+		d.mood = 0.6
+	else:
+		# la otra bancada protesta, se ríe o murmura
+		if kind in ["boo", "silence", "lose"]:
+			gesture(d, "sit_laugh" if r < 0.5 else "sit_protest")
+		elif big and r < 0.45:
+			gesture(d, "sit_protest")
+		elif r < 0.75:
+			d.talking = true
+		d.mood = -0.4
+
+
+## La presidenta de la Cámara pide silencio con el mazo (devuelve su cargo, para el subtítulo)
+func order() -> String:
+	if is_instance_valid(chair_pres):
+		gesture(chair_pres, "sit_table_gavel", 1.2)
+		chair_pres.mood = -0.2
+	for i in 3:
+		get_tree().create_timer(0.18 + i * 0.32).timeout.connect(func(): Sfx.play("gavel", -4.0 - i * 2.0))
+	return "Presidenta de la Cámara"
+
+
+## Al acabar: plano general y la bancada que gana en pie
+func finish(won: bool) -> void:
+	react("win" if won else "lose")
+	wide()
+	cam_speed = 0.8
+
+
+func crowd_cheer(left: float, right: float) -> void:
 	if crowd != null:
-		crowd.cheer(0.0 if gov else 1.0, 1.0 if gov else 0.0)
+		crowd.cheer(left, right)
 
 
 func _process(delta: float) -> void:
@@ -637,5 +788,7 @@ func _process(delta: float) -> void:
 			for d in deputies_gov + deputies_opp:
 				d.gesture = ""
 				d.talking = false
-			if crowd != null:
-				crowd.cheer(0.0, 0.0)
+				d.mood = 0.0
+				if not d.global_position.is_equal_approx(d.get_meta("seat")):
+					_stand(d, false)
+			crowd_cheer(0.0, 0.0)

@@ -40,6 +40,24 @@ var _mouth := 0.0
 var _mood := 0.0
 var _anger := 0.0
 var _walk_speed := 1.0
+## Animación pedida → la que tiene el modelo (todos los visitantes comparten el mismo visitor.glb)
+static var _alias := {}
+## Expresiones de la cara: índice de cada blend shape y último valor puesto
+var _shape_face: MeshInstance3D
+var _shape_idx := {}
+var _shape_val := {}
+## En reposo, la animación avanza cada `anim_every` fotogramas: la gente sentada al fondo de una sala no necesita más
+## y con el motor compatible cada personaje animado cuesta (su esqueleto mueve unas veinte piezas). Mientras habla,
+## gesticula o anda, en todos
+var anim_every := 1:
+	set(v):
+		anim_every = maxi(1, v)
+		_anim_phase = randi() % anim_every
+		if _anim != null:
+			_anim.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL if anim_every > 1 else AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE
+var _anim_acc := 0.0
+var _anim_phase := 0
+var _frame_i := 0
 
 
 func _ready() -> void:
@@ -212,15 +230,46 @@ func _process(delta: float) -> void:
 		if cam != null:
 			var d := cam.global_position - global_position
 			rotation.y = lerp_angle(rotation.y, atan2(d.x, d.z), minf(1.0, delta * 6.0))
+	if anim_every > 1 and _anim != null:
+		_anim_acc += delta
+		_frame_i += 1
+		if walking or talking or gesture != "" or (_frame_i + _anim_phase) % anim_every == 0:
+			_anim.advance(_anim_acc)
+			_anim_acc = 0.0
 	_update_face(delta)
 
 
 func _play(anim: String, blend: float, speed := 1.0) -> void:
 	if _anim == null:
 		return
+	var a := _resolve(anim)
 	_anim.speed_scale = speed
-	if _anim.current_animation != anim:
-		_anim.play(anim, blend)
+	if a != "" and _anim.current_animation != a:
+		_anim.play(a, blend)
+
+
+## Animación que se reproduce de verdad: si el modelo importado es de una versión anterior y no la tiene, la postura
+## más parecida (sin esto, cada personaje llenaba el registro de errores en cada fotograma y el juego se atascaba)
+func _resolve(anim: String) -> String:
+	if _alias.has(anim):
+		return _alias[anim]
+	var out := anim
+	if not _anim.has_animation(anim):
+		out = ""
+		var alts := ["idle"]
+		if anim.begins_with("sit_table"):
+			alts = ["sit_table", "sit", "idle"]
+		elif anim.begins_with("sit") or anim.begins_with("kneel"):
+			alts = ["sit", "idle"]
+		elif anim.begins_with("lectern") or anim in ["point", "laugh", "cheer"]:
+			alts = ["talk", "idle"]
+		for alt in alts:
+			if _anim.has_animation(alt):
+				out = alt
+				break
+		push_warning("visitor.glb no tiene la animación «%s» (se usa «%s»): hay que volver a importar el proyecto; Jugar.bat lo hace solo." % [anim, out])
+	_alias[anim] = out
+	return out
 
 
 func _update_face(delta: float) -> void:
@@ -248,7 +297,19 @@ func _update_face(delta: float) -> void:
 	_shape(&"surprise", surprise)
 
 
+## Solo se toca la expresión cuando cambia de verdad: cada cambio obliga a recalcular la malla de la cara, y en una
+## sala con decenas de personajes quietos eso costaba muchos fotogramas por segundo
 func _shape(n: StringName, v: float) -> void:
-	var i := _face.find_blend_shape_by_name(n)
-	if i >= 0:
-		_face.set_blend_shape_value(i, v)
+	if _face != _shape_face:
+		_shape_face = _face
+		_shape_idx.clear()
+		_shape_val.clear()
+	if not _shape_idx.has(n):
+		_shape_idx[n] = _face.find_blend_shape_by_name(n)
+	var i: int = _shape_idx[n]
+	if i < 0:
+		return
+	if absf(float(_shape_val.get(n, -1.0)) - v) < 0.004 and not (v == 0.0 and _shape_val.get(n, -1.0) != 0.0):
+		return
+	_shape_val[n] = v
+	_face.set_blend_shape_value(i, v)

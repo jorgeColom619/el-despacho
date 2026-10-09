@@ -1,7 +1,9 @@
 extends "res://scripts/stages3d/stage_3d.gd"
 ## Sala de prensa del Palacio: tarima con atril, micrófonos de los medios y banderas, fondo institucional,
 ## filas de periodistas, fotógrafos con flash y cámaras de televisión al fondo.
-## view = "podium": el presidente en el atril, mirando a la sala (rueda de prensa).
+## view = "podium": la rueda de prensa, en primera persona desde el atril. Varios periodistas alzan la mano con la
+## acreditación de su medio encima y se elige a quién dar la palabra haciendo clic en él; las respuestas son tarjetas
+## sobre el atril y la reacción de la opinión pública sale en el monitor de cortesía de la tarima.
 ## view = "tv": plano de televisión desde el fondo, con el presidente en el atril (discurso).
 
 const Crowd3D := preload("res://scripts/stages3d/crowd_3d.gd")
@@ -14,6 +16,9 @@ const Z1 := 14.0
 const DAIS_Z := 2.3
 const DAIS_H := 0.25
 const PODIUM := Vector3(0, DAIS_H, 1.05)
+## Tablero del atril, inclinado hacia el orador: aquí van las tarjetas
+const TOP_XF := Transform3D(Basis(Vector3.RIGHT, -0.24), Vector3(0, DAIS_H + 1.16, 0.98))
+const TOP_SIZE := Vector3(1.04, 0.05, 0.56)
 const ROW_Z := 4.3
 const ROW_STEP := 1.1
 const ROWS := 6
@@ -29,9 +34,11 @@ var pres_look: Dictionary = {}
 var president: Node3D
 var journalists: Array = []
 var photographers: Array = []
+## Monitor de cortesía de la tarima (rueda de prensa): el minijuego dibuja ahí la reacción de la opinión pública
+var monitor: Control
 var _cam_spots: Array = []
 var _asking: Node3D
-var _ask_t := 0.0
+var _raised: Array = []
 var _flash_cd := 1.0
 var _burst := 0
 var _burst_cd := 0.0
@@ -58,7 +65,9 @@ func build() -> void:
 		"rubber": Kit.mat(Color("0c0c0d"), 0.8),
 		"lamp": Kit.emissive(Color(1.0, 0.97, 0.9), 2.2),
 		"paper": Kit.mat(Color("f4f1e8"), 0.9),
+		"felt": Kit.pbr("velvet", {}, 0.3, 0.97, Color("1d2f52"), 0.25),
 	}
+	eye = Vector3(0, DAIS_H + 1.62, 0.42)
 	_room()
 	_dais()
 	_backdrop()
@@ -71,17 +80,45 @@ func build() -> void:
 	_photographers()
 	_tv_cameras()
 	_lights()
+	if view != "tv":
+		_monitor()
 	b.commit(world)
 	if view == "tv":
 		president = person(pres_look, Vector3(0, DAIS_H, 0.5), 0.0)
+		president.rest_anim = "lectern"
+		president.talk_anim = "lectern_talk"
 		cam.fov = 18.0
 		# entre las dos cámaras centrales de la tarima del fondo
 		cam_pos = Vector3(0.0, RISER_H + 1.6, RISER_Z + 0.45)
 		cam_look = Vector3(0, DAIS_H + 1.5, 0.7)
 		sway = 0.012
 	else:
-		# el presidente en el atril, mirando a la sala; la pantalla del atril lleva preguntas y respuestas
-		ui = pov_screen(Vector3(0, DAIS_H + 1.62, 0.42), 0.0, Vector2i(1400, 640), 0.73)
+		time_strip(facing(TOP_XF * Vector3(0, 0.04, TOP_SIZE.z * 0.5 - 0.012), eye), 0.6)
+		pov(false)
+
+
+## Centro, normal y puntos del tablero del atril (donde se reparten las tarjetas)
+func top_center() -> Vector3:
+	return TOP_XF * Vector3(0, TOP_SIZE.y * 0.5, 0.04)
+
+
+func top_normal() -> Vector3:
+	return TOP_XF.basis.y.normalized()
+
+
+## Los ojos del presidente en el atril. down: mirando las tarjetas (con la sala arriba); at: mirando a ese punto
+func pov(down := true, at := Vector3.INF) -> void:
+	cam_pos = eye
+	if at != Vector3.INF:
+		cam_look = eye + (at - eye).normalized() * 10.0
+	else:
+		var pitch := deg_to_rad(20.0 if down else 7.0)
+		cam_look = eye + (Vector3.BACK * cos(pitch) - Vector3.UP * sin(pitch)) * 10.0
+	# mirando a la sala, un poco más cerrado: los periodistas se ven más grandes
+	fov_target = 62.0 if down else 54.0
+	cam_speed = 2.2
+	sway = 0.0
+	look_range = Vector2(5.0, 3.0) if down else Vector2(9.0, 4.0)
 
 
 # ------------------------------------------------------------------ sala
@@ -114,7 +151,6 @@ func _room() -> void:
 	b.rects(front, [Rect2(X0, 0, w, H)], _m["wall"], 1.0)
 	b.molding(front * Transform3D(Basis(), Vector3(0, H - 0.175, 0)), X0, X1, Kit.PROFILE_CROWN, _m["ceiling"])
 	var back := Transform3D(Basis(Vector3.UP, PI), Vector3(0, 0, Z1))
-	var door := Rect2(-0.95, 0.0, 1.9, 2.5)
 	for r in [Rect2(X0, 0, -0.95 - X0, H), Rect2(0.95, 0, X1 - 0.95, H), Rect2(-0.95, 2.5, 1.9, H - 2.5)]:
 		b.rects(back, [Rect2(-(r as Rect2).end.x, r.position.y, r.size.x, r.size.y)], _m["wall"], 1.0)
 	for i in 2:
@@ -195,11 +231,13 @@ func _backdrop() -> void:
 func _podium() -> void:
 	var p := PODIUM
 	var xf := Transform3D(Basis(), p)
-	# cuerpo de caoba con frontal en ligera pendiente, tablero inclinado hacia el orador
+	# cuerpo de caoba con frontal en ligera pendiente y el tablero inclinado hacia el orador
 	b.box(xf * Transform3D(Basis(), Vector3(0, 0.03, 0)), Vector3(0.86, 0.06, 0.6), _m["dark"], 1.0, 0.01)
 	b.box(xf * Transform3D(Basis(Vector3.RIGHT, -0.06), Vector3(0, 0.58, 0.02)), Vector3(0.74, 1.04, 0.46), _m["podium"], 1.0, 0.015, 2)
-	b.box(xf * Transform3D(Basis(Vector3.RIGHT, 0.22), Vector3(0, 1.13, -0.03)), Vector3(0.84, 0.05, 0.56), _m["podium"], 1.0, 0.012, 2)
-	b.box(xf * Transform3D(Basis(Vector3.RIGHT, 0.22), Vector3(0, 1.16, -0.04)), Vector3(0.6, 0.012, 0.4), Kit.leather(Color("2a1a12")))
+	b.box(xf * Transform3D(Basis(), Vector3(0, 1.12, 0.2)), Vector3(0.8, 0.12, 0.06), _m["podium"], 1.0, 0.01)
+	b.box(TOP_XF, TOP_SIZE, _m["podium"], 1.0, 0.012, 2)
+	b.box(TOP_XF * Transform3D(Basis(), Vector3(0, TOP_SIZE.y * 0.5 + 0.001, 0.0)), Vector3(0.92, 0.002, 0.46), _m["felt"])
+	b.box(TOP_XF * Transform3D(Basis(), Vector3(0, TOP_SIZE.y * 0.5 + 0.012, -TOP_SIZE.z * 0.5 + 0.02)), Vector3(0.96, 0.022, 0.016), _m["gold"], 1.0, 0.006)
 	# escudo en el frontal
 	var front := xf * Transform3D(Basis(Vector3.RIGHT, -0.06), Vector3(0, 0.66, 0.26))
 	b.cylinder(front * Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3.ZERO), 0.15, 0.15, 0.02, _m["gold"], 32)
@@ -207,11 +245,10 @@ func _podium() -> void:
 	star(front * Transform3D(Basis(), Vector3(0, 0, 0.0195)), 0.09, 0.038, _m["gold"], 8)
 	Kit.label(world, "PRESIDENCIA DEL GOBIERNO", UI.f_sans_b, 30, Color("e9d9a8"), (front * Transform3D(Basis(), Vector3(0, -0.24, 0.0))).origin + Vector3(0, 0, 0.012), Vector3(-0.06, 0, 0), 0.0012)
 	# micrófonos de los medios y papeles del discurso (solo en el plano de televisión: en primera persona
-	# taparían la pantalla del atril)
+	# estarían delante de las tarjetas)
 	if view != "tv":
 		return
-	# papeles del discurso
-	var top := xf * Transform3D(Basis(Vector3.RIGHT, 0.22), Vector3(0, 1.19, -0.06))
+	var top := TOP_XF * Transform3D(Basis(), Vector3(0, TOP_SIZE.y * 0.5 + 0.003, -0.02))
 	b.box(top * Transform3D(Basis(Vector3.UP, 0.05), Vector3(-0.05, 0.0, 0.0)), Vector3(0.21, 0.004, 0.297), _m["paper"])
 	b.box(top * Transform3D(Basis(Vector3.UP, -0.08), Vector3(0.1, 0.004, 0.02)), Vector3(0.21, 0.004, 0.297), _m["paper"])
 	var cols := ["c62828", "1d4ed8", "f2c230", "eeeeee", "1f9d55", "15171b", "e5641a", "7a1fa2"]
@@ -231,6 +268,16 @@ func _podium() -> void:
 		b.segment(mid, tip, 0.007, _m["black"], 8)
 		b.cyl(tip, 0.012, 0.012, 0.06, _m["black"], Vector3(PI / 2.0 - 0.4, 0, 0), 10)
 		glow(a + Vector3(0, 0.012, 0.01), 0.02, Color(1, 0.2, 0.15, 0.9))
+
+
+## Monitor de cortesía en un pie, a la izquierda del orador, con la reacción de la opinión pública en directo
+func _monitor() -> void:
+	var c := Vector3(1.08, DAIS_H + 1.32, 2.3)
+	var xf := facing(c, eye)
+	b.box(xf * Transform3D(Basis(), Vector3(0, 0, -0.035)), Vector3(0.58, 0.36, 0.05), _m["black"], 1.0, 0.012)
+	b.segment(xf * Vector3(0, -0.15, -0.05), Vector3(c.x, DAIS_H, c.z + 0.05), 0.025, _m["black"], 10)
+	b.cyl(Vector3(c.x, DAIS_H + 0.02, c.z + 0.05), 0.2, 0.22, 0.04, _m["black"], Vector3.ZERO, 20)
+	monitor = screen(Vector2i(800, 460), xf, 0.54, Color(0.02, 0.03, 0.06), 1.15)
 
 
 # ------------------------------------------------------------------ público
@@ -260,7 +307,7 @@ func _audience() -> void:
 				if _rng.randf() < 0.12 + 0.05 * i:
 					continue
 				if r < NEAR_ROWS:
-					var j := person(rand_look(_rng), pos, PI, "sit", r == 0)
+					var j := person(rand_look(_rng), pos, PI, "sit", r == 0, 2 + mini(r, 1))
 					j.rest_anim = "sit_write" if _rng.randf() < 0.55 else "sit"
 					journalists.append(j)
 				else:
@@ -279,7 +326,7 @@ func _photographers() -> void:
 		var yaw := yaw_to(pos, face)
 		var look := rand_look(_rng)
 		look["tie"] = ""
-		var ph := person(look, pos, yaw, "", true)
+		var ph := person(look, pos, yaw, "", true, 2)
 		ph.rest_anim = s[1]
 		var fwd := Vector3(sin(yaw), 0, cos(yaw))
 		var right := Vector3(cos(yaw), 0, -sin(yaw))
@@ -319,7 +366,7 @@ func _tv_cameras() -> void:
 		glow((cxf * Transform3D(Basis(), Vector3(0, 0.15, -0.2))).origin, 0.07, Color(1, 0.1, 0.05, 0.9))
 		# operador detrás
 		var op_pos := Vector3(x, RISER_H, RISER_Z + 1.12)
-		var op := person(rand_look(_rng), op_pos, yaw_to(op_pos, target), "", false)
+		var op := person(rand_look(_rng), op_pos, yaw_to(op_pos, target), "", false, 3)
 		op.rest_anim = "operate"
 	# mangueras de cable por el suelo de la tarima
 	for i in 3:
@@ -340,35 +387,93 @@ func _lights() -> void:
 	if not low:
 		for z in [4.8, 7.4, 10.0]:
 			spot(Vector3(X1 - 0.3, 3.6, z), Vector3(2.0, 0.0, z + 1.2), 2.2, 38.0, Color(0.88, 0.93, 1.0), false, 10.0)
+	# en primera persona, una luz suave sobre el tablero del atril para leer las tarjetas
+	if view != "tv":
+		spot(eye + Vector3(0, 1.0, 0.1), top_center(), 0.7, 34.0, Color(1.0, 0.95, 0.86), false, 3.2)
 
 
 # ------------------------------------------------------------------ acción
 
-## Un periodista de las primeras filas alza la mano y pregunta (lo devuelve: expone talking / mood)
+## Alzan la mano n periodistas de las primeras filas, repartidos por la sala para que sus acreditaciones no se
+## tapen: uno por zona (izquierda y derecha, cerca y lejos del pasillo). Devuelve quiénes, de izquierda a derecha
+func raise_hands(n: int) -> Array:
+	stop_asking()
+	var zones := {}
+	for j in journalists:
+		var x: float = (j as Node3D).global_position.x
+		var k := ("L" if x > 0.0 else "R") + ("far" if absf(x) > 2.4 else "near")
+		if not zones.has(k):
+			zones[k] = []
+		zones[k].append(j)
+	var keys := zones.keys()
+	keys.shuffle()
+	var out := []
+	for k in keys:
+		if out.size() >= n:
+			break
+		var pool: Array = zones[k]
+		# antes las dos primeras filas (se ven mejor)
+		pool.sort_custom(func(a, b2): return (a as Node3D).global_position.z < (b2 as Node3D).global_position.z)
+		out.append(pool[_rng.randi() % mini(pool.size(), 4)])
+	# de izquierda a derecha en la pantalla (la izquierda es +X mirando desde el atril)
+	out.sort_custom(func(a, b2): return (a as Node3D).global_position.x > (b2 as Node3D).global_position.x)
+	for j in out:
+		j.gesture = "sit_raise"
+	_raised = out
+	return out
+
+
+## El periodista al que se da la palabra (los demás bajan la mano); lo devuelve
+func give_floor(j: Node3D) -> Node3D:
+	for o in _raised:
+		if is_instance_valid(o) and o != j:
+			o.gesture = ""
+	_raised = []
+	_asking = j
+	if is_instance_valid(j):
+		j.gesture = ""
+		j.mood = 0.0
+	return j
+
+
+## Un periodista de las primeras filas pregunta (para el discurso y las pruebas)
 func ask() -> Node3D:
 	if journalists.is_empty():
 		return null
-	_asking = journalists[_rng.randi() % journalists.size()]
-	_asking.gesture = "sit_raise"
-	_ask_t = 1.1
-	return _asking
+	return give_floor(journalists[_rng.randi() % journalists.size()])
 
 
 func stop_asking() -> void:
 	if _asking != null:
 		_asking.talking = false
 		_asking.gesture = ""
+	for o in _raised:
+		if is_instance_valid(o):
+			o.gesture = ""
+	_raised = []
 	_asking = null
 
 
-## Reacción de la sala a una respuesta (s: valoración; > 0 buena, < 0 mala)
-func react(s: float) -> void:
+## Reacción de la sala a una respuesta (s: valoración; > 0 buena, < 0 mala; tone: el tono de la respuesta)
+func react(s: float, tone := "") -> void:
 	burst(3 if s < 0 else 5)
 	if s < 0:
-		_murmur_t = 2.2
+		_murmur_t = 2.4
 		for j in journalists:
-			if _rng.randf() < 0.35 and j != _asking:
+			if _rng.randf() < 0.4 and j != _asking:
 				j.talking = true
+	elif tone == "humor" and s >= 3:
+		# el chiste funciona: se ríen
+		_murmur_t = 2.0
+		for j in journalists:
+			if _rng.randf() < 0.45:
+				gesture(j, "sit_laugh", randf_range(1.2, 2.0))
+	else:
+		for j in journalists:
+			if _rng.randf() < 0.35:
+				gesture(j, "sit_write", 2.0)
+	if is_instance_valid(_asking):
+		_asking.mood = 0.3 if s >= 4 else (-0.4 if s < 0 else 0.0)
 
 
 ## Ráfaga de flashes de los fotógrafos
@@ -378,11 +483,6 @@ func burst(n: int) -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
-	if _ask_t > 0.0:
-		_ask_t -= delta
-		if _ask_t <= 0.0 and _asking != null:
-			_asking.gesture = ""
-			_asking.talking = true
 	if _murmur_t > 0.0:
 		_murmur_t -= delta
 		if _murmur_t <= 0.0:

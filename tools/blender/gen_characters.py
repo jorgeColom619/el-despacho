@@ -3,7 +3,9 @@
 Un solo esqueleto compartido con todas las piezas (cuerpos H/M, cabezas, caras con blend shapes,
 peinados, barbas, gafas, corbata, perlas, uniforme) y las animaciones idle / walk / talk, más las de los
 escenarios 3D: sit, sit_talk, sit_write, sit_raise, sit_clap, clap, sit_table, sit_table_talk, photo,
-kneel_photo y operate. visitor_3d.gd enseña las piezas y colorea los materiales según el `look`.
+kneel_photo y operate, y los gestos point, laugh, cheer, lectern, lectern_talk, sit_protest, sit_cheer,
+sit_laugh, sit_table_nod, sit_table_no, sit_table_cross, sit_table_read, sit_table_sign, sit_table_offer,
+sit_table_laugh y sit_table_gavel. visitor_3d.gd enseña las piezas y colorea los materiales según el `look`.
 Junto a él escribe crowd.glb: diputados sentados, estáticos y simplificados, para el fondo del hemiciclo.
 
 Uso:
@@ -1206,6 +1208,121 @@ def build_stage_anims(rig, base):
     k = {0: operate(stand()), 48: operate(stand(chest=[("Z", -3)]))}
     k[96] = k[0]
     make_action(rig, "operate", k)
+    build_reaction_anims(rig, stand, seat, both, seated)
+
+
+# ------------------------------------------------------------------ gestos de los escenarios 3D
+# El líder de la oposición señala y se ríe, las bancadas se ponen en pie o abuchean, el presidente apoya las manos en
+# el atril, la presidenta de la Cámara da con el mazo y, en la mesa de negociación, el otro líder asiente, niega, se
+# cruza de brazos, lee la propuesta, la firma, tiende la mano o se ríe.
+
+def build_reaction_anims(rig, stand, seat, both, seated):
+    def put(d, **kw):
+        for b, r in kw.items():
+            d[b.replace("_L", ".L").replace("_R", ".R")] = r
+        return d
+
+    def loop(name, poses, step, make=None):
+        k = {i * step: p for i, p in enumerate(poses)}
+        k[len(poses) * step] = poses[0]
+        (make or (lambda n, kk: make_action(rig, n, kk)))(name, k)
+
+    # de pie, señalando con el brazo derecho estirado; cada pocos fotogramas, un golpe de énfasis
+    def point(j):
+        return stand(upper_arm_R=[("X", -76 - 14 * j), ("Y", 4), ("Z", 4)], forearm_R=[("X", -6 - 18 * j)], hand_R=[("X", -10)],
+                     chest=[("X", -1), ("Z", -5)], head=[("X", -5 + 3 * j), ("Z", -3)],
+                     upper_arm_L=[("X", -6), ("Y", -8)], forearm_L=[("X", -34)])
+    loop("point", [point(0), point(1), point(0.2), point(0.8)], 9)
+
+    # de pie, riéndose: echa la cabeza atrás con las manos en la tripa y los hombros dando sacudidas
+    def laugh(t):
+        d = stand(spine=[("X", -3)], chest=[("X", -5 - 3 * t)], head=[("X", -15 - 5 * t)])
+        both(d, "upper_arm", [("X", -14), ("Y", 4)])
+        both(d, "forearm", [("X", -72), ("Z", -32)])
+        return d
+    loop("laugh", [laugh(0), laugh(1)], 4)
+
+    # de pie, celebrando con los brazos en alto
+    def cheer(t):
+        d = stand(head=[("X", -8)], chest=[("X", -2)])
+        both(d, "upper_arm", [("X", -150 + 10 * t), ("Y", -18)])
+        both(d, "forearm", [("X", -18 - 32 * t)])
+        return d
+    loop("cheer", [cheer(0), cheer(1)], 6)
+
+    # de pie en el atril: las dos manos apoyadas en el tablero (a 1,1 m)
+    def lect(**kw):
+        d = stand(chest=[("X", 4)], head=[("X", 2)])
+        both(d, "upper_arm", [("X", -28), ("Y", -10)])
+        both(d, "forearm", [("X", -46), ("Z", -14)])
+        both(d, "hand", [("X", -20)])
+        return put(d, **kw)
+    loop("lectern", [lect(), lect(chest=[("X", 5.5)], head=[("X", 3), ("Z", 4)])], 48)
+    loop("lectern_talk", [
+        lect(upper_arm_R=[("X", -40), ("Y", 8), ("Z", 16)], forearm_R=[("X", -62)], head=[("X", 0)]),
+        lect(upper_arm_R=[("X", -52), ("Y", 12), ("Z", 26)], forearm_R=[("X", -80), ("Z", -10)], head=[("X", -2), ("Z", 3)]),
+        lect(upper_arm_R=[("X", -42), ("Y", 8), ("Z", 18)], forearm_R=[("X", -66)], head=[("X", 1)]),
+        lect(upper_arm_R=[("X", -56), ("Y", 12), ("Z", 30)], forearm_R=[("X", -86), ("Z", 8)], head=[("X", -1), ("Z", -3)]),
+    ], 12)
+
+    # sentados: abuchear agitando el brazo, celebrar con los puños en alto y reírse
+    def protest(t):
+        return seat(upper_arm_R=[("X", -124), ("Y", 10)], forearm_R=[("X", -34), ("Z", -26 + 52 * t)], hand_R=[("X", -10)],
+                    head=[("X", -4), ("Z", -8 + 16 * t)], chest=[("X", -2)])
+    loop("sit_protest", [protest(0), protest(1)], 6, seated)
+
+    def scheer(t):
+        return seat(head=[("X", -6)], upper_arm_R=[("X", -150 + 12 * t), ("Y", 14)], forearm_R=[("X", -25 - 35 * t)],
+                    upper_arm_L=[("X", -140 + 12 * (1 - t)), ("Y", -14)], forearm_L=[("X", -25 - 35 * (1 - t))])
+    loop("sit_cheer", [scheer(0), scheer(1)], 6, seated)
+
+    def slaugh(t):
+        d = seat(spine=[("X", -4)], chest=[("X", -4 - 3 * t)], head=[("X", -14 - 5 * t)])
+        both(d, "upper_arm", [("X", -16), ("Y", 4)])
+        both(d, "forearm", [("X", -70), ("Z", -28)])
+        return d
+    loop("sit_laugh", [slaugh(0), slaugh(1)], 4, seated)
+
+    # en la mesa (antebrazos sobre el tablero, como sit_table)
+    def table(**kw):
+        d = seat(spine=[("X", 6)], chest=[("X", 3)], head=[("X", -4)])
+        both(d, "upper_arm", [("X", -30), ("Y", 8)])
+        both(d, "forearm", [("X", -60), ("Z", -26)])
+        return put(d, **kw)
+    loop("sit_table_nod", [table(head=[("X", -6)]), table(head=[("X", 11)])], 8, seated)
+    loop("sit_table_no", [table(head=[("X", 1), ("Z", -15)]), table(head=[("X", 1), ("Z", 15)])], 7, seated)
+
+    def cross(**kw):
+        d = seat(spine=[("X", -5)], chest=[("X", -2)], head=[("X", -3)],
+                 upper_arm_L=[("X", -34), ("Y", 10)], forearm_L=[("X", -92), ("Z", -62)],
+                 upper_arm_R=[("X", -30), ("Y", -10)], forearm_R=[("X", -84), ("Z", 58)])
+        return put(d, **kw)
+    loop("sit_table_cross", [cross(), cross(head=[("X", -1), ("Z", 6)])], 48, seated)
+
+    def read(**kw):
+        d = seat(spine=[("X", 4)], chest=[("X", 2)], head=[("X", 17)])
+        both(d, "upper_arm", [("X", -40), ("Y", 10)])
+        both(d, "forearm", [("X", -72), ("Z", -30)])
+        both(d, "hand", [("X", -30)])
+        return put(d, **kw)
+    loop("sit_table_read", [read(), read(head=[("X", 19), ("Z", 4)]), read(head=[("X", 16), ("Z", -4)])], 30, seated)
+
+    def sign(dz):
+        return table(head=[("X", 20)], chest=[("X", 6)], upper_arm_R=[("X", -34), ("Y", 4)], forearm_R=[("X", -64), ("Z", 30 + dz)])
+    loop("sit_table_sign", [sign(0), sign(-8), sign(4), sign(-6), sign(2), sign(-9)], 4, seated)
+
+    def offer(t):
+        return table(chest=[("X", 6 + 2 * t)], upper_arm_R=[("X", -72 - 4 * t), ("Y", 4), ("Z", 6)], forearm_R=[("X", -14)],
+                     hand_R=[("X", 6)], head=[("X", -6)])
+    loop("sit_table_offer", [offer(0), offer(1)], 24, seated)
+
+    def tlaugh(t):
+        return table(spine=[("X", -2)], chest=[("X", -4 - 3 * t)], head=[("X", -16 - 5 * t)])
+    loop("sit_table_laugh", [tlaugh(0), tlaugh(1)], 4, seated)
+
+    def gavel(up):
+        return table(upper_arm_R=[("X", -46 - 30 * up), ("Y", 6), ("Z", 8)], forearm_R=[("X", -70 - 40 * up)], head=[("X", 4)])
+    loop("sit_table_gavel", [gavel(1), gavel(0), gavel(1), gavel(0), gavel(1), gavel(1)], 5, seated)
 
 
 # ------------------------------------------------------------------ montaje y exportación
@@ -1483,6 +1600,11 @@ def stage_previews(rig, folder, shot, act):
     poses = [("sit", 0, "c"), ("sit_talk", 12, "c"), ("sit_write", 6, "c"), ("sit_raise", 0, "c"), ("sit_clap", 0, "c"),
              ("sit_clap", 4, "c"), ("sit_table", 0, "ct"), ("sit_table_talk", 12, "ct"), ("clap", 0, ""), ("photo", 0, ""),
              ("kneel_photo", 0, ""), ("operate", 0, "")]
+    if os.environ.get("PREVIEW_SET") == "gestos":
+        poses = [("point", 9, ""), ("laugh", 4, ""), ("cheer", 6, ""), ("lectern", 0, ""), ("lectern_talk", 12, ""),
+                 ("sit_protest", 6, "c"), ("sit_cheer", 6, "c"), ("sit_laugh", 4, "c"), ("sit_table_nod", 8, "ct"),
+                 ("sit_table_no", 7, "ct"), ("sit_table_cross", 0, "ct"), ("sit_table_read", 0, "ct"), ("sit_table_sign", 4, "ct"),
+                 ("sit_table_offer", 0, "ct"), ("sit_table_laugh", 4, "ct"), ("sit_table_gavel", 0, "ct"), ("sit_table_gavel", 5, "ct")]
     rows = []
     for li, l in enumerate((LOOKS[1], LOOKS[6])):
         apply_look(rig, l)

@@ -21,6 +21,16 @@ func _close_current() -> void:
 	await _wait(0.4)
 
 
+## Espera (como mucho `limit` segundos) a que se cumpla cond; mientras, se saltan los subtítulos de la escena 3D
+func _until(cond: Callable, o, limit := 15.0) -> void:
+	var t := 0.0
+	while t < limit and not cond.call():
+		if is_instance_valid(o) and o.get("stage") != null and o.stage.speaking():
+			o.stage.skip_line()
+		await _wait(0.15)
+		t += 0.15
+
+
 func run(m: Node) -> void:
 	main = m
 	for party in ["MP", "AR", "CC"]:
@@ -40,6 +50,11 @@ func run(m: Node) -> void:
 		await _wait(0.3)
 	print("OK tienda · artículos hoy: ", Perfil.shop_today())
 	print("UITEST COMPLETADO")
+	# que no quede ningún sonido a medias al salir (si no, Godot avisa de que hay recursos aún en uso)
+	for p in Sfx.get_children():
+		if p is AudioStreamPlayer:
+			(p as AudioStreamPlayer).stop()
+	await _wait(0.3)
 	get_tree().quit()
 
 
@@ -134,19 +149,20 @@ func _suite() -> void:
 		await _wait(0.3)
 		print("OK cumbre ", sid)
 		await _close_current()
-	# sesión de control
+	# sesión de control (en 3D, las réplicas salen en el atril cuando el líder de la oposición acaba de preguntar)
 	o = await _open("control", {})
 	o.intro.queue_free()
 	o._next()
 	for i in o.ROUNDS:
-		await _wait(0.3)
-		if i % 2 == 0 and o.replies.get_child_count() > 0:
+		await _until(func(): return o.stage == null or o.stage.cards.size() > 0, o)
+		if i % 2 == 0:
 			o._answer(DB.P.DEBATE_REPLIES[i % DB.P.DEBATE_REPLIES.size()])
 		else:
 			o._answer(null)
-		await _wait(2.1)
+		var r0: int = o.ri
+		await _until(func(): return o.ri != r0 or o.closing, o)
 	await _wait(0.5)
-	print("OK sesión de control (combo ", o.best_combo, ")")
+	print("OK sesión de control (combo ", o.best_combo, ", preguntas ", o.ri, ")")
 	await _close_current()
 	# campaña por regiones
 	GS.campaign = true
@@ -229,19 +245,25 @@ func _suite() -> void:
 	o._action("kharovia", "sanciones")
 	print("OK mundo")
 	await _close_current()
-	# prensa, discurso, debate
-	o = await _open("press", {"mode": "rueda"})
-	o.intro_panel.queue_free()
-	o._next()
-	await _wait(0.3)
-	o.q_text.skip()
-	await _wait(0.3)
-	if o.answers.get_child_count() > 0:
-		o._answer(o.questions[0]["a"][0])
-	await _wait(2.2)
-	o._finish()
-	print("OK prensa")
-	await _close_current()
+	# prensa (en 3D: se da la palabra a un periodista y las respuestas salen en el atril), entrevista, discurso, debate
+	for mode in ["rueda", "entrevista"]:
+		o = await _open("press", {"mode": mode})
+		o.intro_panel.queue_free()
+		o._next()
+		await _wait(0.3)
+		if o.stage != null:
+			if mode == "rueda":
+				o._give_floor(0)
+			await _until(func(): return o.stage.cards.size() > 0, o)
+		else:
+			o.q_text.skip()
+			await _wait(0.3)
+		if o.stage != null or o.answers.get_child_count() > 0:
+			o._answer(o.questions[o.qi]["a"][0])
+		await _wait(2.2)
+		o._finish()
+		print("OK prensa (", mode, ")")
+		await _close_current()
 	o = await _open("speech", {"occasion": "campana"})
 	for i in 4:
 		var cards: Array = o.choice_box.get_children()
