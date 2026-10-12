@@ -916,6 +916,10 @@ func _end(deal: bool, line: String) -> void:
 			GS.cooldowns["nego_%s_%s" % [p["who"], topic["id"]]] = GS.day + 150
 	var out := GS.apply_fx(fx, topic.get("name", "Negociación"))
 	GS.log_history(topic.get("name", "Negociación"), ("Acuerdo: " + _term_text(offer)) if deal else "Sin acuerdo")
+	for p in parties:
+		if p["country"] != "":
+			var mk := ("cumbre_" if summit != "" else "nego_") + ("ok" if deal else "fail")
+			GS.remember(mk, {"who": p["country"], "topic": String(topic.get("name", "el acuerdo")).to_lower(), "summit": String(topic.get("name", ""))})
 	if leave_btn != null:
 		leave_btn.visible = false
 	if stage != null:

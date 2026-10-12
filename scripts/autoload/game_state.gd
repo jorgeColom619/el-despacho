@@ -117,8 +117,13 @@ var promises := []
 var counters := {"ceses": 0, "indultos": 0, "escandalos": 0}
 ## Memoria de la partida: lo que ha hecho el presidente y que los personajes recordarán más adelante
 var memo := []
+## Personajes que aparecen durante la partida (la periodista incómoda, exministros...): {clave: {name, role, look}}
+var cast := {}
+## Recuerdos de una sola vez por partida que ya han salido
+var memo_used := {}
 
 const Promesas := preload("res://scripts/systems/promesas.gd")
+const Memoria := preload("res://scripts/systems/memoria.gd")
 
 ## Los efectos de las decisiones se olvidan poco a poco (vida media en días)
 const MEMORY_HALF_LIFE := 150.0
@@ -250,6 +255,7 @@ func new_game(opts: Dictionary) -> void:
 	promises = []
 	counters = {"ceses": 0, "indultos": 0, "escandalos": 0}
 	memo = []
+	memo_used = {}
 	var mult: float = [1.25, 1.0, 0.8][difficulty]
 	timers = {"doc": 2, "advisor": 9, "call": 6, "crisis": int(55 * mult), "press": int(50 * mult), "news": 3, "control": 35, "summit": 110}
 	_recalc_mods()
@@ -258,6 +264,7 @@ func new_game(opts: Dictionary) -> void:
 	active = true
 	# Cada partida es distinta: mundo aleatorio, escenario inicial y tramas sorteadas
 	_randomize_world()
+	Memoria.setup_cast(rng)
 	_apply_scenario(_pick_scenario(str(opts.get("scenario", "aleatorio"))))
 	_draw_tramas()
 	_update_targets()
@@ -841,6 +848,8 @@ func _monthly(dd: Dictionary) -> void:
 		toast.emit("Nuevo año fiscal: revise los Presupuestos (carpeta de cuero)", "info", "dinero")
 		flags["presupuesto_pendiente"] = true
 	Perfil.note_game(used.keys(), tramas)
+	# Lo que hizo hace meses vuelve: exministros, indultados, cartas, contratos, líderes que no olvidan...
+	Memoria.monthly()
 	# Periódico mensual
 	open_request.emit("newspaper", {"month_day": day - 1})
 	month_log = []
@@ -1138,6 +1147,7 @@ func spawn(ev: Dictionary) -> void:
 	if ev.get("scandal", false) or ev.get("cond", {}).get("gt", {}).has("corr"):
 		scandals += 1
 		counters["escandalos"] = int(counters.get("escandalos", 0)) + 1
+		remember("escandalo", {"title": fmt(str(ev.get("title", "")))})
 	match ev["type"]:
 		"doc":
 			item["deadline"] = day + int(DEADLINES["doc"][difficulty])
@@ -1233,6 +1243,7 @@ func _missed_call(item: Dictionary) -> void:
 	toast.emit("Llamada perdida: %s" % DB.character(who).get("name", "?"), "warn", "telefono")
 	if countries.has(who):
 		apply_fx({"rel": {who: -4}}, ev["title"])
+		remember("llamada_perdida", {"who": who})
 	queue_changed.emit()
 
 
@@ -1244,8 +1255,19 @@ func resolve_choice(item: Dictionary, idx: int) -> Array:
 	_mark_used(ev)
 	var ch: Dictionary = ev["choices"][idx]
 	var title := fmt(ev.get("title", ""))
-	if ev.get("kind", "") == "indulto" and (str(ch.get("t", "")).begins_with("Conceder") or str(ch.get("t", "")).begins_with("Indultar")):
-		counters["indultos"] = int(counters.get("indultos", 0)) + 1
+	if ev.get("kind", "") == "indulto":
+		var granted := str(ch.get("t", "")).begins_with("Conceder") or str(ch.get("t", "")).begins_with("Indultar")
+		if granted:
+			counters["indultos"] = int(counters.get("indultos", 0)) + 1
+		var pname := title.get_slice(": ", 1) if ": " in title else title
+		remember("indulto" if granted else "indulto_denegado", {"name": pname, "look": ev.get("prisoner", {})})
+	elif ev.get("kind", "") == "carta" and not ev.get("memo", false) and title.begins_with("Carta de "):
+		remember("carta_archivada" if idx == int(ev.get("default", 1)) else "carta_ayuda", {"from": title.trim_prefix("Carta de ")})
+	if str(ev.get("id", "")).begins_with("cumbre_") and ev.get("gen", false) and idx == 1:
+		var sid := str(ev["id"]).trim_prefix("cumbre_")
+		if DB.SUMMITS.has(sid):
+			for c in DB.SUMMITS[sid]["leaders"]:
+				remember("cumbre_plantada", {"who": c, "summit": DB.SUMMITS[sid]["name"]})
 	var out := apply_fx(ch.get("fx", {}), title)
 	if ch.has("hidden"):
 		out.append_array(apply_fx(ch["hidden"], title, false))
@@ -1260,6 +1282,19 @@ func resolve_option(item: Dictionary, opt: Dictionary) -> Array:
 	_remove_item(item)
 	_mark_used(ev)
 	var out := apply_fx(opt.get("fx", {}), ev["title"])
+	var note := str(opt.get("small", ""))
+	var tipo := "buena"
+	if float(opt.get("fx", {}).get("corr", 0.0)) >= 3.0:
+		tipo = "corrupta"
+	elif "modificados" in note:
+		tipo = "sobrecoste"
+	elif "Sancionada" in note:
+		tipo = "laboral"
+	elif "Tsaing" in note or "Filial" in note:
+		tipo = "extranjera"
+	elif "local" in note:
+		tipo = "local"
+	remember("contrato", {"company": str(opt["name"]), "title": str(ev["title"]), "tipo": tipo})
 	push_news("Adjudicado: %s a %s" % [ev["title"], opt["name"]], 1)
 	log_history(ev["title"], "Seleccionado: %s" % opt["name"])
 	return out
@@ -1299,6 +1334,7 @@ func resolve_crisis(item: Dictionary, score: float, unit_fx: Dictionary, cost: f
 	fx["money"] = float(fx.get("money", 0.0)) - cost
 	fx["stress"] = 8.0
 	var out := apply_fx(fx, cr["title"])
+	remember("crisis_ok" if score >= 0.62 else ("crisis_mal" if score < 0.38 else "crisis_regular"), {"crisis": str(cr["title"]).to_lower()})
 	log_history(cr["title"], "Crisis gestionada (%d%%)" % int(score * 100))
 	if score >= 0.62:
 		Perfil.earn(Perfil.S.EARN["crisis"], "Crisis superada")
@@ -1476,6 +1512,13 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 					policies.append(v)
 			"promise":
 				Promesas.add(str(v))
+			"memo":
+				if v is Dictionary:
+					var md: Dictionary = v.duplicate(true)
+					var mk := str(md.get("k", ""))
+					md.erase("k")
+					if mk != "":
+						remember(mk, md)
 			_:
 				if meters.has(k):
 					meters[k] = clampf(meters[k] + float(v), 0.0, 100.0)
@@ -1623,6 +1666,7 @@ func enact_law(id: String) -> Array:
 		term_days += int(law["term"])
 	push_news("El Congreso aprueba la %s" % law["name"], 3)
 	log_history(law["name"], "Ley aprobada")
+	remember("ley", {"law": id})
 	_update_targets()
 	return out
 
@@ -1633,6 +1677,7 @@ func law_rejected(id: String) -> void:
 	apply_fx({"estabilidad": -4, "pc": -3}, law["name"])
 	push_news("Revés parlamentario: el Congreso tumba la %s" % law["name"], 3)
 	log_history(law["name"], "Ley rechazada")
+	remember("ley_tumbada", {"law": id})
 
 
 func add_treaty(country: String, type: String) -> void:
@@ -1989,7 +2034,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo"]
+	"promises", "counters", "memo", "cast", "memo_used"]
 
 
 func has_save() -> bool:
@@ -2054,6 +2099,8 @@ func load_game() -> bool:
 	promises = []
 	counters = {"ceses": 0, "indultos": 0, "escandalos": 0}
 	memo = []
+	cast = {}
+	memo_used = {}
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])

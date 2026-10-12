@@ -103,6 +103,7 @@ func _play(days: int) -> Dictionary:
 		_report()
 		print("Eventos distintos vistos: %d" % events_seen.size())
 		print("Leyes: ", GS.policies, "  Tratados: ", GS.treaties.size(), "  Corrupción: ", snappedf(GS.corruption, 0.1))
+		print("Recuerdos con decisión: %d · hechos anotados: %d" % [int(_result.get("memo", 0)), GS.memo.size()])
 	_result["approval"] = GS.approval
 	_result["debt"] = GS.debt_ratio()
 	_result["laws"] = GS.policies.size()
@@ -111,6 +112,7 @@ func _play(days: int) -> Dictionary:
 	var ps := Promesas.score()
 	_result["prom_ok"] = ps[0]
 	_result["prom_n"] = ps[1]
+	_result["memo"] = int(_result.get("memo", 0))
 	_result["fac"] = GS.fac.duplicate()
 	return _result
 
@@ -176,7 +178,7 @@ func _print_summary(rs: Array) -> void:
 	var n := float(rs.size())
 	var won := 0
 	var ends := {}
-	var sums := {"approval": 0.0, "approval_min": 0.0, "debt": 0.0, "laws": 0.0, "terms": 0.0, "corr": 0.0, "events": 0.0, "prom_ok": 0.0, "prom_n": 0.0}
+	var sums := {"approval": 0.0, "approval_min": 0.0, "debt": 0.0, "laws": 0.0, "terms": 0.0, "corr": 0.0, "events": 0.0, "prom_ok": 0.0, "prom_n": 0.0, "memo": 0.0}
 	var fac := {}
 	for r in rs:
 		if r["won"]:
@@ -193,6 +195,7 @@ func _print_summary(rs: Array) -> void:
 	print("== %s · dificultad %d · modo %s · %d partidas" % [strategy, difficulty, mode, rs.size()])
 	print("   Victorias: %d%% · aprobación final %.1f (mínima %.1f) · deuda %.0f%% · leyes %.1f · corrupción %.1f · legislaturas ganadas %.1f · eventos %.0f" % [int(won * 100.0 / n), sums["approval"] / n, sums["approval_min"] / n, sums["debt"] / n, sums["laws"] / n, sums["corr"] / n, sums["terms"] / n, sums["events"] / n])
 	print("   Finales: ", ends)
+	print("   Recuerdos con decisión por partida: %.1f" % (sums["memo"] / n))
 	if sums["prom_n"] > 0.0:
 		print("   Promesas cumplidas: %.1f de %.1f por partida" % [sums["prom_ok"] / n, sums["prom_n"] / n])
 	print("   Grupos: ", f)
@@ -255,6 +258,8 @@ func _pick(n: int, choices: Array) -> int:
 
 
 func _seen(ev: Dictionary) -> void:
+	if ev.get("memo", false):
+		_result["memo"] = int(_result.get("memo", 0)) + 1
 	if ev.get("gen", false):
 		return
 	var id: String = ev.get("id", "")

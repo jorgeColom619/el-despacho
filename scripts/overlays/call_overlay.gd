@@ -6,6 +6,7 @@ const Typewriter := preload("res://scripts/ui/typewriter.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const Flags := preload("res://scripts/ui/flags.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Memoria := preload("res://scripts/systems/memoria.gd")
 
 var who := ""
 var ch: Dictionary
@@ -136,10 +137,16 @@ func _build_dialog() -> void:
 	t.custom_minimum_size = Vector2(900, 0)
 	right.add_child(t)
 	right.add_child(Widgets.section("Conversación"))
-	var txt := UI.rich(GS.fmt(ev.get("text", "")), 22, UI.TEXT, UI.f_serif)
+	# si el líder recuerda algo (una llamada perdida, un acuerdo, una cumbre plantada...), empieza por ahí
+	var pre := Memoria.call_preface(who)
+	var body := GS.fmt(ev.get("text", ""))
+	if pre != "":
+		body = "[i]«%s»[/i]\n\n%s" % [pre, body]
+	var txt := UI.rich(body, 22, UI.TEXT, UI.f_serif)
 	txt.custom_minimum_size = Vector2(900, 0)
 	right.add_child(txt)
-	say(ev.get("text", "").left(140) + ("…" if ev.get("text", "").length() > 140 else ""))
+	var spoken := pre if pre != "" else GS.fmt(ev.get("text", ""))
+	say(spoken.left(140) + ("…" if spoken.length() > 140 else ""))
 	right.add_child(UI.spacer(0, 10))
 	var choices: Array = ev.get("choices", [])
 	for i in choices.size():

@@ -557,6 +557,23 @@ func _debug_start() -> void:
 			GS.approval = 30.0
 			office.window_view.tod = 0.78
 			office.window_view.protest = 0.9
+		"memocall", "memovisit":
+			# un exministro cesado vuelve: llama pidiendo un cargo (o la Jefa de Gabinete trae sus memorias)
+			var mk: String = GS.ministers["economia"]["name"]
+			GS.remember("cese", {"name": mk, "role": str(GS.ministers["economia"]["role"]), "key": "economia", "look": GS.ministers["economia"]["look"]})
+			GS.memo.back()["day"] = GS.day - 130
+			var tid := "cese_pide_cargo" if debug_open == "memocall" else "cese_memorias"
+			for t in GS.Memoria.D.TEMPLATES:
+				if t["id"] == tid:
+					GS.Memoria._fire(t, GS.memo.back())
+			if debug_open == "memocall":
+				open_overlay("call", {"item": GS.calls[0]})
+			else:
+				open_overlay("advisor", {"item": GS.visitors.back()})
+		"preface":
+			GS.remember("llamada_perdida", {"who": "norland"})
+			GS.spawn(DB.event("call_kade_acero"))
+			open_overlay("call", {"item": GS.calls[0]})
 		"promesas":
 			GS.Promesas.start(["no_iva", "paro", "vivienda"])
 			GS.taxes["iva"] += 1.0

@@ -235,6 +235,7 @@ func _finish() -> void:
 	var out := GS.apply_fx(fx, "Debate")
 	GS.push_news(("%s gana el debate frente a %s" % [GS.pres["name"], opp_ch["name"]]) if won else ("%s se impone en el debate a %s" % [opp_ch["name"], GS.pres["name"]]), 3)
 	GS.log_history("Debate televisado", "Victoria" if won else "Derrota")
+	GS.remember("debate_ganado" if won else "debate_perdido", {})
 	if won:
 		Perfil.earn(Perfil.S.EARN["debate"], "Debate ganado")
 		Perfil.unlock("orador")

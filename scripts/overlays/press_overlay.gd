@@ -53,6 +53,8 @@ var stage
 ## Rueda de prensa en 3D: los periodistas que alzan la mano [{"j", "outlet", "name", "tag", "pick"}]
 var _offer: Array = []
 var _who := ""
+## Mano alzada de la periodista incómoda en la rueda de prensa 3D (-1 si no está)
+var _cast_idx := -1
 var _chosen_tag: Node3D
 ## Pregunta en curso: los avisos de una pregunta anterior que lleguen tarde se descartan
 var _gen := 0
@@ -63,7 +65,7 @@ func build() -> void:
 	dim.color = Color(0.01, 0.015, 0.03, 0.94)
 	worm = [50.0]
 	var n_q := 4 if mode == "rueda" else 5
-	questions = DB.press_questions(n_q)
+	questions = DB.press_questions(n_q, mode)
 	if PressRoom.enabled():
 		stage = PressRoom.new() if mode == "rueda" else Studio.new()
 		root.add_child(stage)
@@ -207,11 +209,22 @@ func _offer_floor() -> void:
 		_ask()
 		return
 	var outs := _pick_outlets(hands.size())
+	# si toca la pregunta de la periodista incómoda, ella está entre las manos alzadas
+	_cast_idx = -1
+	var cast_q: bool = questions[qi].get("cast", "") == "periodista_inc"
+	var pj: Dictionary = GS.cast.get("periodista_inc", {})
+	if cast_q and not pj.is_empty():
+		_cast_idx = randi() % hands.size()
+		for o2 in W.OUTLETS:
+			if o2["name"] == pj.get("outlet", ""):
+				outs[_cast_idx] = o2
 	for i in hands.size():
 		var j: Node3D = hands[i]
 		var o: Dictionary = outs[i]
 		var lean := _lean(o)
 		var nm := DB.rand_name(j.get_meta("g", "m"))
+		if i == _cast_idx:
+			nm = str(pj.get("name", nm))
 		var tag: Node3D = stage.tag3d("%d · %s" % [i + 1, o["name"]], "%s · %s" % [o["tag"], lean], LEAN_COLS[lean], j.global_position + Vector3(0, 1.78, 0), 1.15)
 		# se elige pulsando en el periodista o en su acreditación (o con las teclas 1, 2, 3)
 		var pk = stage.add_pick_sphere(j, 0.72, Vector3(0, 1.3, 0), "%s · %s (%s)\n%s" % [nm, o["name"], String(o["tag"]).to_lower(), LEAN_TIPS[lean]], _give_floor.bind(i))
@@ -264,6 +277,14 @@ func _give_floor(i: int) -> void:
 			stage.untag(_offer[k]["tag"])
 	_chosen_tag = e["tag"]
 	_offer.clear()
+	# la periodista incómoda se queda con la mano alzada: su pregunta, para el siguiente turno
+	if questions[qi].get("cast", "") != "" and i != _cast_idx:
+		if qi + 1 < questions.size():
+			var tmp: Dictionary = questions[qi + 1]
+			questions[qi + 1] = questions[qi]
+			questions[qi] = tmp
+		else:
+			questions[qi] = DB.plain_question()
 	journalist = stage.give_floor(e["j"])
 	outlet = e["outlet"]
 	_who = String(e["name"]) + " · " + String(outlet["name"])
@@ -314,6 +335,7 @@ func _answer(a: Dictionary) -> void:
 		return
 	var gen := _gen
 	var s := _score(a)
+	_note_answer(a, s)
 	score += s
 	worm.append(clampf(worm.back() + s * 3.5, 0.0, 100.0))
 	GS.apply_fx(a.get("fx", {}), "Rueda de prensa")
@@ -355,6 +377,18 @@ func _react(s: float, tone: String, gen: int) -> void:
 func _next_if(gen: int) -> void:
 	if gen == _gen and not closing:
 		_next()
+
+
+## Lo que contesta queda en la hemeroteca: la periodista incómoda puede recordárselo meses después
+func _note_answer(a: Dictionary, s: float) -> void:
+	if qi < 0 or qi >= questions.size():
+		return
+	var q: Dictionary = questions[qi]
+	if q.get("memo", false) or q.get("promise", false):
+		return
+	var tone := str(a.get("tone", ""))
+	if tone in ["evasivo", "ataque", "humor"] or s < 0.0 or randf() < 0.25:
+		GS.remember("prensa", {"q": GS.fmt(q["q"]), "a": GS.fmt(a["t"]), "tone": tone, "outlet": str(outlet.get("name", ""))})
 
 
 func _on_timeout() -> void:
@@ -576,7 +610,14 @@ func _next_2d() -> void:
 		return
 	var q: Dictionary = questions[qi]
 	var gen := _gen
-	if mode == "rueda":
+	if mode == "rueda" and q.get("cast", "") != "" and GS.cast.has(str(q["cast"])):
+		# la periodista incómoda de la partida
+		var pj: Dictionary = GS.cast[str(q["cast"])]
+		outlet = {"name": pj.get("outlet", "El Heraldo"), "bias": pj.get("bias", 40.0), "tag": pj.get("tag", "")}
+		journalist.setup(pj.get("look", {}), false)
+		raised = randi() % heads.size()
+		j_name.text = str(pj.get("name", ""))
+	elif mode == "rueda":
 		outlet = W.OUTLETS.pick_random()
 		var g := "m" if randf() < 0.5 else "f"
 		journalist.setup(DB.rand_look(g), false)
@@ -623,6 +664,7 @@ func _answer_2d(a: Dictionary) -> void:
 		c.set_meta("enabled", false)
 		c.modulate.a = 0.4
 	var s := _score(a)
+	_note_answer(a, s)
 	score += s
 	worm.append(clampf(worm.back() + s * 3.5, 0.0, 100.0))
 	GS.apply_fx(a.get("fx", {}), "Rueda de prensa")

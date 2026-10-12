@@ -398,6 +398,7 @@ func _finish() -> void:
 	var out := GS.apply_fx(fx, "Sesión de control")
 	GS.push_news(("El presidente se impone a %s en la sesión de control" % _opp_name()) if won else ("%s acorrala al presidente en el Congreso" % _opp_name()), 2)
 	GS.log_history("Sesión de control", "Victoria" if won else "Derrota")
+	GS.remember("control_ganado" if won else "control_perdido", {})
 	if won:
 		Perfil.earn(Perfil.S.EARN["control"], "Sesión de control ganada")
 	if best_combo >= 3:

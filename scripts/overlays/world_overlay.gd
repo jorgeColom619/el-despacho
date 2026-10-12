@@ -269,6 +269,7 @@ func _action(c: String, a: String) -> void:
 			GS.push_news("Valdoria expulsa al embajador de %s" % nm, 2)
 	GS.countries[c]["cd"][a] = GS.day + (120 if a == "visita" else 180)
 	GS.apply_fx(fx, "Diplomacia")
+	GS.remember(a, {"who": c})
 	GS.log_history("Diplomacia: " + nm, {"visita": "Visita de Estado", "ayuda": "Ayuda al desarrollo", "sanciones": "Sanciones", "embajador": "Expulsión del embajador"}[a])
 	Sfx.play("stamp", -6.0)
 	_select(c)

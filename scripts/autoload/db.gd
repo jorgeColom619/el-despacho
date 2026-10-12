@@ -9,6 +9,7 @@ const E_MEME := preload("res://scripts/data/events_meme.gd")
 const P := preload("res://scripts/data/press_data.gd")
 const SC := preload("res://scripts/data/scenarios_data.gd")
 const Promesas := preload("res://scripts/systems/promesas.gd")
+const Memoria := preload("res://scripts/systems/memoria.gd")
 
 var events_by_id := {}
 ## Todos los eventos del juego (base + tramas + extra)
@@ -142,6 +143,8 @@ func event(id: String) -> Dictionary:
 
 func character(who: String) -> Dictionary:
 	# Devuelve {name, role, look, country?}
+	if GS.cast.has(who):
+		return GS.cast[who]
 	if who == "opo":
 		if not GS.opo_override.is_empty():
 			return GS.opo_override
@@ -317,6 +320,7 @@ func _gen_letter() -> Dictionary:
 func opposition_attacks(n: int) -> Array:
 	var out := []
 	var special: Array = Promesas.attacks()
+	special.append_array(Memoria.attacks())
 	special.shuffle()
 	for a in special:
 		if out.size() >= mini(2, n - 1):
@@ -339,7 +343,7 @@ func opposition_attacks(n: int) -> Array:
 	return out
 
 
-func press_questions(n: int) -> Array:
+func press_questions(n: int, mode: String = "rueda") -> Array:
 	var pool := []
 	var src: Array = P.QUESTIONS.duplicate()
 	if GS.mode == "meme":
@@ -354,8 +358,23 @@ func press_questions(n: int) -> Array:
 	var pq := Promesas.press_question()
 	if not pq.is_empty() and randf() < 0.6:
 		out.append(pq)
+	# la periodista incómoda recuerda lo que se le contestó (o el escándalo que destapó)
+	if mode == "rueda":
+		var mq := Memoria.press_question()
+		if not mq.is_empty() and randf() < 0.75:
+			out.append(mq)
 	for q in pool:
 		if out.size() >= n:
 			break
 		out.append(q)
+	out.shuffle()
 	return out
+
+
+## Una pregunta normal de la prensa (sin recuerdos ni promesas)
+func plain_question() -> Dictionary:
+	var pool := []
+	for q in P.QUESTIONS:
+		if GS.check(q.get("cond", {})):
+			pool.append(q)
+	return pool.pick_random() if not pool.is_empty() else P.QUESTIONS[0]
