@@ -102,9 +102,7 @@ func build() -> void:
 	result_lbl.position = Vector2(660, 630)
 	result_lbl.size = Vector2(600, 40)
 	root.add_child(result_lbl)
-	var pool: Array = P.DEBATE.duplicate()
-	pool.shuffle()
-	rounds = pool.slice(0, 4)
+	rounds = DB.opposition_attacks(4)
 	Sfx.play("news", -6.0)
 	await get_tree().create_timer(1.0).timeout
 	_next()

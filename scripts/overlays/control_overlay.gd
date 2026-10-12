@@ -78,10 +78,7 @@ func build() -> void:
 		_build_3d()
 	else:
 		_build_2d()
-	var pool: Array = P.DEBATE.duplicate()
-	pool.shuffle()
-	for i in ROUNDS:
-		rounds.append(pool[i % pool.size()])
+	rounds = DB.opposition_attacks(ROUNDS)
 	_intro()
 
 

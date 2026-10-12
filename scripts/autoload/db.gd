@@ -8,6 +8,7 @@ const E_EXTRA := preload("res://scripts/data/events_extra.gd")
 const E_MEME := preload("res://scripts/data/events_meme.gd")
 const P := preload("res://scripts/data/press_data.gd")
 const SC := preload("res://scripts/data/scenarios_data.gd")
+const Promesas := preload("res://scripts/systems/promesas.gd")
 
 var events_by_id := {}
 ## Todos los eventos del juego (base + tramas + extra)
@@ -311,6 +312,33 @@ func _gen_letter() -> Dictionary:
 		"choices": [{"t": l["yes"].capitalize(), "fx": l["fx_yes"].duplicate(true)}, {"t": "Archivar", "fx": {}}], "default": 1}
 
 
+## Ataques de la oposición para la sesión de control o el debate: primero lo que el presidente ha hecho
+## (promesas rotas...), después el resto según cómo esté el país
+func opposition_attacks(n: int) -> Array:
+	var out := []
+	var special: Array = Promesas.attacks()
+	special.shuffle()
+	for a in special:
+		if out.size() >= mini(2, n - 1):
+			break
+		out.append(a)
+	var pool := []
+	for a in P.DEBATE:
+		if GS.check(a.get("cond", {})):
+			pool.append(a)
+	pool.shuffle()
+	for a in pool:
+		if out.size() >= n:
+			break
+		out.append(a)
+	var i := 0
+	while out.size() < n and not P.DEBATE.is_empty():
+		out.append(P.DEBATE[i % P.DEBATE.size()])
+		i += 1
+	out.shuffle()
+	return out
+
+
 func press_questions(n: int) -> Array:
 	var pool := []
 	var src: Array = P.QUESTIONS.duplicate()
@@ -322,6 +350,10 @@ func press_questions(n: int) -> Array:
 			pool.append(q)
 	pool.shuffle()
 	var out := []
+	# si hay promesas rotas o pendientes, algún periodista pregunta por ellas
+	var pq := Promesas.press_question()
+	if not pq.is_empty() and randf() < 0.6:
+		out.append(pq)
 	for q in pool:
 		if out.size() >= n:
 			break

@@ -7,6 +7,7 @@ const Flags := preload("res://scripts/ui/flags.gd")
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const W := preload("res://scripts/data/world_data.gd")
 const SC := preload("res://scripts/data/scenarios_data.gd")
+const PromisesScreen := preload("res://scripts/screens/promises_screen.gd")
 
 var main: Node
 var look := {"g": "m", "skin": 1, "hair": "side", "hc": 1, "glasses": 0, "beard": "none", "suit": "1b2436", "shirt": "f4f6fa", "tie": "8e2a22", "age": 1, "eyes": "3b2a20"}
@@ -304,4 +305,12 @@ func _start() -> void:
 	if nm == "":
 		nm = "Alejandro Ríos"
 	Sfx.play("whoosh", -2.0)
-	main.start_new({"name": nm, "party": party, "difficulty": difficulty, "years": years, "mode": mode, "scenario": scenario, "look": look.duplicate()})
+	var opts := {"name": nm, "party": party, "difficulty": difficulty, "years": years, "mode": mode, "scenario": scenario, "look": look.duplicate()}
+	# antes de jurar el cargo: el programa electoral (hasta tres promesas)
+	var ps := PromisesScreen.new()
+	ps.party = party
+	ps.mode = mode
+	ps.confirmed.connect(func(ids: Array):
+		opts["promises"] = ids
+		main.start_new(opts))
+	add_child(ps)

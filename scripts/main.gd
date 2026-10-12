@@ -462,11 +462,13 @@ func _debug_start() -> void:
 	if debug_shot == "start":
 		start_new(_debug_opts())
 		return
-	if debug_shot == "newgame":
+	if debug_shot == "newgame" or debug_shot == "promesas":
 		var NG = load("res://scripts/screens/new_game.gd")
 		var n = NG.new()
 		n.main = self
 		change_screen(n)
+		if debug_shot == "promesas":
+			n.call_deferred("_start")
 		return
 	GS.new_game(_debug_opts())
 	GS.used["bienvenida"] = 0
@@ -555,6 +557,11 @@ func _debug_start() -> void:
 			GS.approval = 30.0
 			office.window_view.tod = 0.78
 			office.window_view.protest = 0.9
+		"promesas":
+			GS.Promesas.start(["no_iva", "paro", "vivienda"])
+			GS.taxes["iva"] += 1.0
+			GS.Promesas.tick()
+			open_overlay("dashboard", {"tab": "promesas"})
 		"ending":
 			GS.policies = ["vivienda", "transparencia"]
 			_on_game_over({"reason": "reelegido"})

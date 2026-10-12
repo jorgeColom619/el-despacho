@@ -111,6 +111,14 @@ var seen_terms := {}
 ## Ciclo económico (-1 recesión · +1 expansión): da rachas buenas y malas que no dependen del jugador
 var cycle := 0.0
 var scandals := 0
+## Promesas electorales de la partida (ver scripts/systems/promesas.gd)
+var promises := []
+## Contadores de cosas que pueden romper una promesa: ministros cesados, indultos firmados y escándalos
+var counters := {"ceses": 0, "indultos": 0, "escandalos": 0}
+## Memoria de la partida: lo que ha hecho el presidente y que los personajes recordarán más adelante
+var memo := []
+
+const Promesas := preload("res://scripts/systems/promesas.gd")
 
 ## Los efectos de las decisiones se olvidan poco a poco (vida media en días)
 const MEMORY_HALF_LIFE := 150.0
@@ -239,6 +247,9 @@ func new_game(opts: Dictionary) -> void:
 	laws_term = 0
 	cycle = rng.randf_range(-0.3, 0.3)
 	scandals = 0
+	promises = []
+	counters = {"ceses": 0, "indultos": 0, "escandalos": 0}
+	memo = []
 	var mult: float = [1.25, 1.0, 0.8][difficulty]
 	timers = {"doc": 2, "advisor": 9, "call": 6, "crisis": int(55 * mult), "press": int(50 * mult), "news": 3, "control": 35, "summit": 110}
 	_recalc_mods()
@@ -252,6 +263,8 @@ func new_game(opts: Dictionary) -> void:
 	_update_targets()
 	_update_approval()
 	_sample_stats()
+	# Promesas del programa electoral (elegidas en la pantalla de nueva partida)
+	Promesas.start(opts.get("promises", []))
 	# Presentación progresiva de los sistemas
 	unlocks = UNLOCK_DAYS[difficulty].duplicate()
 	for k in unlocks.keys():
@@ -534,6 +547,11 @@ func advance_day() -> void:
 	_weather_tick(dd)
 	_check_deadlines()
 	_run_scheduled()
+	Promesas.tick()
+	if day == term_start + (term_days - term_start) / 2 and not campaign:
+		var mt := Promesas.midterm_event()
+		if not mt.is_empty():
+			spawn(mt)
 	if not game_ended:
 		_generate()
 	if dd["day"] == 1:
@@ -762,6 +780,8 @@ func gen_candidates(key: String) -> Array:
 
 func hire_minister(key: String, cand: Dictionary) -> void:
 	var old: String = ministers[key]["name"]
+	counters["ceses"] = int(counters.get("ceses", 0)) + 1
+	remember("cese", {"name": old, "role": str(ministers[key]["role"]), "key": key, "look": ministers[key].get("look", {})})
 	ministers[key] = cand.duplicate(true)
 	_recalc_traits()
 	_update_targets()
@@ -1114,6 +1134,10 @@ func _spawn_kind(kind: String) -> bool:
 
 func spawn(ev: Dictionary) -> void:
 	var item := {"uid": next_uid(), "ev": ev, "day": day}
+	# Los escándalos de corrupción son los eventos que solo salen cuando la corrupción acumulada es alta
+	if ev.get("scandal", false) or ev.get("cond", {}).get("gt", {}).has("corr"):
+		scandals += 1
+		counters["escandalos"] = int(counters.get("escandalos", 0)) + 1
 	match ev["type"]:
 		"doc":
 			item["deadline"] = day + int(DEADLINES["doc"][difficulty])
@@ -1220,6 +1244,8 @@ func resolve_choice(item: Dictionary, idx: int) -> Array:
 	_mark_used(ev)
 	var ch: Dictionary = ev["choices"][idx]
 	var title := fmt(ev.get("title", ""))
+	if ev.get("kind", "") == "indulto" and (str(ch.get("t", "")).begins_with("Conceder") or str(ch.get("t", "")).begins_with("Indultar")):
+		counters["indultos"] = int(counters.get("indultos", 0)) + 1
 	var out := apply_fx(ch.get("fx", {}), title)
 	if ch.has("hidden"):
 		out.append_array(apply_fx(ch["hidden"], title, false))
@@ -1448,6 +1474,8 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 			"policy":
 				if not (v in policies):
 					policies.append(v)
+			"promise":
+				Promesas.add(str(v))
 			_:
 				if meters.has(k):
 					meters[k] = clampf(meters[k] + float(v), 0.0, 100.0)
@@ -1486,6 +1514,8 @@ func _fire_minister(key: String) -> void:
 	if not ministers.has(key):
 		return
 	var old: String = ministers[key]["name"]
+	counters["ceses"] = int(counters.get("ceses", 0)) + 1
+	remember("cese", {"name": old, "role": str(ministers[key]["role"]), "key": key, "look": ministers[key].get("look", {})})
 	var g := "m" if randf() < 0.5 else "f"
 	var nm := DB.rand_name(g)
 	var role: String = ministers[key]["role"]
@@ -1507,6 +1537,13 @@ func push_news(text: String, importance: int = 1) -> void:
 		news_feed.resize(40)
 	month_log.append({"t": text, "day": day, "imp": importance})
 	headline.emit(text)
+
+
+## Anota algo que el presidente ha hecho para que los personajes lo recuerden más adelante
+func remember(kind: String, data: Dictionary = {}) -> void:
+	memo.append({"k": kind, "d": data, "day": day})
+	if memo.size() > 300:
+		memo.pop_front()
 
 
 func log_history(title: String, choice: String) -> void:
@@ -1635,6 +1672,7 @@ func _check_end() -> void:
 		_campaign_days = 0
 		toast.emit("¡Comienza la campaña electoral! Use el micrófono para organizar actos por las regiones.", "info", "votar")
 		push_news("Arranca la campaña electoral", 3)
+		Promesas.judge()
 		Sfx.music("music_campaign")
 		open_request.emit("campaign", {"intro": true})
 	if left == 14 and not debate_done:
@@ -1699,6 +1737,7 @@ func _new_term(res: Dictionary) -> void:
 		opo_override = {"name": DB.rand_name(g), "role": "Líder de la Oposición (%s)" % W.PARTIES[opp]["short"], "look": DB.rand_look(g)}
 	_draw_tramas()
 	schedule("nueva_legislatura", 2)
+	spawn(Promesas.new_term_event(rng))
 	timers["control"] = 45
 	speech_until = day
 	elections_result = res
@@ -1949,7 +1988,8 @@ var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms"]
+	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
+	"promises", "counters", "memo"]
 
 
 func has_save() -> bool:
@@ -2011,6 +2051,9 @@ func load_game() -> bool:
 	terms_won = 0
 	opo_override = {}
 	seen_terms = {}
+	promises = []
+	counters = {"ceses": 0, "indultos": 0, "escandalos": 0}
+	memo = []
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])

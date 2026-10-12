@@ -5,6 +5,7 @@ const Backdrop := preload("res://scripts/screens/backdrop.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Promesas := preload("res://scripts/systems/promesas.gd")
 
 var main: Node
 var data: Dictionary = {}
@@ -124,6 +125,9 @@ func _ready() -> void:
 	if GS.mode == "infinito":
 		stats.append(["Legislaturas", str(GS.term_index)])
 		stats.append(["Récord personal", "%s años" % UI.num(float(Perfil.stats.get("record_anios", 0.0)), 1)])
+	var ps := Promesas.score()
+	if int(ps[1]) > 0:
+		stats.append(["Promesas cumplidas", "%d de %d" % [ps[0], ps[1]]])
 	if GS.corruption > 10:
 		stats.append(["Escándalos acumulados", "Muchos"])
 	if GS.fortune > 0:
@@ -163,6 +167,9 @@ func _score(reason: String) -> float:
 	s += avg * 0.3
 	s += clampf((120.0 - GS.debt_ratio()) * 0.3, -10.0, 10.0)
 	s -= GS.corruption * 0.3
+	# cumplir la palabra dada también cuenta
+	var ps := Promesas.score()
+	s += float(ps[0]) * 3.0 - float(int(ps[1]) - int(ps[0])) * 2.0
 	match reason:
 		"reelegido":
 			s += 30.0

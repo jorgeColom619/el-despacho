@@ -12,6 +12,7 @@ extends Node
 ##   simula 30 partidas seguidas (con memoria entre partidas) y mide cuánto se parecen entre sí
 
 const W := preload("res://scripts/data/world_data.gd")
+const Promesas := preload("res://scripts/systems/promesas.gd")
 
 var strategy := "random"
 var save_day := 200
@@ -68,7 +69,15 @@ func _play(days: int) -> Dictionary:
 	events_seen.clear()
 	_first_ids.clear()
 	var party: String = W.PLAYER_PARTIES.keys().pick_random() if quiet else "MP"
-	GS.new_game({"name": "Test", "party": party, "difficulty": difficulty, "years": int(ceil(days / 365.0)), "mode": mode, "look": {}})
+	# los jugadores medios y buenos hacen tres promesas de las seis que se ofrecen
+	var prom := []
+	if strategy in ["casual", "player"] and not ("--nopromises" in OS.get_cmdline_user_args()):
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		prom = Promesas.offer(rng, party, mode)
+		prom.shuffle()
+		prom = prom.slice(0, 3)
+	GS.new_game({"name": "Test", "party": party, "difficulty": difficulty, "years": int(ceil(days / 365.0)), "mode": mode, "look": {}, "promises": prom})
 	GS.set_speed(0)
 	for d in days + 5:
 		if GS.game_ended or not GS.active:
@@ -99,6 +108,9 @@ func _play(days: int) -> Dictionary:
 	_result["laws"] = GS.policies.size()
 	_result["events"] = events_seen.size()
 	_result["corr"] = GS.corruption
+	var ps := Promesas.score()
+	_result["prom_ok"] = ps[0]
+	_result["prom_n"] = ps[1]
 	_result["fac"] = GS.fac.duplicate()
 	return _result
 
@@ -164,7 +176,7 @@ func _print_summary(rs: Array) -> void:
 	var n := float(rs.size())
 	var won := 0
 	var ends := {}
-	var sums := {"approval": 0.0, "approval_min": 0.0, "debt": 0.0, "laws": 0.0, "terms": 0.0, "corr": 0.0, "events": 0.0}
+	var sums := {"approval": 0.0, "approval_min": 0.0, "debt": 0.0, "laws": 0.0, "terms": 0.0, "corr": 0.0, "events": 0.0, "prom_ok": 0.0, "prom_n": 0.0}
 	var fac := {}
 	for r in rs:
 		if r["won"]:
@@ -181,6 +193,8 @@ func _print_summary(rs: Array) -> void:
 	print("== %s · dificultad %d · modo %s · %d partidas" % [strategy, difficulty, mode, rs.size()])
 	print("   Victorias: %d%% · aprobación final %.1f (mínima %.1f) · deuda %.0f%% · leyes %.1f · corrupción %.1f · legislaturas ganadas %.1f · eventos %.0f" % [int(won * 100.0 / n), sums["approval"] / n, sums["approval_min"] / n, sums["debt"] / n, sums["laws"] / n, sums["corr"] / n, sums["terms"] / n, sums["events"] / n])
 	print("   Finales: ", ends)
+	if sums["prom_n"] > 0.0:
+		print("   Promesas cumplidas: %.1f de %.1f por partida" % [sums["prom_ok"] / n, sums["prom_n"] / n])
 	print("   Grupos: ", f)
 
 

@@ -4,6 +4,7 @@ extends "res://scripts/ui/overlay.gd"
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Promesas := preload("res://scripts/systems/promesas.gd")
 
 const SCREEN := Rect2(110, 118, 1700, 900)
 
@@ -38,7 +39,7 @@ func build() -> void:
 	nav.position = SCREEN.position + Vector2(20, 80)
 	nav.size = Vector2(230, 700)
 	root.add_child(nav)
-	for spec in [["resumen", "Resumen", "grafico"], ["sociedad", "Sociedad", "aprobacion"], ["leyes", "Agenda legislativa", "ley"], ["congreso", "Congreso", "mazo"], ["agenda", "Agenda y registro", "calendario"], ["gabinete", "Gabinete", "empresarios"]]:
+	for spec in [["resumen", "Resumen", "grafico"], ["sociedad", "Sociedad", "aprobacion"], ["leyes", "Agenda legislativa", "ley"], ["congreso", "Congreso", "mazo"], ["agenda", "Agenda y registro", "calendario"], ["promesas", "Promesas", "pluma"], ["gabinete", "Gabinete", "empresarios"]]:
 		var b := UI.btn("  " + spec[1], "ghost", 19)
 		b.icon = UI.icon(spec[2], 36)
 		b.add_theme_constant_override("icon_max_width", 22)
@@ -93,6 +94,8 @@ func _show(id: String) -> void:
 			_agenda(v)
 		"gabinete":
 			_gabinete(v)
+		"promesas":
+			_promesas(v)
 
 
 func _locked(v: VBoxContainer, key: String) -> void:
@@ -402,6 +405,54 @@ func _agenda(v: VBoxContainer) -> void:
 		cl.custom_minimum_size = Vector2(640, 0)
 		h.add_child(cl)
 		v.add_child(h)
+
+
+func _promesas(v: VBoxContainer) -> void:
+	v.add_child(UI.lbl("Su programa electoral", UI.f_serif_b, 30, UI.GOLD_L))
+	var mine := []
+	for e in GS.promises:
+		if int(e.get("term", 1)) == GS.term_index:
+			mine.append(e)
+	var to_campaign := GS.term_days - 60 - GS.day
+	var expl := "Al empezar la campaña electoral%s se juzgarán todas: cada promesa cumplida suma %s puntos de intención de voto y cada una incumplida los resta. Las de «nunca» se rompen en el momento en que haga lo que prometió no hacer." % [(" (dentro de %d días)" % to_campaign) if to_campaign > 0 else "", UI.num(Promesas.D.VOTES_KEPT, 0)]
+	var el := UI.lbl(expl, UI.f_sans, 18, UI.DIM)
+	el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	el.custom_minimum_size = Vector2(1300, 0)
+	v.add_child(el)
+	if mine.is_empty():
+		v.add_child(UI.lbl("No hizo promesas en esta legislatura. Nadie podrá echarle nada en cara... ni agradecérselo.", UI.f_sans_m, 20, UI.TEXT))
+		return
+	for e in mine:
+		var p := Promesas.def(e["id"])
+		var card := _card(1340, 0)
+		var h := UI.hbox(18)
+		card.add_child(h)
+		h.add_child(UI.icon_rect(p.get("icon", "info"), 44, UI.GOLD))
+		var tv := UI.vbox(4)
+		tv.custom_minimum_size = Vector2(960, 0)
+		tv.add_child(UI.lbl(("NUNCA LO HARÉ" if p["kind"] == "nunca" else "LO CONSEGUIRÉ") + "  ·  prometido el " + UI.date_mid(int(e.get("day", 0))), UI.f_sans_b, 13, UI.GOLD))
+		tv.add_child(UI.lbl("«%s»" % p["name"], UI.f_serif_b, 26, UI.CREAM))
+		var dl := UI.lbl(p.get("desc", ""), UI.f_sans, 16, UI.DIM)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		dl.custom_minimum_size = Vector2(940, 0)
+		tv.add_child(dl)
+		tv.add_child(UI.lbl(Promesas.progress_text(e), UI.f_sans_m, 18, UI.TEXT))
+		h.add_child(tv)
+		var st: String = e["state"]
+		var label := "ROTA"
+		var col := UI.RED
+		if st == "cumplida":
+			label = "CUMPLIDA"
+			col = UI.GREEN
+		elif st == "en_curso":
+			var ok := Promesas.on_track(e)
+			label = ("SE MANTIENE" if p["kind"] == "nunca" else "VA BIEN") if ok else "EN PELIGRO"
+			col = UI.GREEN if ok else UI.AMBER
+		var badge := UI.lbl(label, UI.f_cond_b, 26, col, HORIZONTAL_ALIGNMENT_RIGHT)
+		badge.custom_minimum_size = Vector2(240, 0)
+		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(badge)
+		v.add_child(card)
 
 
 func _gabinete(v: VBoxContainer) -> void:
