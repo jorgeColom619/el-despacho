@@ -23,6 +23,7 @@ var events_seen := {}
 var _first_ids := []
 var _next_law_day := 0
 var _result := {}
+var _daily_n := 0
 
 
 func run(days: int) -> void:
@@ -77,7 +78,13 @@ func _play(days: int) -> Dictionary:
 		prom = Promesas.offer(rng, party, mode)
 		prom.shuffle()
 		prom = prom.slice(0, 3)
-	GS.new_game({"name": "Test", "party": party, "difficulty": difficulty, "years": int(ceil(days / 365.0)), "mode": mode, "look": {}, "promises": prom})
+	var opts := {"name": "Test", "party": party, "difficulty": difficulty, "years": int(ceil(days / 365.0)), "mode": mode, "look": {}, "promises": prom}
+	# --daily: juega los retos del día de los próximos días (uno por partida)
+	if "--daily" in OS.get_cmdline_user_args():
+		_daily_n += 1
+		opts = GS.Reto.game_opts(GS.Reto.today() + _daily_n)
+		_result["rules"] = opts["rules"]
+	GS.new_game(opts)
 	GS.set_speed(0)
 	for d in days + 5:
 		if GS.game_ended or not GS.active:
@@ -201,6 +208,9 @@ func _print_summary(rs: Array) -> void:
 	print("   Victorias: %d%% · aprobación final %.1f (mínima %.1f) · deuda %.0f%% · leyes %.1f · corrupción %.1f · legislaturas ganadas %.1f · eventos %.0f" % [int(won * 100.0 / n), sums["approval"] / n, sums["approval_min"] / n, sums["debt"] / n, sums["laws"] / n, sums["corr"] / n, sums["terms"] / n, sums["events"] / n])
 	print("   Finales: ", ends)
 	print("   Recuerdos con decisión por partida: %.1f" % (sums["memo"] / n))
+	for r in rs:
+		if r.has("rules"):
+			print("   Reto %s: %s · aprob %.0f" % [str(r["rules"]), r["end"], float(r["approval"])])
 	if sums["prom_n"] > 0.0:
 		print("   Promesas cumplidas: %.1f de %.1f por partida" % [sums["prom_ok"] / n, sums["prom_n"] / n])
 	print("   Grupos: ", f)

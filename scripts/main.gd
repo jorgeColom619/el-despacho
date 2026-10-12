@@ -454,8 +454,10 @@ func _debug_opts() -> Dictionary:
 
 
 func _debug_start() -> void:
-	if debug_shot == "menu":
+	if debug_shot == "menu" or debug_shot == "reto":
 		show_menu()
+		if debug_shot == "reto":
+			screen.call_deferred("_open_daily")
 		return
 	if debug_shot == "shop":
 		show_shop()

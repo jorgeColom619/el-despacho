@@ -4,6 +4,10 @@ extends Control
 const Backdrop := preload("res://scripts/screens/backdrop.gd")
 const OfficeArt := preload("res://scripts/office/office_art.gd")
 const SettingsPanel := preload("res://scripts/ui/settings_panel.gd")
+const Reto := preload("res://scripts/systems/reto.gd")
+const Promesas := preload("res://scripts/systems/promesas.gd")
+const W := preload("res://scripts/data/world_data.gd")
+const SC := preload("res://scripts/data/scenarios_data.gd")
 
 var main: Node
 var menu_box: VBoxContainer
@@ -41,6 +45,7 @@ func _ready() -> void:
 	menu_box = UI.vbox(6)
 	left.add_child(menu_box)
 	_item("Nueva legislatura", func(): main.show_new_game())
+	_item("Reto del día", _open_daily)
 	if GS.has_save():
 		_item("Continuar partida", func(): main.continue_game())
 	_item("Tienda", func(): main.show_shop())
@@ -116,6 +121,56 @@ func _open_settings() -> void:
 	p.done.connect(func():
 		modal.queue_free()
 		modal = null)
+	_modal(p)
+
+
+## El reto de hoy: lo mismo para todos, con dos reglas especiales
+func _open_daily() -> void:
+	var idx := Reto.today()
+	var s := Reto.spec(idx)
+	var p := UI.panel(Color(0.035, 0.05, 0.085, 0.98), 12, Color(UI.GOLD, 0.6), 30)
+	p.custom_minimum_size = Vector2(900, 0)
+	var v := UI.vbox(12)
+	p.add_child(v)
+	var d := Time.get_date_dict_from_system()
+	v.add_child(UI.lbl("RETO DEL DÍA · %d DE %s DE %d" % [int(d["day"]), UI.MONTHS[int(d["month"]) - 1].to_upper(), int(d["year"])], UI.f_sans_b, 15, UI.GOLD))
+	v.add_child(UI.lbl("La misma partida para todos", UI.f_serif_b, 40, UI.TEXT))
+	var info := UI.lbl("Presidente: %s  ·  Partido: %s  ·  Escenario: %s  ·  Legislatura de %s  ·  Dificultad normal" % [s["name"], W.PARTIES[s["party"]]["name"], SC.SCENARIOS[s["scenario"]]["name"], "nueve meses" if "anticipadas" in s["rules"] else "un año"], UI.f_sans_m, 18, UI.DIM)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(840, 0)
+	v.add_child(info)
+	v.add_child(UI.lbl("REGLAS DE HOY", UI.f_sans_b, 14, UI.GOLD))
+	for r in s["rules"]:
+		var rd: Dictionary = Reto.D.RULES[r]
+		var h := UI.hbox(12)
+		h.add_child(UI.icon_rect(rd["icon"], 30, UI.GOLD_L))
+		var tv := UI.vbox(0)
+		tv.add_child(UI.lbl(rd["name"], UI.f_sans_b, 20, UI.TEXT))
+		var dl := UI.lbl(rd["desc"], UI.f_sans, 17, UI.DIM)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		dl.custom_minimum_size = Vector2(780, 0)
+		tv.add_child(dl)
+		h.add_child(tv)
+		v.add_child(h)
+	v.add_child(UI.lbl("SUS PROMESAS (OBLIGATORIAS)", UI.f_sans_b, 14, UI.GOLD))
+	for pid in s["promises"]:
+		v.add_child(UI.lbl("«%s»" % Promesas.def(pid)["name"], UI.f_serif, 21, UI.CREAM))
+	var best := Reto.best_today()
+	var st := Reto.streak()
+	v.add_child(UI.lbl(("Su mejor puntuación hoy: %d" % best if best >= 0 else "Aún no lo ha jugado hoy.") + ("   ·   Racha: %d día%s seguidos" % [st, "" if st == 1 else "s"] if st > 0 else ""), UI.f_sans_b, 19, UI.GOLD_L))
+	var bh := UI.hbox(14)
+	bh.add_child(UI.spacer(0, 0, true))
+	var close_b := UI.btn("Cerrar", "normal")
+	close_b.pressed.connect(func():
+		modal.queue_free()
+		modal = null)
+	bh.add_child(close_b)
+	var go := UI.btn("Jugar el reto", "gold", 22)
+	go.pressed.connect(func():
+		Sfx.play("whoosh", -2.0)
+		main.start_new(Reto.game_opts(idx)))
+	bh.add_child(go)
+	v.add_child(bh)
 	_modal(p)
 
 

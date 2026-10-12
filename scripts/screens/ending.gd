@@ -6,6 +6,7 @@ const Portrait := preload("res://scripts/ui/portrait.gd")
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const W := preload("res://scripts/data/world_data.gd")
 const Promesas := preload("res://scripts/systems/promesas.gd")
+const Reto := preload("res://scripts/systems/reto.gd")
 
 var main: Node
 var data: Dictionary = {}
@@ -100,6 +101,13 @@ func _ready() -> void:
 	Perfil.add_stat("partidas")
 	if good:
 		Perfil.add_stat("victorias")
+	if GS.daily >= 0:
+		# reto del día: puntuación, mejor marca de hoy y racha
+		var rr := Reto.record(GS.daily, score)
+		var dv := UI.hbox(10)
+		dv.add_child(UI.icon_rect("calendario", 26, UI.GOLD))
+		dv.add_child(UI.lbl("RETO DEL DÍA · su mejor marca de hoy: %d%s · racha: %d día%s" % [int(rr["best"]), "  ¡NUEVO RÉCORD!" if rr["new_best"] else "", int(rr["streak"]), "" if int(rr["streak"]) == 1 else "s"], UI.f_sans_b, 18, UI.GOLD_L))
+		right.add_child(dv)
 	var rw := UI.hbox(10)
 	rw.add_child(UI.icon_rect("laurel", 28, UI.GOLD_L))
 	rw.add_child(UI.lbl("+%d Laureles para la Tienda del Palacio" % reward, UI.f_sans_b, 20, UI.GOLD_L))

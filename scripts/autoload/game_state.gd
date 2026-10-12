@@ -123,10 +123,13 @@ var cast := {}
 var memo_used := {}
 ## El móvil del presidente: red social «Pío» y mensajes (ver scripts/systems/redes.gd)
 var social := {}
+## Reto del día que se está jugando (número de día del calendario real) o -1 si es una partida normal
+var daily := -1
 
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
 const Redes := preload("res://scripts/systems/redes.gd")
+const Reto := preload("res://scripts/systems/reto.gd")
 
 ## Los efectos de las decisiones se olvidan poco a poco (vida media en días)
 const MEMORY_HALF_LIFE := 150.0
@@ -158,6 +161,11 @@ func _ready() -> void:
 # ================================================================== nueva partida
 
 func new_game(opts: Dictionary) -> void:
+	# reto del día: el mismo mundo para todos (misma semilla para el sorteo de todo lo que se prepara al empezar)
+	daily = int(opts.get("daily", -1))
+	if opts.has("seed"):
+		seed(int(opts["seed"]))
+		rng.seed = int(opts["seed"])
 	pres = {"name": opts.get("name", "Alejandro Ríos"), "party": opts.get("party", "MP"), "look": Perfil.apply_outfit(opts.get("look", {}))}
 	difficulty = opts.get("difficulty", 1)
 	mode = opts.get("mode", "clasico")
@@ -270,6 +278,8 @@ func new_game(opts: Dictionary) -> void:
 	Memoria.setup_cast(rng)
 	Redes.start(rng)
 	_apply_scenario(_pick_scenario(str(opts.get("scenario", "aleatorio"))))
+	if opts.has("rules"):
+		Reto.apply(opts["rules"])
 	_draw_tramas()
 	_update_targets()
 	_update_approval()
@@ -1036,7 +1046,7 @@ func _interval(kind: String) -> int:
 		"call":
 			return int(rng.randi_range(16, 28) * mult)
 		"crisis":
-			return int(rng.randi_range(60, 95) * mult)
+			return int(rng.randi_range(60, 95) * mult * (0.6 if flags.has("reto_crisis") else 1.0))
 		"press":
 			return int(rng.randi_range(55, 80) * mult)
 		"news":
@@ -1148,6 +1158,8 @@ func _spawn_kind(kind: String) -> bool:
 
 func spawn(ev: Dictionary) -> void:
 	var item := {"uid": next_uid(), "ev": ev, "day": day}
+	# (reto «plazos imposibles»: caducan como en difícil)
+	var di := 2 if flags.has("reto_plazos") else difficulty
 	# Los escándalos de corrupción son los eventos que solo salen cuando la corrupción acumulada es alta
 	if ev.get("scandal", false) or ev.get("cond", {}).get("gt", {}).has("corr"):
 		scandals += 1
@@ -1155,12 +1167,12 @@ func spawn(ev: Dictionary) -> void:
 		remember("escandalo", {"title": fmt(str(ev.get("title", "")))})
 	match ev["type"]:
 		"doc":
-			item["deadline"] = day + int(DEADLINES["doc"][difficulty])
+			item["deadline"] = day + int(DEADLINES["doc"][di])
 			inbox.append(item)
 			Sfx.play("paper2", -4.0)
 			toast.emit("Nuevo documento: %s" % fmt(ev["title"]), "info", "documento")
 		"advisor":
-			item["deadline"] = day + int(DEADLINES["advisor"][difficulty])
+			item["deadline"] = day + int(DEADLINES["advisor"][di])
 			visitors.append(item)
 			Sfx.play("knock", -2.0)
 			var ch := DB.character(ev.get("who", "jefa"))
@@ -1169,7 +1181,7 @@ func spawn(ev: Dictionary) -> void:
 			calls.append(item)
 			ringing_time = 0.0
 		"crisis":
-			item["deadline"] = day + int(DEADLINES["crisis"][difficulty])
+			item["deadline"] = day + int(DEADLINES["crisis"][di])
 			alerts.append(item)
 			Sfx.play("alert", 0.0)
 			toast.emit("¡CRISIS! %s" % fmt(ev["title"]), "bad", "alerta")
@@ -2040,7 +2052,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo", "cast", "memo_used", "social"]
+	"promises", "counters", "memo", "cast", "memo_used", "social", "daily"]
 
 
 func has_save() -> bool:
@@ -2108,6 +2120,7 @@ func load_game() -> bool:
 	cast = {}
 	memo_used = {}
 	social = {}
+	daily = -1
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])
@@ -2131,6 +2144,7 @@ func load_game() -> bool:
 	term_start = int(term_start)
 	terms_won = int(terms_won)
 	scandals = int(scandals)
+	daily = int(daily)
 	cycle = float(cycle)
 	if not timers.has("control"):
 		timers["control"] = 30
