@@ -104,6 +104,11 @@ func _play(days: int) -> Dictionary:
 		print("Eventos distintos vistos: %d" % events_seen.size())
 		print("Leyes: ", GS.policies, "  Tratados: ", GS.treaties.size(), "  Corrupción: ", snappedf(GS.corruption, 0.1))
 		print("Recuerdos con decisión: %d · hechos anotados: %d" % [int(_result.get("memo", 0)), GS.memo.size()])
+		var pr := {}
+		for k in _result.keys():
+			if str(k).begins_with("posts_"):
+				pr[str(k).trim_prefix("posts_")] = _result[k]
+		print("Móvil: %d chats contestados · %d en total · publicaciones %s · seguidores %d" % [int(_result.get("chats", 0)), GS.social["chats"].size(), pr, int(GS.social["followers"])])
 	_result["approval"] = GS.approval
 	_result["debt"] = GS.debt_ratio()
 	_result["laws"] = GS.policies.size()
@@ -289,6 +294,17 @@ func _resolve_all() -> void:
 		var it3: Dictionary = GS.calls[0]
 		_seen(it3["ev"])
 		GS.resolve_choice(it3, _pick(it3["ev"]["choices"].size(), it3["ev"]["choices"]))
+	# el móvil: contesta algunos mensajes (los demás se quedan en visto) y publica de vez en cuando
+	if GS.social is Dictionary and GS.social.has("chats"):
+		for c in GS.social["chats"]:
+			if c["state"] == "nuevo" and randf() < (0.8 if strategy == "player" else 0.5):
+				var reps: Array = GS.Redes.chat_def(str(c["id"])).get("replies", [])
+				if not reps.is_empty():
+					GS.Redes.answer_chat(c, _pick(reps.size(), reps))
+					_result["chats"] = int(_result.get("chats", 0)) + 1
+		if strategy in ["player", "casual"] and GS.Redes.can_post() and randf() < 0.08 and not GS.social["trends"].is_empty():
+			var post := GS.Redes.publish(GS.social["trends"].pick_random(), ["sincero", "firme", "humor", "ataque", "emotivo"].pick_random())
+			_result["posts_" + str(post["result"])] = int(_result.get("posts_" + str(post["result"]), 0)) + 1
 	while GS.alerts.size() > 0 and guard < 80:
 		guard += 1
 		var it4: Dictionary = GS.alerts[0]

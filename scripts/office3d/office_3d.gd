@@ -26,6 +26,8 @@ const Portrait := preload("res://scripts/ui/portrait.gd")
 const OfficeArt := preload("res://scripts/office/office_art.gd")
 const PetArt := preload("res://scripts/office/pet_art.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const PhoneLock := preload("res://scripts/ui/phone_lock.gd")
+const Redes := preload("res://scripts/systems/redes.gd")
 const Batch := Kit.Batch
 
 const INTERACT_RANGE := 12.0
@@ -93,6 +95,9 @@ var _led_on: Material
 var _led_off: Material
 var _steam: CPUParticles3D
 var _mug: RigidBody3D
+## El móvil del presidente: pantalla de bloqueo pintada en una textura
+var _phone_lock: Control
+var _phone_vp: SubViewport
 var _lamp_light: SpotLight3D
 var _lamp_shade: StandardMaterial3D
 var _lamp_on := true
@@ -739,6 +744,21 @@ func _desk_objects() -> void:
 	_steam.color_ramp = grad
 	_mug.add_child(_steam)
 	_obj("mug", _mug, "Café", null, 0.15)
+	# --- el móvil del presidente (físico): se puede coger y lanzar como todo lo demás
+	var mv := _prop(Kit.rigid(world, Vector3(0.79, top + 0.0055, dz + 0.15), Kit.shape_box(Vector3(0.078, 0.011, 0.158)), 0.17, Vector3(0, 0.42, 0)))
+	var mvb := Batch.new()
+	mvb.cube(Vector3.ZERO, Vector3(0.078, 0.009, 0.158), Kit.mat(Color("15161a"), 0.25, 0.3), Vector3.ZERO, 1.0, 0.006, 2)
+	mvb.cube(Vector3(0.0, -0.001, -0.06), Vector3(0.022, 0.0095, 0.022), Kit.mat(Color("2a2c33"), 0.1, 0.6), Vector3.ZERO, 1.0, 0.004, 2)
+	mvb.commit(mv)
+	_phone_lock = PhoneLock.new()
+	_phone_vp = _viewport(Vector2i(120, 250), _phone_lock, false, SubViewport.UPDATE_ONCE)
+	var mscr := Kit.mesh(mv, Kit.quad_mesh(Vector2(0.07, 0.148)), Kit.screen_mat(_phone_vp.get_texture(), 1.1), Vector3(0, 0.0047, 0), Vector3(-PI / 2.0, 0, 0))
+	mscr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var mvo = _obj("movil", mv, "Móvil · Pío y mensajes", null, 0.12)
+	mvo.glow_color = Color(0.45, 0.72, 1.0)
+	mvo.redraw = func():
+		_phone_lock.queue_redraw()
+		_phone_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	# --- placa con el nombre, hacia los visitantes (física)
 	var plate := _prop(Kit.rigid(world, Vector3(0.0, top + 0.03, dz - 0.5), Kit.shape_box(Vector3(0.38, 0.06, 0.06)), 0.7, Vector3(0, PI, 0)))
 	var plb := Batch.new()
@@ -1172,6 +1192,12 @@ func _refresh() -> void:
 	mic.status = "Disponible" if cd <= 0 else "Disponible en %d días" % cd
 	if GS.campaign:
 		mic.status = "Mitin de campaña · " + mic.status
+	var mv = objs["movil"]
+	var unread := Redes.unread()
+	mv.badge = str(unread) if unread > 0 else ""
+	mv.badge_color = Color(0.11, 0.6, 0.94)
+	mv.pulse = unread > 0
+	mv.status = ("%d mensaje%s sin leer" % [unread, "" if unread == 1 else "s"]) if unread > 0 else "Lo que dice la calle en Pío"
 	objs["newspaper"].status = "Última edición"
 	objs["monitor"].status = "Datos, leyes, Congreso y gabinete"
 	objs["globe"].status = "Relaciones internacionales y acuerdos"
@@ -1253,6 +1279,8 @@ func _on_object(key: String) -> void:
 			request.emit("world", {})
 		"newspaper":
 			request.emit("newspaper", {"latest": true})
+		"movil":
+			request.emit("movil", {})
 		"folder":
 			request.emit("budget", {})
 		"mic":

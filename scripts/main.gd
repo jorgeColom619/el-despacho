@@ -32,6 +32,7 @@ const OVERLAYS := {
 	"pause": "res://scripts/overlays/pause_overlay.gd",
 	"election": "res://scripts/overlays/election_overlay.gd",
 	"tutorial": "res://scripts/overlays/tutorial_overlay.gd",
+	"movil": "res://scripts/overlays/movil_overlay.gd",
 }
 
 const TIPS := {
@@ -570,6 +571,16 @@ func _debug_start() -> void:
 				open_overlay("call", {"item": GS.calls[0]})
 			else:
 				open_overlay("advisor", {"item": GS.visitors.back()})
+		"movil", "movilpub", "movilchat", "moviltrend":
+			for h in ["El Congreso aprueba la Ley de Vivienda Asequible", "ÚLTIMA HORA: Incendio forestal en la Sierra Oeste", "El presidente se impone a Gonzalo Arriaga en la sesión de control", "Huelga de controladores aéreos en Santa Aurora", "Valdoria firma un acuerdo comercial con Norland"]:
+				GS.push_news(h, 3)
+			for cid in ["madre_comer", "com_dibujo", "jefa_agenda"]:
+				GS.Redes.new_chat(cid)
+			var mtab: String = {"movil": "inicio", "movilpub": "publicar", "movilchat": "mensajes", "moviltrend": "tendencias"}[debug_open]
+			open_overlay("movil", {"tab": mtab})
+			if debug_open == "movilchat":
+				current_overlay.chat_open = GS.social["chats"][0]
+				current_overlay._show("mensajes")
 		"preface":
 			GS.remember("llamada_perdida", {"who": "norland"})
 			GS.spawn(DB.event("call_kade_acero"))

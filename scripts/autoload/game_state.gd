@@ -121,9 +121,12 @@ var memo := []
 var cast := {}
 ## Recuerdos de una sola vez por partida que ya han salido
 var memo_used := {}
+## El móvil del presidente: red social «Pío» y mensajes (ver scripts/systems/redes.gd)
+var social := {}
 
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
+const Redes := preload("res://scripts/systems/redes.gd")
 
 ## Los efectos de las decisiones se olvidan poco a poco (vida media en días)
 const MEMORY_HALF_LIFE := 150.0
@@ -265,6 +268,7 @@ func new_game(opts: Dictionary) -> void:
 	# Cada partida es distinta: mundo aleatorio, escenario inicial y tramas sorteadas
 	_randomize_world()
 	Memoria.setup_cast(rng)
+	Redes.start(rng)
 	_apply_scenario(_pick_scenario(str(opts.get("scenario", "aleatorio"))))
 	_draw_tramas()
 	_update_targets()
@@ -555,6 +559,7 @@ func advance_day() -> void:
 	_check_deadlines()
 	_run_scheduled()
 	Promesas.tick()
+	Redes.tick()
 	if day == term_start + (term_days - term_start) / 2 and not campaign:
 		var mt := Promesas.midterm_event()
 		if not mt.is_empty():
@@ -1579,6 +1584,7 @@ func push_news(text: String, importance: int = 1) -> void:
 	if news_feed.size() > 40:
 		news_feed.resize(40)
 	month_log.append({"t": text, "day": day, "imp": importance})
+	Redes.on_news(text, importance)
 	headline.emit(text)
 
 
@@ -2034,7 +2040,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo", "cast", "memo_used"]
+	"promises", "counters", "memo", "cast", "memo_used", "social"]
 
 
 func has_save() -> bool:
@@ -2101,6 +2107,7 @@ func load_game() -> bool:
 	memo = []
 	cast = {}
 	memo_used = {}
+	social = {}
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])
@@ -2130,6 +2137,9 @@ func load_game() -> bool:
 	if not timers.has("summit"):
 		timers["summit"] = 100
 	_recalc_traits()
+	# partidas guardadas antes de que existiera el móvil
+	if not Redes.on():
+		Redes.start(rng)
 	visitors = _deserial_queue(visitors)
 	alerts = _deserial_queue(alerts)
 	calls = []

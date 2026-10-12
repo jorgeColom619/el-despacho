@@ -12,6 +12,7 @@ const Hud := preload("res://scripts/office/hud.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const PetArt := preload("res://scripts/office/pet_art.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Redes := preload("res://scripts/systems/redes.gd")
 
 var scene: Control
 var window_view: Control
@@ -133,6 +134,10 @@ func _ready() -> void:
 	sphere.material = globe_mat
 	globe.add_child(sphere)
 	globe.move_child(sphere, 0)
+	# el móvil del presidente, boca arriba entre la carpeta y el café
+	var movil := _object("movil", Rect2(1290, 896, 196, 158), null, "Móvil · Pío y mensajes")
+	movil.extra_draw = _draw_movil
+	movil.glow_color = Color(0.45, 0.72, 1.0)
 	var mug := _object("mug", Rect2(1500, 918, 100, 110), OfficeArt.tex("mug"), "Café")
 	mug.extra_draw = _draw_steam
 	mug.animated = true
@@ -300,6 +305,12 @@ func _refresh() -> void:
 	mic.status = "Disponible" if cd <= 0 else "Disponible en %d días" % cd
 	if GS.campaign:
 		mic.status = "Mitin de campaña · " + mic.status
+	var mv: Control = objs["movil"]
+	var unread := Redes.unread()
+	mv.badge = str(unread) if unread > 0 else ""
+	mv.badge_color = Color(0.11, 0.6, 0.94)
+	mv.pulse = unread > 0
+	mv.status = ("%d mensaje%s sin leer" % [unread, "" if unread == 1 else "s"]) if unread > 0 else "Lo que dice la calle en Pío"
 	objs["newspaper"].status = "Última edición"
 	objs["monitor"].status = "Datos, leyes, Congreso y gabinete"
 	objs["globe"].status = "Relaciones internacionales y acuerdos"
@@ -375,6 +386,8 @@ func _on_object(key: String) -> void:
 			request.emit("world", {})
 		"newspaper":
 			request.emit("newspaper", {"latest": true})
+		"movil":
+			request.emit("movil", {})
 		"folder":
 			request.emit("budget", {})
 		"mic":
@@ -568,6 +581,37 @@ func _draw_phone_lcd(o: Control) -> void:
 		o.draw_string(UI.f_mono, Vector2(r.position.x, r.position.y + 17), "ENTRANTE", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 13, Color(0.05, 0.1, 0.05))
 	else:
 		o.draw_string(UI.f_mono, Vector2(r.position.x + 4, r.position.y + 17), "LÍNEA LIBRE", HORIZONTAL_ALIGNMENT_LEFT, r.size.x, 11, Color(0.5, 0.8, 0.55, 0.7))
+
+
+## El móvil, tumbado sobre la mesa: la pantalla se enciende cuando hay mensajes sin leer
+func _draw_movil(o: Control) -> void:
+	var lift: float = -4.0 * float(o.get("_hv"))
+	var pts := PackedVector2Array([Vector2(52, 14), Vector2(124, 8), Vector2(156, 138), Vector2(62, 148)])
+	for i in pts.size():
+		pts[i].y += lift
+	var shadow := PackedVector2Array()
+	for p in pts:
+		shadow.append(p + Vector2(7, 6 - lift))
+	o.draw_colored_polygon(shadow, Color(0, 0, 0, 0.35))
+	o.draw_colored_polygon(pts, Color("16171b"))
+	o.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Color(0.55, 0.57, 0.62, 0.6), 1.5, true)
+	var c := (pts[0] + pts[1] + pts[2] + pts[3]) / 4.0
+	var scr := PackedVector2Array()
+	for p in pts:
+		scr.append(c + (p - c) * 0.86)
+	var unread := Redes.unread()
+	o.draw_colored_polygon(scr, Color("1d3d68") if unread > 0 else Color("0b111c"))
+	if unread > 0:
+		# avisos en la pantalla
+		for k in mini(unread, 3):
+			var t := 0.3 + k * 0.17
+			var a := scr[0].lerp(scr[3], t) + (scr[1] - scr[0]) * 0.08
+			var b := scr[1].lerp(scr[2], t) - (scr[1] - scr[0]) * 0.08
+			o.draw_line(a, b, Color(1, 1, 1, 0.55), 7.0)
+		var glow: float = 0.5 + 0.5 * sin(float(o.get("_t")) * 3.0)
+		o.draw_colored_polygon(scr, Color(0.3, 0.6, 1.0, 0.12 * glow))
+	else:
+		o.draw_line(scr[0].lerp(scr[3], 0.18) + (scr[1] - scr[0]) * 0.3, scr[1].lerp(scr[2], 0.18) - (scr[1] - scr[0]) * 0.3, Color(1, 1, 1, 0.18), 3.0)
 
 
 func _draw_calendar(o: Control) -> void:
