@@ -101,7 +101,7 @@ static func _alcalde() -> Dictionary:
 		choices.append({"t": "Poner la mitad si el ayuntamiento pone la otra mitad.", "fx": {"money": -round(cost / 2.0), grp: 1,
 			"risk": {"p": 0.6, "fx": {met: 1, "region": [pl[1], 0.8]}, "news": "%s acepta el trato: %s irá a medias" % [pl[0], p["short"]]},
 			"else": {"fx": {grp: -1}, "news": "%s, alcalde%s de %s, rechaza la oferta del Gobierno: «Migajas»" % [mayor, "sa" if g == "f" else "", pl[0]]}}})
-	choices.append({"t": "No hay dinero para todo. Lo siento.", "fx": {grp: -2, "region": [pl[1], -1.0]}})
+	choices.append({"t": "No hay dinero para todo. Lo siento.", "fx": {grp: -1, "region": [pl[1], -0.5]}})
 	return {"id": id, "type": "advisor", "who": p.get("who", "jefa"), "gen": true, "tpl": true,
 		"title": "%s pide %s" % [pl[0], p["short"]],
 		"text": "Presidente, %s, alcalde%s de %s, pide %s: %s. %s" % [mayor, "sa" if g == "f" else "", pl[0], p["what"], p["why"], _rand(D.MAYOR_LINES)],
@@ -156,8 +156,8 @@ static func _protesta() -> Dictionary:
 		"choices": [
 			{"t": "Recibirles y comprometer una solución.", "fx": {"monthly": -cost, grp: 3, "pc": -2}, "news": "El presidente recibe a %s y se compromete a atender sus demandas" % String(pr["who"]).to_lower()},
 			{"t": "Abrir una mesa de diálogo, sin compromisos.", "fx": {"pc": -1, "risk": {"p": 0.5, "fx": {grp: 1}}, "else": {"fx": {grp: -2}, "news": "%s abandonan la mesa de diálogo: «Nos toman el pelo»" % pr["who"]}}},
-			{"t": "Ni caso. Ya se cansarán.", "fx": {grp: -3, "estabilidad": -1}},
-			{"t": "Desalojar la avenida: han cortado el tráfico.", "fx": {"seguridad": 1, grp: -4, "jovenes": -1, "jubilados": 1, "estabilidad": -1}, "news": "La policía desaloja a %s frente al Palacio" % String(pr["who"]).to_lower()},
+			{"t": "Ni caso. Ya se cansarán.", "fx": {grp: -2}},
+			{"t": "Desalojar la avenida: han cortado el tráfico.", "fx": {"seguridad": 1, grp: -3, "jubilados": 1, "clase_media": 1}, "news": "La policía desaloja a %s frente al Palacio" % String(pr["who"]).to_lower()},
 		], "default": 2}
 
 
@@ -191,7 +191,7 @@ static func _suceso() -> Dictionary:
 		"choices": [
 			{"t": "Voy ahora mismo a la zona.", "fx": {"stress": 4, "approval": 1, grp: 2, "money": -40, "region": [pl[1], 1.5]}, "news": "El presidente se desplaza a %s tras el suceso" % pl[0]},
 			{"t": "Ayudas de emergencia y que vaya el ministro.", "fx": {"money": -120, grp: 1, "region": [pl[1], 0.8]}},
-			{"t": "Que lo gestionen las autoridades locales.", "fx": {grp: -2, "clase_media": -1, "region": [pl[1], -1.0]}},
+			{"t": "Que lo gestionen las autoridades locales.", "fx": {grp: -1, "region": [pl[1], -0.5]}},
 		], "default": 2}
 
 

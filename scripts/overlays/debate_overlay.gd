@@ -185,7 +185,7 @@ func _reply(rep) -> void:
 		if rep.get("risky", false):
 			s += randf_range(-0.35, 0.35)
 		s += randf_range(-0.1, 0.1)
-		line = P.DEBATE_LINES[rep["id"]].pick_random()
+		line = DB.debate_lines(rep["id"]).pick_random()
 	scores.append(s)
 	bubble_me.get_parent().visible = true
 	me.talking = true
@@ -201,7 +201,7 @@ func _reply(rep) -> void:
 		opp.mood = -0.6
 		opp.anger = 0.5
 		Sfx.play("applause", -8.0)
-		bubble_opp.play("«" + P.OPP_REACTIONS["good"].pick_random() + "»", 60.0)
+		bubble_opp.play("«" + DB.opp_reactions("good").pick_random() + "»", 60.0)
 	elif s >= 0.5:
 		result_lbl.text = "Réplica aceptable"
 		result_lbl.add_theme_color_override("font_color", UI.AMBER)
@@ -212,7 +212,7 @@ func _reply(rep) -> void:
 		me.mood = -0.5
 		opp.mood = 0.6
 		Sfx.play("crowd", -8.0, 1.2)
-		bubble_opp.play("«" + P.OPP_REACTIONS["bad"].pick_random() + "»", 60.0)
+		bubble_opp.play("«" + DB.opp_reactions("bad").pick_random() + "»", 60.0)
 	UI.pop_in(result_lbl)
 	await get_tree().create_timer(2.6).timeout
 	opp.anger = 0.0

@@ -9,6 +9,9 @@ const E_MEME := preload("res://scripts/data/events_meme.gd")
 const P := preload("res://scripts/data/press_data.gd")
 const SC := preload("res://scripts/data/scenarios_data.gd")
 const G := preload("res://scripts/data/generadores_data.gd")
+const C := preload("res://scripts/data/conversaciones_data.gd")
+const E_V3A := preload("res://scripts/data/events_v3a.gd")
+const E_V3B := preload("res://scripts/data/events_v3b.gd")
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
 
@@ -118,7 +121,7 @@ const BID_NOTES := [
 
 
 func _ready() -> void:
-	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS, E_MEME.EVENTS]:
+	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS, E_MEME.EVENTS, E_V3A.EVENTS, E_V3B.EVENTS]:
 		for e in list:
 			if events_by_id.has(e["id"]):
 				push_warning("Evento duplicado: " + e["id"])
@@ -357,14 +360,13 @@ func opposition_attacks(n: int) -> Array:
 			break
 		out.append(a)
 	var pool := []
-	for a in P.DEBATE:
+	for a in P.DEBATE + C.DEBATE:
 		if GS.check(a.get("cond", {})):
 			pool.append(a)
-	pool.shuffle()
-	for a in pool:
-		if out.size() >= n:
-			break
-		out.append(a)
+	for a in pick_fresh(pool, n - out.size(), "atk", "attack"):
+		var a2: Dictionary = a.duplicate()
+		a2["attack"] = GS.fmt(str(a["attack"]))
+		out.append(a2)
 	var i := 0
 	while out.size() < n and not P.DEBATE.is_empty():
 		out.append(P.DEBATE[i % P.DEBATE.size()])
@@ -375,14 +377,14 @@ func opposition_attacks(n: int) -> Array:
 
 func press_questions(n: int, mode: String = "rueda") -> Array:
 	var pool := []
-	var src: Array = P.QUESTIONS.duplicate()
+	var src: Array = P.QUESTIONS + C.QUESTIONS
 	if GS.mode == "meme":
 		src.append_array(E_MEME.QUESTIONS)
 		src.append_array(E_MEME.QUESTIONS)
 	for q in src:
 		if GS.check(q.get("cond", {})):
 			pool.append(q)
-	pool.shuffle()
+	pool = pick_fresh(pool, n, "q", "q")
 	var out := []
 	# si hay promesas rotas o pendientes, algún periodista pregunta por ellas
 	var pq := Promesas.press_question()
@@ -401,10 +403,62 @@ func press_questions(n: int, mode: String = "rueda") -> Array:
 	return out
 
 
+## Elige n cosas sin repetir: primero lo que no ha salido en esta partida, y lo de partidas recientes, menos.
+## Lo elegido se anota en GS.used («prefijo_hash del texto») y pasa a la memoria entre partidas.
+func pick_fresh(list: Array, n: int, prefix: String, key: String) -> Array:
+	var pool := []
+	for it in list:
+		var id := "%s_%d" % [prefix, absi(hash(str(it.get(key, ""))))]
+		var w := Perfil.recent_factor(id) * (0.02 if GS.used.has(id) else 1.0)
+		pool.append([it, id, w])
+	var out := []
+	while out.size() < n and not pool.is_empty():
+		var total := 0.0
+		for e in pool:
+			total += float(e[2])
+		var r := randf() * total
+		var k := pool.size() - 1
+		for i in pool.size():
+			r -= float(pool[i][2])
+			if r <= 0.0:
+				k = i
+				break
+		out.append(pool[k][0])
+		GS.used[pool[k][1]] = GS.day
+		pool.remove_at(k)
+	return out
+
+
+## Réplicas del presidente y reacciones de la oposición en la sesión de control y el debate
+func debate_lines(id: String) -> Array:
+	return (P.DEBATE_LINES.get(id, ["..."]) as Array) + (C.DEBATE_LINES.get(id, []) as Array)
+
+
+func opp_reactions(kind: String) -> Array:
+	return (P.OPP_REACTIONS.get(kind, ["..."]) as Array) + (C.OPP_REACTIONS.get(kind, []) as Array)
+
+
+## Frases para una sección del discurso: primero las que no ha usado en esta partida
+func speech_pool(sec: String) -> Array:
+	var all: Array = (P.SPEECH.get(sec, []) as Array) + (C.SPEECH.get(sec, []) as Array)
+	var fresh := []
+	var used := []
+	for ph in all:
+		(used if GS.used.has("sp_%d" % absi(hash(str(ph["t"])))) else fresh).append(ph)
+	fresh.shuffle()
+	used.shuffle()
+	return fresh + used
+
+
+func mark_speech(ph: Dictionary) -> void:
+	GS.used["sp_%d" % absi(hash(str(ph.get("t", ""))))] = GS.day
+
+
 ## Una pregunta normal de la prensa (sin recuerdos ni promesas)
 func plain_question() -> Dictionary:
 	var pool := []
-	for q in P.QUESTIONS:
+	for q in P.QUESTIONS + C.QUESTIONS:
 		if GS.check(q.get("cond", {})):
 			pool.append(q)
-	return pool.pick_random() if not pool.is_empty() else P.QUESTIONS[0]
+	var pk := pick_fresh(pool, 1, "q", "q")
+	return pk[0] if not pk.is_empty() else P.QUESTIONS[0]

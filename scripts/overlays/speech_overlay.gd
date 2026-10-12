@@ -141,8 +141,7 @@ func _next_section() -> void:
 		return
 	var sec: Array = sections[si]
 	sec_lbl.text = "PARTE %d DE %d · %s" % [si + 1, sections.size(), String(sec[1]).to_upper()]
-	var pool: Array = P.SPEECH[sec[0]].duplicate()
-	pool.shuffle()
+	var pool: Array = DB.speech_pool(sec[0])
 	if GS.mode == "meme":
 		# En el modo meme, las frases de chiste van primero
 		var memes: Array = DB.E_MEME.SPEECH.get(sec[0], []).duplicate()
@@ -192,6 +191,7 @@ func _choose(ph: Dictionary, manual: bool) -> void:
 		judge_lbl.text = "¡Titubeo!"
 		judge_lbl.add_theme_color_override("font_color", UI.RED)
 	cur_fx = ph["fx"]
+	DB.mark_speech(ph)
 	_prepare_words(ph["t"])
 	phase = "deliver"
 	pres.talking = true

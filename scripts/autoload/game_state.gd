@@ -1125,7 +1125,8 @@ func _spawn_kind(kind: String) -> bool:
 			var el2 := _eligible(kind)
 			var ev2 := {} if el2.is_empty() else _pick(el2)
 			# lo escrito a mano que ya salió hace poco se sustituye por una situación generada
-			if ev2.is_empty() or _stale(ev2):
+			# (si no queda nada que pueda salir, a veces también, pero sin llenar todos los huecos)
+			if (ev2.is_empty() and rng.randf() < 0.3) or (not ev2.is_empty() and _stale(ev2)):
 				var t := Plantillas.make(kind)
 				if not t.is_empty():
 					spawn(t)
@@ -1161,6 +1162,8 @@ func _spawn_kind(kind: String) -> bool:
 ## ¿Este evento ya salió en partidas recientes? (cuanto más reciente, más probable que se cambie por otro)
 func _stale(ev: Dictionary) -> bool:
 	if ev.get("chain_only", false) or ev.get("cond", {}).has("trama"):
+		return false
+	if "--notpl" in OS.get_cmdline_user_args():
 		return false
 	var f := Perfil.recent_factor(str(ev.get("id", "")))
 	if seen_terms.has(ev.get("id", "")):
@@ -1290,7 +1293,7 @@ func resolve_choice(item: Dictionary, idx: int) -> Array:
 			counters["indultos"] = int(counters.get("indultos", 0)) + 1
 		var pname := title.get_slice(": ", 1) if ": " in title else title
 		remember("indulto" if granted else "indulto_denegado", {"name": pname, "look": ev.get("prisoner", {})})
-	elif ev.get("kind", "") == "carta" and not ev.get("memo", false) and title.begins_with("Carta de "):
+	elif ev.get("kind", "") == "carta" and ev.get("gen", false) and not ev.get("memo", false) and title.begins_with("Carta de "):
 		remember("carta_archivada" if idx == int(ev.get("default", 1)) else "carta_ayuda", {"from": title.trim_prefix("Carta de ")})
 	if str(ev.get("id", "")).begins_with("cumbre_") and ev.get("gen", false) and idx == 1:
 		var sid := str(ev["id"]).trim_prefix("cumbre_")
@@ -1548,6 +1551,9 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 			"memo":
 				if v is Dictionary:
 					var md: Dictionary = v.duplicate(true)
+					for mk2 in md.keys():
+						if md[mk2] is String:
+							md[mk2] = fmt(md[mk2])
 					var mk := str(md.get("k", ""))
 					md.erase("k")
 					if mk != "":
@@ -1642,6 +1648,8 @@ func fmt(s: String) -> String:
 		"paro": UI.num(unemployment(), 1), "crec": UI.num(growth(), 1), "deuda": UI.num(debt_ratio(), 0), "aprob": UI.num(approval, 0),
 		"term": "%d años" % ((term_days - term_start) / 365) if term_days - term_start >= 730 else "un año",
 		"ultima_ley": W.LAWS[last_law]["name"] if last_law != "" else "última ley",
+		"periodista": str(cast.get("periodista_inc", {}).get("name", "una periodista")),
+		"periodico_hostil": str(cast.get("periodista_inc", {}).get("outlet", "El Heraldo")),
 	}
 	return s.format(d)
 

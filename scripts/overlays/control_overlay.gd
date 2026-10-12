@@ -320,7 +320,7 @@ func _answer(rep) -> void:
 	# (si contesta antes de que acabe la pregunta, le corta)
 	stage.clear_lines()
 	if rep != null:
-		stage.say(who, (P.DEBATE_LINES.get(rep["id"], ["..."]) as Array).pick_random(), UI.GOLD_L, me, 0.25)
+		stage.say(who, DB.debate_lines(rep["id"]).pick_random(), UI.GOLD_L, me, 0.25)
 	else:
 		stage.say(who, "Eh... Señorías, yo... Bueno, como iba diciendo...", UI.GOLD_L, me, 0.25)
 	stage.after_lines(_react.bind(s, rep != null, gen))
@@ -348,7 +348,7 @@ func _react(s: float, replied: bool, gen: int) -> void:
 		Sfx.play("applause", -4.0)
 		if combo >= 2:
 			_after(0.45, func(): stage.big_text("COMBO x%d" % combo, Color("ffd66b"), 92, Vector2(960, 560), 0.9))
-		_after(0.9, func(): stage.say(_opp_name(), (P.OPP_REACTIONS["good"] as Array).pick_random(), UI.RED.lightened(0.3), opp, 0.3))
+		_after(0.9, func(): stage.say(_opp_name(), DB.opp_reactions("good").pick_random(), UI.RED.lightened(0.3), opp, 0.3))
 		loud = true
 	elif s >= 0.5:
 		points += s
@@ -370,7 +370,7 @@ func _react(s: float, replied: bool, gen: int) -> void:
 		stage.big_text("¡ABUCHEOS!" if replied else "¡SE HA QUEDADO EN BLANCO!", UI.RED.lightened(0.15), 120 if replied else 96)
 		stage.shake(0.25)
 		Sfx.play("crowd", -4.0, 1.2)
-		_after(0.7, func(): stage.say(_opp_name(), (P.OPP_REACTIONS["bad"] as Array).pick_random(), UI.RED.lightened(0.3), opp, 0.3))
+		_after(0.7, func(): stage.say(_opp_name(), DB.opp_reactions("bad").pick_random(), UI.RED.lightened(0.3), opp, 0.3))
 		loud = true
 	combo_lbl.text = ("COMBO x%d" % combo) if combo >= 2 else ""
 	if combo >= 2:
@@ -378,7 +378,7 @@ func _react(s: float, replied: bool, gen: int) -> void:
 		combo_lbl.create_tween().tween_property(combo_lbl, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# tras el alboroto, la presidenta pide silencio
 	if loud and randf() < 0.65:
-		_after(2.2, func(): stage.say(stage.order(), ORDER_LINES.pick_random(), UI.GOLD, stage.chair_pres, 0.2))
+		_after(2.2, func(): stage.say(stage.order(), (ORDER_LINES + DB.C.ORDER_LINES).pick_random(), UI.GOLD, stage.chair_pres, 0.2))
 	_after(3.0 if loud else 2.2, func():
 		if gen == _gen:
 			stage.after_lines(_next_if.bind(gen)))
