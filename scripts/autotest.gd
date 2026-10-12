@@ -275,9 +275,10 @@ func _pick(n: int, choices: Array) -> int:
 func _seen(ev: Dictionary) -> void:
 	if ev.get("memo", false):
 		_result["memo"] = int(_result.get("memo", 0)) + 1
-	if ev.get("gen", false):
-		return
 	var id: String = ev.get("id", "")
+	# las situaciones generadas cuentan por su pieza (tpl_familia_pieza); el resto de lo generado, no
+	if ev.get("gen", false) and not id.begins_with("tpl_"):
+		return
 	if not events_seen.has(id):
 		_first_ids.append(id)
 	events_seen[id] = true

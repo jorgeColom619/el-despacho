@@ -21,6 +21,12 @@ var recent_events := []
 var recent_tramas := []
 var current_events := []
 var current_tramas := []
+## Memoria larga: en qué partida salió por última vez cada evento, trama, chat, pregunta o plantilla
+var seen := {}
+## Número de partida actual (sube al empezar cada una)
+var game_index := 0
+## Lo que sale en una partida se evita durante las diez siguientes (cada vez menos)
+const FRESH := [0.02, 0.03, 0.05, 0.08, 0.12, 0.18, 0.26, 0.36, 0.48, 0.62, 0.8]
 
 
 func _ready() -> void:
@@ -39,7 +45,8 @@ func save_profile() -> void:
 	if GS.no_save:
 		return
 	var d := {"laureles": laureles, "lingotes": lingotes, "owned": owned, "equipped": equipped, "achievements": achievements, "stats": stats, "receipts": receipts,
-		"recent_events": recent_events, "recent_tramas": recent_tramas, "current_events": current_events, "current_tramas": current_tramas}
+		"recent_events": recent_events, "recent_tramas": recent_tramas, "current_events": current_events, "current_tramas": current_tramas,
+		"seen": seen, "game_index": game_index}
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -65,12 +72,26 @@ func load_profile() -> void:
 	recent_tramas = d.get("recent_tramas", [])
 	current_events = d.get("current_events", [])
 	current_tramas = d.get("current_tramas", [])
+	seen = d.get("seen", {})
+	game_index = int(d.get("game_index", 0))
+	# perfiles de antes de la memoria larga: lo que se recordaba de las dos últimas partidas pasa a la nueva
+	if seen.is_empty() and (not recent_events.is_empty() or not current_events.is_empty()):
+		game_index = recent_events.size() + 1
+		for i in range(recent_events.size() - 1, -1, -1):
+			for id in recent_events[i]:
+				seen[str(id)] = game_index - 1 - i
+		for id in current_events:
+			seen[str(id)] = game_index
+		for i in range(recent_tramas.size() - 1, -1, -1):
+			for t in recent_tramas[i]:
+				seen["trama_" + str(t)] = game_index - 1 - i
 
 
 # ------------------------------------------------------------------ memoria entre partidas
 
 ## Al empezar una partida, la anterior pasa a la memoria (se recuerdan las dos últimas)
 func start_game() -> void:
+	game_index += 1
 	if not current_events.is_empty():
 		recent_events.push_front(current_events.duplicate())
 	if not current_tramas.is_empty():
@@ -88,16 +109,26 @@ func start_game() -> void:
 func note_game(event_ids: Array, tramas: Array) -> void:
 	current_events = event_ids.duplicate()
 	current_tramas = tramas.duplicate()
+	for id in event_ids:
+		seen[str(id)] = game_index
+	for t in tramas:
+		seen["trama_" + str(t)] = game_index
 	save_profile()
 
 
-## Multiplicador de probabilidad: lo visto en la última partida sale mucho menos; lo de la penúltima, algo menos
+## Cuántas partidas hace que salió (0: en esta; 999: nunca)
+func games_since(id: String) -> int:
+	if not seen.has(id):
+		return 999
+	return maxi(0, game_index - int(seen[id]))
+
+
+## Multiplicador de probabilidad: lo que salió en las últimas diez partidas sale mucho menos (más cuanto más reciente)
 func recent_factor(id: String) -> float:
-	if recent_events.size() > 0 and id in recent_events[0]:
-		return 0.25
-	if recent_events.size() > 1 and id in recent_events[1]:
-		return 0.6
-	return 1.0
+	var g := games_since(id)
+	if g >= FRESH.size():
+		return 1.0
+	return float(FRESH[g])
 
 
 ## Récord de años en el poder (modo infinito)
@@ -119,11 +150,10 @@ func unlock_terms(terms_won: int, years: float) -> void:
 
 
 func trama_factor(id: String) -> float:
-	if recent_tramas.size() > 0 and id in recent_tramas[0]:
-		return 0.15
-	if recent_tramas.size() > 1 and id in recent_tramas[1]:
-		return 0.5
-	return 1.0
+	var g := games_since("trama_" + id)
+	if g >= 6:
+		return 1.0
+	return [0.05, 0.08, 0.2, 0.4, 0.6, 0.8][g]
 
 
 # ------------------------------------------------------------------ monedas

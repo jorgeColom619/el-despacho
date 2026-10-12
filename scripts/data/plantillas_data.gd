@@ -1,0 +1,233 @@
+extends RefCounted
+## Piezas para generar situaciones nuevas combinándolas (ver scripts/systems/plantillas.gd).
+## Cada pieza tiene un id: lo que sale en una partida se evita en las siguientes.
+
+## Pueblos y ciudades de Valdoria (inventados) con su región (1-8, ver world_data REGIONS)
+const PLACES := [
+	["Santa Aurora", 1], ["Villaclara", 1], ["Torrebaja", 1], ["Los Olmos", 1],
+	["Ferrosa", 2], ["Altoforno", 2], ["Minas de Cobre", 2], ["Puente Hierro", 2],
+	["Marvella", 3], ["Calablanca", 3], ["Punta Coral", 3], ["Benisal", 3],
+	["Puerto Alba", 4], ["Almadraba", 4], ["Salinas del Sur", 4], ["Cabo Lince", 4],
+	["Vallegrande", 5], ["Trigales", 5], ["Villaseca", 5], ["Molinos de Abajo", 5],
+	["Altamira", 6], ["Peñarroya", 6], ["Robledal", 6], ["Nevada Alta", 6],
+	["Rioseco", 7], ["Aduana Vieja", 7], ["Frontón", 7], ["San Blas del Río", 7],
+	["Isla Mayor", 8], ["Puerto Cordal", 8], ["Arenas Negras", 8], ["Faro Viejo", 8],
+]
+
+# ================================================================== alcaldes que piden algo
+## what: lo que piden · short: para el título · why: por qué · cost (M€) · group / meter: a quién beneficia · who: quién lo trae
+const PETITIONS := [
+	{"id": "hospital", "what": "un hospital comarcal", "short": "un hospital", "why": "la ambulancia tarda cincuenta minutos en llegar", "cost": 320, "group": "jubilados", "meter": "bienestar", "who": "sanidad"},
+	{"id": "tren", "what": "que vuelva el tren de cercanías que se cerró hace diez años", "short": "el tren", "why": "los jóvenes se van porque no hay forma de ir a trabajar", "cost": 260, "group": "trabajadores", "meter": "economia", "who": "economia"},
+	{"id": "instituto", "what": "un instituto nuevo", "short": "un instituto", "why": "los chavales estudian en barracones desde hace siete años", "cost": 60, "group": "jovenes", "meter": "bienestar", "who": "jefa"},
+	{"id": "depuradora", "what": "una depuradora", "short": "una depuradora", "why": "el río huele a cloaca cada verano", "cost": 90, "group": "clase_media", "meter": "ambiente", "who": "jefa"},
+	{"id": "comisaria", "what": "una comisaría con más agentes", "short": "más policía", "why": "en seis meses han robado en la mitad de los comercios", "cost": 40, "group": "jubilados", "meter": "seguridad", "who": "interior"},
+	{"id": "fibra", "what": "fibra óptica para todo el municipio", "short": "internet de verdad", "why": "para subir un archivo hay que ir al bar de la plaza", "cost": 35, "group": "jovenes", "meter": "economia", "who": "economia"},
+	{"id": "residencia", "what": "una residencia pública de mayores", "short": "una residencia", "why": "hay ciento veinte ancianos en lista de espera", "cost": 70, "group": "jubilados", "meter": "bienestar", "who": "sanidad"},
+	{"id": "polideportivo", "what": "un polideportivo cubierto", "short": "un polideportivo", "why": "el equipo de baloncesto entrena en un aparcamiento", "cost": 25, "group": "jovenes", "meter": "bienestar", "who": "jefa"},
+	{"id": "puerto", "what": "ampliar el puerto pesquero", "short": "el puerto", "why": "los barcos grandes ya no caben y descargan en el municipio de al lado", "cost": 150, "group": "trabajadores", "meter": "economia", "who": "economia"},
+	{"id": "presa", "what": "reparar la presa vieja", "short": "la presa", "why": "los ingenieros dicen que tiene grietas y nadie se atreve a firmar el informe", "cost": 120, "group": "clase_media", "meter": "seguridad", "who": "interior"},
+	{"id": "vivienda", "what": "doscientas viviendas públicas de alquiler", "short": "vivienda pública", "why": "los alquileres se han doblado con los pisos turísticos", "cost": 140, "group": "jovenes", "meter": "bienestar", "who": "jefa"},
+	{"id": "autovia", "what": "desdoblar la carretera nacional", "short": "la autovía", "why": "es la carretera con más accidentes del país", "cost": 380, "group": "trabajadores", "meter": "seguridad", "who": "economia"},
+	{"id": "bomberos", "what": "un parque de bomberos", "short": "bomberos", "why": "el último incendio lo apagaron los vecinos con cubos", "cost": 30, "group": "clase_media", "meter": "seguridad", "who": "interior"},
+	{"id": "museo", "what": "un museo para la colección que donó un pintor del pueblo", "short": "un museo", "why": "ochocientos cuadros están guardados en un almacén húmedo", "cost": 45, "group": "clase_media", "meter": "prestigio", "who": "jefa"},
+	{"id": "parque", "what": "convertir la antigua fábrica en un gran parque", "short": "un parque", "why": "es un solar abandonado lleno de ratas en mitad de la ciudad", "cost": 55, "group": "clase_media", "meter": "ambiente", "who": "jefa"},
+	{"id": "ambulatorio", "what": "abrir el ambulatorio por las tardes", "short": "el ambulatorio", "why": "hay que pedir cita con tres semanas de antelación", "cost": 12, "group": "jubilados", "meter": "bienestar", "who": "sanidad"},
+	{"id": "autobuses", "what": "autobuses eléctricos para toda la flota municipal", "short": "autobuses eléctricos", "why": "la contaminación supera los límites cuarenta días al año", "cost": 48, "group": "jovenes", "meter": "ambiente", "who": "economia"},
+	{"id": "universidad", "what": "un campus universitario", "short": "una universidad", "why": "todos los jóvenes se van a estudiar fuera y no vuelven", "cost": 210, "group": "jovenes", "meter": "economia", "who": "jefa"},
+	{"id": "aeropuerto", "what": "reabrir el aeródromo para vuelos regionales", "short": "el aeródromo", "why": "el turismo cayó a la mitad cuando lo cerraron", "cost": 95, "group": "empresarios", "meter": "economia", "who": "economia"},
+	{"id": "desaladora", "what": "una planta desaladora", "short": "agua", "why": "este verano hubo cortes de agua tres días por semana", "cost": 180, "group": "trabajadores", "meter": "ambiente", "who": "economia"},
+	{"id": "cuartel", "what": "que no cierren el cuartel", "short": "el cuartel", "why": "es la mayor fuente de empleo de la zona", "cost": 25, "group": "militares", "meter": "economia", "who": "defensa"},
+	{"id": "teatro", "what": "restaurar el teatro del siglo XIX", "short": "el teatro", "why": "se le cayó parte del techo durante una función de Navidad", "cost": 22, "group": "clase_media", "meter": "prestigio", "who": "jefa"},
+	{"id": "guarderia", "what": "guarderías gratuitas", "short": "guarderías", "why": "las familias jóvenes se marchan porque no pueden pagar una", "cost": 18, "group": "jovenes", "meter": "bienestar", "who": "jefa"},
+	{"id": "mercado", "what": "rehabilitar el mercado de abastos", "short": "el mercado", "why": "los puestos cierran uno tras otro y el centro se muere", "cost": 15, "group": "clase_media", "meter": "economia", "who": "economia"},
+	{"id": "frontera", "what": "más control en el paso fronterizo", "short": "la frontera", "why": "el contrabando se ha convertido en un negocio a plena luz del día", "cost": 35, "group": "militares", "meter": "seguridad", "who": "interior"},
+	{"id": "playa", "what": "regenerar la playa que se comió el temporal", "short": "la playa", "why": "sin arena no hay turistas y sin turistas no hay pueblo", "cost": 30, "group": "empresarios", "meter": "ambiente", "who": "economia"},
+	{"id": "centro_salud_mental", "what": "un centro de salud mental", "short": "salud mental", "why": "los psicólogos tienen listas de espera de un año", "cost": 20, "group": "jovenes", "meter": "bienestar", "who": "sanidad"},
+	{"id": "puente", "what": "un puente nuevo sobre el río", "short": "un puente", "why": "el viejo tiene restricciones de peso y los camiones dan un rodeo de cuarenta kilómetros", "cost": 75, "group": "trabajadores", "meter": "economia", "who": "economia"},
+	{"id": "biblioteca", "what": "una biblioteca abierta 24 horas", "short": "una biblioteca", "why": "los estudiantes preparan los exámenes en la estación de autobuses", "cost": 8, "group": "jovenes", "meter": "bienestar", "who": "jefa"},
+	{"id": "regadio", "what": "modernizar los regadíos", "short": "regadío", "why": "se pierde la mitad del agua por canales de los años cincuenta", "cost": 65, "group": "trabajadores", "meter": "ambiente", "who": "economia"},
+	{"id": "tanatorio", "what": "un tanatorio municipal", "short": "un tanatorio", "why": "los vecinos velan a sus muertos a cincuenta kilómetros", "cost": 4, "group": "jubilados", "meter": "bienestar", "who": "jefa"},
+	{"id": "carril_bici", "what": "un anillo de carril bici", "short": "carriles bici", "why": "dos ciclistas han muerto atropellados este año", "cost": 14, "group": "jovenes", "meter": "ambiente", "who": "jefa"},
+]
+const MAYOR_LINES := [
+	"Ha salido en todas las radios y amenaza con encerrarse en el ayuntamiento hasta que le recibamos.",
+	"Es de nuestro partido, presidente, y si no le ayudamos nos lo va a recordar en cada mitin.",
+	"Es de la oposición y nos acusa de castigar a su ciudad por el color de su alcaldía.",
+	"Ha recogido treinta mil firmas y las ha traído en una carretilla hasta la puerta del Palacio.",
+	"Dice que si no le hacemos caso, el pueblo votará en masa a cualquiera que se lo prometa.",
+	"Lleva tres años pidiéndolo por carta. Esta vez ha venido en persona con la banda municipal.",
+]
+
+# ================================================================== empresas que quieren invertir
+## who_c: país de la empresa ("" si es nacional) · jobs: empleos · env: daño ambiental (0-3) · ask: ayudas que piden (M€)
+const INVESTMENTS := [
+	{"id": "datos", "what": "un centro de datos gigante", "jobs": 400, "env": 2, "ask": 120, "con": "consumirá tanta agua como una ciudad de cincuenta mil habitantes"},
+	{"id": "baterias", "what": "una gigafactoría de baterías", "jobs": 3500, "env": 1, "ask": 600, "con": "piden suelo gratis y diez años sin impuestos"},
+	{"id": "macrogranja", "what": "una macrogranja de veinte mil cerdos", "jobs": 150, "env": 3, "ask": 30, "con": "los vecinos temen por los acuíferos y el olor"},
+	{"id": "casino", "what": "un macrocasino con hotel y estadio", "jobs": 5000, "env": 1, "ask": 200, "con": "pide cambiar la ley del juego y permitir fumar en las salas"},
+	{"id": "mina", "what": "reabrir una mina de litio", "jobs": 900, "env": 3, "ask": 80, "con": "el yacimiento está junto a un parque natural"},
+	{"id": "eolico", "what": "un parque eólico de cuarenta molinos", "jobs": 220, "env": 0, "ask": 50, "con": "los ganaderos dicen que asusta al ganado y el paisaje cambiará para siempre"},
+	{"id": "astillero", "what": "reflotar el astillero cerrado", "jobs": 1800, "env": 1, "ask": 250, "con": "piden que el Estado compre los tres primeros barcos"},
+	{"id": "farmaceutica", "what": "una planta de vacunas", "jobs": 700, "env": 1, "ask": 90, "con": "exigen patentes protegidas veinte años"},
+	{"id": "parque_tematico", "what": "un parque temático de dinosaurios", "jobs": 1200, "env": 2, "ask": 140, "con": "quieren construirlo en terrenos agrícolas protegidos"},
+	{"id": "puerto_franco", "what": "una zona franca en el puerto", "jobs": 2500, "env": 1, "ask": 60, "con": "Hacienda advierte de que puede convertirse en un coladero fiscal"},
+	{"id": "chips", "what": "una fábrica de chips", "jobs": 2800, "env": 2, "ask": 900, "con": "es la inversión más cara jamás pedida y otros tres países pujan por ella"},
+	{"id": "solar", "what": "la mayor planta solar del continente", "jobs": 300, "env": 0, "ask": 70, "con": "ocupará diez mil hectáreas de cereal"},
+	{"id": "outlet", "what": "un centro comercial outlet a las afueras", "jobs": 900, "env": 1, "ask": 20, "con": "los comerciantes del centro dicen que les matará"},
+	{"id": "hidrogeno", "what": "una planta de hidrógeno verde", "jobs": 600, "env": 0, "ask": 180, "con": "la tecnología aún no es rentable y la subvención podría no recuperarse"},
+	{"id": "estudio_cine", "what": "unos estudios de cine", "jobs": 650, "env": 0, "ask": 75, "con": "quieren desgravaciones fiscales como las de Norland"},
+	{"id": "coches", "what": "una planta de coches eléctricos", "jobs": 4200, "env": 1, "ask": 700, "con": "exigen que el Estado garantice la compra de flotas públicas"},
+	{"id": "hotel", "what": "un hotel de lujo en primera línea de playa", "jobs": 380, "env": 2, "ask": 15, "con": "la parcela está en la franja de protección costera"},
+	{"id": "satelites", "what": "una fábrica de satélites", "jobs": 500, "env": 0, "ask": 130, "con": "Defensa quiere controlar quién tiene acceso a la tecnología"},
+	{"id": "papelera", "what": "una fábrica de celulosa", "jobs": 1100, "env": 3, "ask": 40, "con": "en otros países ha teñido los ríos de marrón"},
+	{"id": "logistica", "what": "un centro logístico de paquetería", "jobs": 2000, "env": 1, "ask": 25, "con": "los sindicatos denuncian condiciones de trabajo durísimas en sus otros almacenes"},
+]
+const INVESTORS := [["Grupo Atalaya", ""], ["Brisa Capital", ""], ["Industrias Lumen", ""], ["Norland Dynamics", "norland"], ["Kade Ventures", "norland"],
+	["Tsaing Heavy Industries", "tsaing"], ["Hao Electronics", "tsaing"], ["Qadar Holdings", "qadar"], ["Fondo Soberano de Qadar", "qadar"],
+	["Unión Energética", "union"], ["Vaelsen & Söhne", "union"], ["Corporación Cobalto", ""], ["Grupo Meridión", ""]]
+
+# ================================================================== protestas y colectivos
+const PROTESTS := [
+	{"id": "taxistas", "who": "Los taxistas", "group": "trabajadores", "why": ["las plataformas de coches con conductor les están arruinando", "les han subido las licencias un 40 %", "no les dejan entrar en el nuevo carril de la autovía"]},
+	{"id": "agricultores", "who": "Los agricultores", "group": "trabajadores", "why": ["venden por debajo de lo que les cuesta producir", "las importaciones de Sarvenia hunden los precios", "la nueva norma de pesticidas les obliga a cambiar toda la maquinaria"]},
+	{"id": "mir", "who": "Los médicos residentes", "group": "jovenes", "why": ["hacen guardias de treinta horas", "cobran menos que un becario en Norland", "no les reconocen las horas extra"]},
+	{"id": "estudiantes", "who": "Los estudiantes universitarios", "group": "jovenes", "why": ["las tasas han subido tres años seguidos", "no hay becas para el alquiler", "quieren votar desde los dieciséis"]},
+	{"id": "pensionistas", "who": "Los pensionistas", "group": "jubilados", "why": ["la pensión no les llega para la calefacción", "han cerrado la oficina bancaria de su barrio", "quieren médicos de cabecera en todos los pueblos"]},
+	{"id": "bomberos_forestales", "who": "Los bomberos forestales", "group": "trabajadores", "why": ["solo tienen contrato en verano", "sus camiones tienen treinta años", "ganan menos que un camarero de temporada"]},
+	{"id": "policias", "who": "Los policías", "group": "militares", "why": ["quieren equipararse a las policías regionales", "les faltan chalecos antibalas", "piden ser profesión de riesgo"]},
+	{"id": "interinos", "who": "Los profesores interinos", "group": "trabajadores", "why": ["llevan quince años encadenando contratos", "les despiden cada verano y les recontratan en septiembre", "exigen plaza fija sin oposición"]},
+	{"id": "pescadores", "who": "Los pescadores", "group": "trabajadores", "why": ["las cuotas de pesca de la Unión les dejan amarrados medio año", "el gasóleo se ha disparado", "los barcos extranjeros faenan en sus caladeros"]},
+	{"id": "camioneros", "who": "Los camioneros", "group": "trabajadores", "why": ["el gasóleo profesional ha subido un 30 %", "les obligan a esperar días en la frontera", "no hay áreas de descanso seguras"]},
+	{"id": "artistas", "who": "Los artistas y músicos", "group": "jovenes", "why": ["el IVA cultural es el más alto del continente", "no tienen derecho a paro", "las plataformas pagan una miseria por canción"]},
+	{"id": "vecinos_turismo", "who": "Los vecinos del centro histórico", "group": "clase_media", "why": ["los pisos turísticos les han expulsado del barrio", "no pueden dormir por las despedidas de soltero", "ya no queda ni una panadería, solo tiendas de recuerdos"]},
+	{"id": "ciclistas", "who": "Los ciclistas urbanos", "group": "jovenes", "why": ["piden carriles bici seguros", "un camión atropelló a un ciclista y el conductor no ha sido juzgado", "quieren llevar la bici en el tren"]},
+	{"id": "enfermeras", "who": "Las enfermeras", "group": "trabajadores", "why": ["atienden a veinte pacientes cada una en planta", "les faltan seis mil compañeras", "quieren jubilación anticipada por turnos de noche"]},
+	{"id": "autonomos", "who": "Los autónomos", "group": "clase_media", "why": ["pagan la misma cuota ganen lo que ganen", "Hacienda tarda un año en devolverles el IVA", "el papeleo les come dos días a la semana"]},
+	{"id": "cazadores", "who": "Los cazadores", "group": "jubilados", "why": ["la nueva norma les prohíbe cazar en media sierra", "quieren poder controlar la plaga de jabalíes", "dicen que les tratan como delincuentes"]},
+	{"id": "animalistas", "who": "Los animalistas", "group": "jovenes", "why": ["piden prohibir los espectáculos con animales", "denuncian las macrogranjas", "quieren cerrar el zoo de la capital"]},
+	{"id": "feriantes", "who": "Los feriantes", "group": "trabajadores", "why": ["los ayuntamientos han suprimido las fiestas para ahorrar", "las normas de seguridad les obligan a cambiar las atracciones", "no pueden pagar los seguros"]},
+	{"id": "repartidores", "who": "Los repartidores de comida", "group": "jovenes", "why": ["son falsos autónomos sin vacaciones", "les penaliza el algoritmo si van al baño", "ya han muerto cuatro compañeros en la carretera"]},
+	{"id": "controladores_bus", "who": "Los conductores de autobús", "group": "trabajadores", "why": ["les han quitado los descansos entre rutas", "las agresiones a conductores se han triplicado", "quieren jubilarse antes"]},
+	{"id": "inquilinos", "who": "El sindicato de inquilinos", "group": "jovenes", "why": ["los alquileres han subido un 50 % en dos años", "un fondo ha comprado edificios enteros y sube los precios", "quieren topes al alquiler ya"]},
+	{"id": "comerciantes", "who": "Los pequeños comerciantes", "group": "clase_media", "why": ["las grandes plataformas no pagan impuestos aquí", "las obras del centro llevan un año sin terminar", "les han subido la tasa de basuras"]},
+]
+
+# ================================================================== polémicas culturales y debates de sobremesa
+## a: lo que apoya un bando (y a quién gusta) · b: lo contrario
+const CONTROVERSIES := [
+	{"id": "toros", "what": "Una comunidad quiere declarar las corridas de toros patrimonio cultural", "a": ["Apoyar la tradición", "jubilados"], "b": ["Defender el bienestar animal", "jovenes"]},
+	{"id": "estatua", "what": "Un ayuntamiento quiere retirar la estatua de un general de la guerra de hace un siglo", "a": ["Retirarla: la historia está en los museos", "jovenes"], "b": ["Dejarla con una placa explicativa", "jubilados"]},
+	{"id": "eurovision", "what": "La canción elegida para el Festival Internacional habla de un político corrupto que se parece mucho a usted", "a": ["Reírse: «Me parece pegadiza»", "jovenes"], "b": ["Pedir a la televisión pública que la cambie", "jubilados"]},
+	{"id": "horario", "what": "Los expertos piden cambiar el huso horario: Valdoria cena a las diez de la noche", "a": ["Adelantar los relojes y las cenas", "trabajadores"], "b": ["No tocar la hora: es nuestra forma de vida", "jubilados"]},
+	{"id": "selectividad", "what": "Un examen de acceso a la universidad incluía una pregunta sobre un rapero", "a": ["Defender que la cultura es de todos", "jovenes"], "b": ["Pedir rigor y que se anule la pregunta", "clase_media"]},
+	{"id": "serie", "what": "Una serie de una plataforma retrata a Valdoria como un país de narcos", "a": ["Exigir que retiren la serie", "jubilados"], "b": ["Decir que es ficción y promocionar el turismo real", "jovenes"]},
+	{"id": "himno", "what": "Una cantante se niega a cantar el himno en la final de la Copa", "a": ["Respetar la libertad de expresión", "jovenes"], "b": ["Condenar la falta de respeto", "militares"]},
+	{"id": "lenguas", "what": "El Congreso discute si los diputados pueden hablar en las lenguas regionales", "a": ["Permitirlo con traducción simultánea", "jovenes"], "b": ["Solo en la lengua común", "clase_media"]},
+	{"id": "uniforme", "what": "Un colegio público quiere implantar uniforme obligatorio", "a": ["Apoyar el uniforme", "jubilados"], "b": ["Que lo decida cada familia", "jovenes"]},
+	{"id": "videojuegos", "what": "Un estudio dice que los videojuegos violentos aumentan la agresividad", "a": ["Regular la venta a menores", "jubilados"], "b": ["Defender a la industria del videojuego nacional", "jovenes"]},
+	{"id": "patinetes", "what": "Las aceras están llenas de patinetes eléctricos abandonados", "a": ["Prohibir el alquiler de patinetes", "jubilados"], "b": ["Regularlos con aparcamientos propios", "jovenes"]},
+	{"id": "siesta", "what": "Una empresa de Norland dice que la siesta frena la productividad de Valdoria", "a": ["Defender la siesta con orgullo", "trabajadores"], "b": ["Reconocer que hay que modernizar horarios", "empresarios"]},
+	{"id": "influencer", "what": "Un influencer con dos millones de seguidores hace propaganda de criptomonedas fraudulentas", "a": ["Perseguir la publicidad engañosa", "clase_media"], "b": ["No meterse en lo que hace cada uno en sus redes", "jovenes"]},
+	{"id": "nombre_estacion", "what": "La nueva estación de tren se va a llamar como un futbolista retirado", "a": ["Apoyarlo: es un ídolo nacional", "trabajadores"], "b": ["Preferir el nombre de una científica olvidada", "jovenes"]},
+	{"id": "fiesta_nacional", "what": "Se propone cambiar la fiesta nacional a un día de primavera", "a": ["Mantener la fecha de siempre", "militares"], "b": ["Apoyar el cambio: más días de sol", "jovenes"]},
+	{"id": "inteligencia_artificial", "what": "Un periódico publica una entrevista entera escrita por una inteligencia artificial", "a": ["Pedir que se etiquete el contenido artificial", "clase_media"], "b": ["Celebrar la innovación", "empresarios"]},
+	{"id": "zoo", "what": "El último oso polar del zoo de Santa Aurora está deprimido", "a": ["Cerrar el zoo y crear un santuario", "jovenes"], "b": ["Mantener el zoo y mejorarlo", "jubilados"]},
+	{"id": "religion", "what": "Un instituto ha quitado el crucifijo del salón de actos", "a": ["Defender la escuela laica", "jovenes"], "b": ["Respetar las tradiciones", "jubilados"]},
+	{"id": "deberes", "what": "Las asociaciones de padres convocan una huelga de deberes", "a": ["Apoyar menos deberes", "jovenes"], "b": ["Defender la cultura del esfuerzo", "clase_media"]},
+	{"id": "fuegos", "what": "Las fiestas de verano quieren sustituir los fuegos artificiales por drones", "a": ["Drones: por los perros y el medio ambiente", "jovenes"], "b": ["Los fuegos de toda la vida", "jubilados"]},
+	{"id": "ayuno_tele", "what": "La televisión pública emite un debate de cuatro horas sobre si el gazpacho es sopa", "a": ["Es sopa", "trabajadores"], "b": ["No es sopa", "clase_media"], "meme": true},
+]
+
+# ================================================================== sucesos
+const INCIDENTS := [
+	{"id": "nave", "what": "Un incendio arrasa una nave industrial", "who": "interior", "victims": "Doce trabajadores heridos", "group": "trabajadores"},
+	{"id": "tren", "what": "Descarrila un tren regional", "who": "economia", "victims": "Treinta heridos, dos de ellos graves", "group": "trabajadores"},
+	{"id": "granizo", "what": "Una granizada destroza la cosecha", "who": "economia", "victims": "Mil agricultores pierden el año", "group": "trabajadores"},
+	{"id": "puente", "what": "Se derrumba parte de un puente", "who": "economia", "victims": "Un camión cae al río; el conductor está grave", "group": "clase_media"},
+	{"id": "intoxicacion", "what": "Intoxicación masiva en un comedor escolar", "who": "sanidad", "victims": "Ochenta niños en el hospital", "group": "clase_media"},
+	{"id": "ola_calor", "what": "Ola de calor de 46 grados", "who": "sanidad", "victims": "Las urgencias, desbordadas de ancianos con golpes de calor", "group": "jubilados"},
+	{"id": "apagon", "what": "Un apagón deja sin luz a toda la comarca", "who": "economia", "victims": "Dos días sin electricidad en pleno invierno", "group": "clase_media"},
+	{"id": "riada", "what": "Una riada inunda el casco antiguo", "who": "interior", "victims": "Trescientos vecinos desalojados", "group": "clase_media"},
+	{"id": "mina", "what": "Un derrumbe atrapa a seis mineros", "who": "interior", "victims": "Llevan veinte horas bajo tierra", "group": "trabajadores"},
+	{"id": "fuga_quimica", "what": "Una fuga química en una planta de fertilizantes", "who": "sanidad", "victims": "Confinados cuarenta mil vecinos", "group": "clase_media"},
+	{"id": "terremoto", "what": "Un terremoto de magnitud 5,1", "who": "defensa", "victims": "Daños en cientos de casas y una iglesia derrumbada", "group": "jubilados"},
+	{"id": "lobos", "what": "Los lobos matan doscientas ovejas en una semana", "who": "economia", "victims": "Los ganaderos amenazan con tomarse la justicia por su mano", "group": "trabajadores"},
+	{"id": "naufragio", "what": "Se hunde un pesquero", "who": "defensa", "victims": "Tres marineros desaparecidos", "group": "trabajadores"},
+	{"id": "estadio", "what": "Avalancha a la salida de un estadio", "who": "interior", "victims": "Cuarenta heridos leves y una investigación abierta", "group": "jovenes"},
+	{"id": "hospital", "what": "Un ciberataque paraliza el hospital", "who": "sanidad", "victims": "Operaciones aplazadas y ambulancias desviadas", "group": "jubilados"},
+	{"id": "plaga", "what": "Una plaga de langostas avanza hacia los campos", "who": "economia", "victims": "Los agricultores piden fumigar con aviones", "group": "trabajadores"},
+	{"id": "nevada", "what": "Una nevada histórica deja atrapados a cientos de conductores", "who": "defensa", "victims": "Familias enteras pasan la noche en la autopista", "group": "clase_media"},
+	{"id": "explosion", "what": "Explota una pirotecnia", "who": "interior", "victims": "Cuatro heridos y una manzana sin cristales", "group": "clase_media"},
+	{"id": "contaminacion", "what": "Mueren miles de peces en el río", "who": "economia", "victims": "Los vecinos culpan a una fábrica aguas arriba", "group": "jovenes"},
+	{"id": "dengue", "what": "Brote de una enfermedad tropical por mosquitos", "who": "sanidad", "victims": "Doscientos casos y miedo en las playas", "group": "clase_media"},
+]
+
+# ================================================================== propuestas de los ministros
+## who: ministro · t: la medida · yes / no: efectos de aprobarla o rechazarla
+const MEASURES := [
+	{"id": "inspectores", "who": "economia", "t": "contratar dos mil inspectores de Hacienda", "why": "el fraude fiscal se estima en el 4 % del PIB", "yes": {"monthly": 40, "empresarios": -2, "clase_media": 1}, "no": {}},
+	{"id": "factura_luz", "who": "economia", "t": "bajar el IVA de la luz durante el invierno", "why": "las familias no pueden pagar la calefacción", "yes": {"monthly": -60, "clase_media": 2, "jubilados": 2}, "no": {"jubilados": -1}},
+	{"id": "ventanilla_unica", "who": "economia", "t": "crear una ventanilla única para abrir empresas en un día", "why": "hoy se tarda tres meses", "yes": {"money": -40, "empresarios": 3, "economia": 1}, "no": {}},
+	{"id": "radares", "who": "interior", "t": "instalar quinientos radares nuevos en las carreteras", "why": "las muertes en accidentes han subido un 12 %", "yes": {"money": -30, "seguridad": 1, "clase_media": -1, "monthly": 10}, "no": {"seguridad": -1}},
+	{"id": "camaras", "who": "interior", "t": "poner cámaras con reconocimiento facial en las estaciones", "why": "dos atracos con arma blanca en el metro este mes", "yes": {"money": -50, "seguridad": 2, "jovenes": -3}, "no": {"jubilados": -1}},
+	{"id": "patrullas", "who": "interior", "t": "patrullas a pie en los barrios", "why": "la gente quiere ver policías, no coches patrulla", "yes": {"monthly": -15, "seguridad": 1, "jubilados": 2}, "no": {}},
+	{"id": "embajadas", "who": "exteriores", "t": "abrir embajadas en cinco países africanos", "why": "Tsaing y Norland se están quedando con todos los contratos", "yes": {"money": -60, "prestigio": 2, "empresarios": 1}, "no": {"prestigio": -1}},
+	{"id": "visados", "who": "exteriores", "t": "un visado especial para atraer científicos extranjeros", "why": "nuestros laboratorios se quedan vacíos", "yes": {"economia": 1, "prestigio": 1, "clase_media": -1}, "no": {}},
+	{"id": "cooperacion", "who": "exteriores", "t": "subir la ayuda al desarrollo al 0,5 % del PIB", "why": "nuestro prestigio internacional está por los suelos", "yes": {"monthly": -50, "prestigio": 3, "jovenes": 1}, "no": {"prestigio": -1}},
+	{"id": "reservistas", "who": "defensa", "t": "crear un cuerpo de reservistas voluntarios", "why": "en las últimas emergencias faltaron manos", "yes": {"money": -40, "militares": 2, "seguridad": 1}, "no": {"militares": -1}},
+	{"id": "drones", "who": "defensa", "t": "comprar drones de vigilancia para la frontera", "why": "el contrabando se ha disparado", "yes": {"money": -120, "seguridad": 2, "militares": 1}, "no": {}},
+	{"id": "cuarteles", "who": "defensa", "t": "vender cuarteles vacíos para hacer vivienda pública", "why": "tenemos doscientos edificios militares abandonados", "yes": {"money": 300, "jovenes": 2, "militares": -2}, "no": {}},
+	{"id": "salud_mental", "who": "sanidad", "t": "contratar mil psicólogos para la sanidad pública", "why": "las listas de espera en salud mental son de un año", "yes": {"monthly": -35, "jovenes": 3, "bienestar": 1}, "no": {"jovenes": -1}},
+	{"id": "dentista", "who": "sanidad", "t": "incluir el dentista en la sanidad pública para los niños", "why": "un tercio de los niños no ha ido nunca al dentista", "yes": {"monthly": -30, "clase_media": 2, "trabajadores": 1}, "no": {}},
+	{"id": "tabaco", "who": "sanidad", "t": "prohibir fumar en las terrazas", "why": "el tabaco mata a cincuenta mil valdorianos al año", "yes": {"bienestar": 1, "empresarios": -2, "jovenes": -1}, "no": {}},
+	{"id": "azucar", "who": "sanidad", "t": "un impuesto a las bebidas azucaradas", "why": "la obesidad infantil se ha duplicado en una década", "yes": {"monthly": 20, "bienestar": 1, "trabajadores": -1, "empresarios": -1}, "no": {}},
+	{"id": "teletrabajo_publico", "who": "jefa", "t": "dos días de teletrabajo para los funcionarios", "why": "ahorraríamos en oficinas y atascos", "yes": {"monthly": 10, "trabajadores": 1, "clase_media": -1}, "no": {}},
+	{"id": "lenguaje_claro", "who": "jefa", "t": "obligar a la Administración a escribir en lenguaje claro", "why": "nadie entiende las cartas de Hacienda", "yes": {"money": -5, "clase_media": 1}, "no": {}},
+	{"id": "agenda_publica", "who": "jefa", "t": "publicar la agenda completa de todos los ministros", "why": "la oposición nos acusa de reunirnos a escondidas con empresas", "yes": {"estabilidad": 1, "corr_mult": 0.95, "empresarios": -1}, "no": {}},
+	{"id": "becas", "who": "jefa", "t": "becas de transporte para todos los estudiantes", "why": "muchos dejan la universidad porque no pueden pagar el tren", "yes": {"monthly": -20, "jovenes": 3}, "no": {"jovenes": -1}},
+	{"id": "aranceles_acero", "who": "economia", "t": "poner aranceles al acero importado", "why": "las acerías de Ferrosa no pueden competir con Tsaing", "yes": {"trabajadores": 2, "empresarios": -1, "rel": {"tsaing": -5}}, "no": {"trabajadores": -1}},
+	{"id": "loteria", "who": "economia", "t": "un sorteo extraordinario de lotería para financiar hospitales", "why": "es dinero fácil y nadie se queja de jugar", "yes": {"money": 150, "jubilados": 1}, "no": {}},
+	{"id": "plusvalias", "who": "economia", "t": "subir el impuesto a las plusvalías de la vivienda", "why": "los fondos especulan con pisos vacíos", "yes": {"monthly": 30, "jovenes": 1, "empresarios": -2}, "no": {}},
+	{"id": "hora_cierre", "who": "interior", "t": "adelantar la hora de cierre del ocio nocturno", "why": "las peleas a la salida de las discotecas se han multiplicado", "yes": {"seguridad": 1, "jovenes": -3, "jubilados": 1}, "no": {}},
+	{"id": "voluntariado", "who": "jefa", "t": "un año de voluntariado social pagado para jóvenes", "why": "el paro juvenil es el doble que la media", "yes": {"monthly": -25, "jovenes": 2, "bienestar": 1}, "no": {}},
+	{"id": "selvicultura", "who": "economia", "t": "limpiar los montes con brigadas de parados de larga duración", "why": "cada verano ardemos y cada invierno hay paro", "yes": {"monthly": -20, "ambiente": 1, "trabajadores": 2}, "no": {}},
+]
+
+# ================================================================== visitas ilustres
+const CELEBRITIES := [
+	{"id": "tenista", "who": "Carla Montes, número uno del tenis mundial", "ask": "que el Gobierno pague las pistas públicas de su barrio de toda la vida", "cost": 10, "group": "jovenes"},
+	{"id": "chef", "who": "el chef con tres estrellas Ramón Esparza", "ask": "que la cocina valdoriana sea patrimonio de la humanidad", "cost": 3, "group": "clase_media"},
+	{"id": "astronauta", "who": "la astronauta Inés Robles, recién llegada de la estación espacial", "ask": "una agencia espacial nacional", "cost": 90, "group": "jovenes"},
+	{"id": "cantante", "who": "el cantante más escuchado del país, Rayo Moreno", "ask": "una foto juntos para su nuevo videoclip", "cost": 0, "group": "jovenes"},
+	{"id": "nobel", "who": "el premio Nobel de Química Arturo Valcárcel", "ask": "el doble de presupuesto para investigación", "cost": 200, "group": "clase_media"},
+	{"id": "futbolista", "who": "el capitán de la selección, Dani Solís", "ask": "que el Gobierno apoye la candidatura al Mundial", "cost": 50, "group": "trabajadores"},
+	{"id": "escritora", "who": "la escritora Lucía Arenal, que acaba de ganar el premio más importante de las letras", "ask": "una red de bibliotecas en los pueblos pequeños", "cost": 25, "group": "clase_media"},
+	{"id": "youtuber", "who": "el youtuber Pablete, con nueve millones de suscriptores", "ask": "grabar un vídeo de «un día con el presidente»", "cost": 0, "group": "jovenes"},
+	{"id": "actriz", "who": "la actriz Marta Vela, nominada a los premios de Hollywood", "ask": "desgravaciones fiscales para el cine nacional", "cost": 40, "group": "jovenes"},
+	{"id": "ciclista", "who": "el campeón del Tour, Íñigo Larra", "ask": "carriles bici en todas las carreteras nacionales", "cost": 60, "group": "jovenes"},
+	{"id": "medica", "who": "la doctora Elena Saiz, que descubrió una nueva terapia contra el cáncer infantil", "ask": "un centro de investigación pediátrica", "cost": 80, "group": "jubilados"},
+	{"id": "empresario", "who": "el empresario más rico del país, Fermín Olazábal", "ask": "una rebaja fiscal para las grandes fortunas «para no irse a Qadar»", "cost": 0, "group": "empresarios"},
+	{"id": "monja", "who": "sor Ángela, que dirige el mayor comedor social del país", "ask": "que el Gobierno pague el alquiler del comedor", "cost": 2, "group": "jubilados"},
+	{"id": "influencer_moda", "who": "la influencer de moda Valeria Kim", "ask": "que el presidente lleve en un acto oficial una corbata de su marca", "cost": 0, "group": "jovenes"},
+	{"id": "veterano", "who": "el último superviviente de la vieja guerra, de ciento un años", "ask": "un museo de la memoria en su pueblo", "cost": 6, "group": "militares"},
+]
+
+# ================================================================== propuestas de otros países (llamadas)
+const DIPLO := [
+	{"id": "vuelos", "t": "abrir una ruta aérea directa entre nuestras capitales", "yes": {"economia": 1, "empresarios": 1}, "rel": 5},
+	{"id": "becas", "t": "un programa de intercambio de estudiantes", "yes": {"jovenes": 1, "prestigio": 1, "money": -15}, "rel": 4},
+	{"id": "extradicion", "t": "un tratado de extradición «para perseguir a los delincuentes de ambos países»", "yes": {"seguridad": 1, "jovenes": -1}, "rel": 6},
+	{"id": "museo", "t": "prestarnos su obra de arte más famosa para una exposición en Santa Aurora", "yes": {"prestigio": 1, "clase_media": 1, "money": -5}, "rel": 4},
+	{"id": "amistoso", "t": "un partido amistoso de fútbol entre nuestras selecciones con fines benéficos", "yes": {"trabajadores": 1}, "rel": 3},
+	{"id": "policia", "t": "cooperación policial contra las mafias del contrabando", "yes": {"seguridad": 2}, "rel": 4},
+	{"id": "vacunas", "t": "fabricar juntos vacunas para la próxima pandemia", "yes": {"bienestar": 1, "money": -40}, "rel": 6},
+	{"id": "hermanamiento", "t": "hermanar nuestras capitales", "yes": {"prestigio": 1}, "rel": 3},
+	{"id": "satelite", "t": "lanzar juntos un satélite de observación", "yes": {"prestigio": 2, "money": -80, "jovenes": 1}, "rel": 6},
+	{"id": "visados", "t": "eliminar los visados entre nuestros países", "yes": {"economia": 1, "jovenes": 1, "seguridad": -1}, "rel": 6},
+	{"id": "voto", "t": "que les votemos para presidir la Asamblea Mundial", "yes": {"prestigio": -1}, "rel": 8},
+	{"id": "pandas", "t": "regalarnos una pareja de animales en peligro de extinción para el zoo", "yes": {"jovenes": 1, "prestigio": 1, "money": -10}, "rel": 4},
+	{"id": "puerto", "t": "gestionar una terminal de nuestro puerto durante veinte años", "yes": {"money": 300, "trabajadores": 1, "militares": -2}, "rel": 8},
+	{"id": "tren", "t": "construir juntos un tren de alta velocidad internacional", "yes": {"economia": 2, "money": -200}, "rel": 7},
+]
+const DIPLO_OPEN := ["Presidente, le llamo con una propuesta.", "Querido amigo, tengo una idea que nos conviene a los dos.", "Presidente, sé que está ocupado, así que iré al grano.", "Le llamo personalmente porque esto prefiero hablarlo sin intermediarios."]

@@ -8,6 +8,7 @@ const E_EXTRA := preload("res://scripts/data/events_extra.gd")
 const E_MEME := preload("res://scripts/data/events_meme.gd")
 const P := preload("res://scripts/data/press_data.gd")
 const SC := preload("res://scripts/data/scenarios_data.gd")
+const G := preload("res://scripts/data/generadores_data.gd")
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
 
@@ -235,32 +236,59 @@ func _meme() -> bool:
 	return GS.mode == "meme" and randf() < 0.7
 
 
+## Elige una pieza para un documento generado: lo de esta partida no se repite y lo de partidas recientes sale menos.
+## Devuelve [pieza, id] (el id se anota en GS.used y pasa a la memoria entre partidas)
+func _fresh(list: Array, prefix: String, key: String) -> Array:
+	var pool := []
+	var total := 0.0
+	for it in list:
+		var id := "tpl_%s_%d" % [prefix, absi(hash(str(it.get(key, ""))))]
+		if GS.used.has(id):
+			continue
+		var w := Perfil.recent_factor(id)
+		pool.append([it, id, w])
+		total += w
+	if pool.is_empty():
+		var it2: Dictionary = list.pick_random()
+		return [it2, "tpl_%s_%d" % [prefix, absi(hash(str(it2.get(key, ""))))]]
+	var r := randf() * total
+	for e in pool:
+		r -= float(e[2])
+		if r <= 0.0:
+			GS.used[e[1]] = GS.day
+			return [e[0], e[1]]
+	GS.used[pool.back()[1]] = GS.day
+	return [pool.back()[0], pool.back()[1]]
+
+
 func _gen_bill() -> Dictionary:
-	var b: Dictionary = (E_MEME.BILLS if _meme() else BILLS).pick_random()
+	var pk := _fresh(E_MEME.BILLS if _meme() else BILLS + G.BILLS, "ley", "t")
+	var b: Dictionary = pk[0]
 	var fx: Dictionary = b["fx"].duplicate(true)
 	var veto := {"estabilidad": -1}
 	for k in fx.keys():
 		if k in ["money", "monthly", "party"]:
 			continue
 		veto[k] = -int(round(float(fx[k]) * 0.5))
-	var doc := {"id": "gen_bill", "type": "doc", "kind": "ley", "gen": true, "title": b["t"],
+	var doc := {"id": pk[1], "type": "doc", "kind": "ley", "gen": true, "title": b["t"],
 		"text": "Proyecto aprobado por el Congreso de los Diputados y remitido a la Presidencia para su sanción y promulgación. Entrará en vigor al día siguiente de su publicación en el Boletín Oficial.",
 		"choices": [{"t": "Aprobar", "fx": fx}, {"t": "Vetar", "fx": veto}], "default": 0, "small": []}
 	if randf() < 0.45:
-		var rider: Dictionary = (E_MEME.RIDERS if _meme() else RIDERS).pick_random()
+		var rider: Dictionary = _fresh(E_MEME.RIDERS if _meme() else RIDERS + G.RIDERS, "anexo", "t")[0]
 		doc["small"] = [rider["t"]]
 		doc["choices"][0]["hidden"] = rider["fx"].duplicate(true)
 	return doc
 
 
 func _gen_contract() -> Dictionary:
-	var p: Dictionary = W.PROJECTS.pick_random()
+	var pp := _fresh(W.PROJECTS + G.PROJECTS, "obra", "t")
+	var p: Dictionary = pp[0]
 	var reg: Dictionary = W.REGIONS[randi_range(1, 8)]
 	var title: String = p["t"] % reg["name"] if "%s" in p["t"] else p["t"]
 	var base: float = p["cost"]
 	var companies: Array = W.COMPANIES.duplicate()
 	companies.shuffle()
-	var notes: Array = BID_NOTES.duplicate()
+	var notes: Array = BID_NOTES + G.BID_NOTES
 	notes.shuffle()
 	var options := []
 	var meter := "economia"
@@ -292,25 +320,27 @@ func _gen_contract() -> Dictionary:
 		for s in 5:
 			stars += "★" if s < q else "☆"
 		options.append({"name": companies[i], "lines": ["Precio: %s" % UI.money(price), "Calidad técnica: %s" % stars, "Plazo: %d meses" % randi_range(14, 40)], "small": note["t"], "fx": fx})
-	return {"id": "gen_contract", "type": "doc", "kind": "contrato", "gen": true, "title": title,
+	return {"id": pp[1], "type": "doc", "kind": "contrato", "gen": true, "title": title,
 		"text": "Concurso público de adjudicación. Se han presentado tres ofertas que cumplen los requisitos técnicos. Selle la oferta ganadora.",
 		"options": options}
 
 
 func _gen_pardon() -> Dictionary:
-	var c: Dictionary = (E_MEME.CRIMES if _meme() else CRIMES).pick_random()
+	var pc := _fresh(E_MEME.CRIMES if _meme() else CRIMES + G.CRIMES, "indulto", "c")
+	var c: Dictionary = pc[0]
 	var g := "m" if randf() < 0.65 else "f"
 	var nm := rand_name(g)
 	var look := rand_look(g)
-	return {"id": "gen_pardon", "type": "doc", "kind": "indulto", "gen": true, "title": "Solicitud de indulto: %s" % nm,
+	return {"id": pc[1], "type": "doc", "kind": "indulto", "gen": true, "title": "Solicitud de indulto: %s" % nm,
 		"text": "%s, condenado/a a %d años por: %s. Ha cumplido parte de la condena y solicita el indulto alegando arrepentimiento y arraigo familiar." % [nm, c["y"], c["c"].to_lower()],
 		"prisoner": look, "small": [c["note"]],
 		"choices": [{"t": "Conceder", "fx": c["fx_yes"].duplicate(true)}, {"t": "Denegar", "fx": c["fx_no"].duplicate(true)}], "default": 1}
 
 
 func _gen_letter() -> Dictionary:
-	var l: Dictionary = (E_MEME.LETTERS if _meme() else LETTERS).pick_random()
-	return {"id": "gen_letter", "type": "doc", "kind": "carta", "gen": true, "title": "Carta de %s" % l["from"],
+	var pl := _fresh(E_MEME.LETTERS if _meme() else LETTERS + G.LETTERS, "carta", "from")
+	var l: Dictionary = pl[0]
+	return {"id": pl[1], "type": "doc", "kind": "carta", "gen": true, "title": "Carta de %s" % l["from"],
 		"text": l["t"], "stamps": [l["yes"], "ARCHIVAR"],
 		"choices": [{"t": l["yes"].capitalize(), "fx": l["fx_yes"].duplicate(true)}, {"t": "Archivar", "fx": {}}], "default": 1}
 

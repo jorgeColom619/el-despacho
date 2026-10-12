@@ -130,6 +130,7 @@ const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
 const Redes := preload("res://scripts/systems/redes.gd")
 const Reto := preload("res://scripts/systems/reto.gd")
+const Plantillas := preload("res://scripts/systems/plantillas.gd")
 
 ## Los efectos de las decisiones se olvidan poco a poco (vida media en días)
 const MEMORY_HALF_LIFE := 150.0
@@ -1111,26 +1112,27 @@ func _spawn_kind(kind: String) -> bool:
 			if inbox.size() >= 6:
 				return false
 			var el := _eligible("doc")
-			if el.size() > 0 and rng.randf() < 0.55:
-				spawn(_pick(el))
-			else:
+			var d := _pick(el) if el.size() > 0 and rng.randf() < 0.55 else {}
+			# si ya salió en las últimas partidas, mejor un documento generado
+			if d.is_empty() or _stale(d):
 				spawn(DB.gen_doc())
+			else:
+				spawn(d)
 			return true
-		"advisor":
-			if visitors.size() >= 2:
+		"advisor", "call":
+			if (kind == "advisor" and visitors.size() >= 2) or (kind == "call" and calls.size() >= 1):
 				return false
-			var el2 := _eligible("advisor")
-			if el2.is_empty():
+			var el2 := _eligible(kind)
+			var ev2 := {} if el2.is_empty() else _pick(el2)
+			# lo escrito a mano que ya salió hace poco se sustituye por una situación generada
+			if ev2.is_empty() or _stale(ev2):
+				var t := Plantillas.make(kind)
+				if not t.is_empty():
+					spawn(t)
+					return true
+			if ev2.is_empty():
 				return false
-			spawn(_pick(el2))
-			return true
-		"call":
-			if calls.size() >= 1:
-				return false
-			var el3 := _eligible("call")
-			if el3.is_empty():
-				return false
-			spawn(_pick(el3))
+			spawn(ev2)
 			return true
 		"crisis":
 			if alerts.size() >= 1:
@@ -1154,6 +1156,16 @@ func _spawn_kind(kind: String) -> bool:
 				apply_fx(n["fx"], n["title"], false)
 			return true
 	return false
+
+
+## ¿Este evento ya salió en partidas recientes? (cuanto más reciente, más probable que se cambie por otro)
+func _stale(ev: Dictionary) -> bool:
+	if ev.get("chain_only", false) or ev.get("cond", {}).has("trama"):
+		return false
+	var f := Perfil.recent_factor(str(ev.get("id", "")))
+	if seen_terms.has(ev.get("id", "")):
+		f *= 0.35
+	return rng.randf() < 0.1 + (1.0 - f) * 0.8
 
 
 func spawn(ev: Dictionary) -> void:
@@ -1529,6 +1541,10 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 					policies.append(v)
 			"promise":
 				Promesas.add(str(v))
+			"region":
+				# [región, puntos]: apoyo en esa región para las elecciones
+				if v is Array and v.size() >= 2:
+					add_region_boost(int(v[0]), float(v[1]))
 			"memo":
 				if v is Dictionary:
 					var md: Dictionary = v.duplicate(true)
