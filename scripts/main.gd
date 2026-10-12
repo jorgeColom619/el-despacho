@@ -131,6 +131,13 @@ func _ready() -> void:
 		add_child(tm)
 	if "--nograin" in args:
 		grain.visible = false
+	if "--interptest" in args:
+		GS.no_save = true
+		var IT = load("res://scripts/interptest.gd")
+		var it = IT.new()
+		add_child(it)
+		it.run()
+		return
 	if "--uitest" in args:
 		GS.no_save = true
 		var UT = load("res://scripts/uitest.gd")
@@ -583,6 +590,17 @@ func _debug_start() -> void:
 			if debug_open == "movilchat":
 				current_overlay.chat_open = GS.social["chats"][0]
 				current_overlay._show("mensajes")
+		"custom", "custom2":
+			GS.spawn(DB.event("banco_quiebra"))
+			open_overlay("advisor", {"item": GS.visitors.back()})
+			var ovc = current_overlay
+			var sub := debug_open == "custom2"
+			get_tree().create_timer(4.0).timeout.connect(func():
+				ovc._show_choices()
+				ovc._open_custom()
+				ovc.custom_edit.text = "Que quiebre, no vamos a pagar con dinero público"
+				if sub:
+					ovc._submit_custom(ovc.custom_edit.text))
 		"preface":
 			GS.remember("llamada_perdida", {"who": "norland"})
 			GS.spawn(DB.event("call_kade_acero"))

@@ -246,6 +246,25 @@ const TEMPLATES := [
 	{"id": "promesa_meme", "kind": "promesa_rota", "type": "news", "after": 5, "before": 120, "w": 0.8,
 		"text": ["«{m_name}»: el vídeo de la promesa del presidente, lo más visto del día", "La hemeroteca no perdona: circula el vídeo del presidente prometiendo «{m_name}»"],
 		"fx": {"jovenes": -1}},
+	# ================================================================== lo que se dice en el despacho (respuestas escritas)
+	{"id": "insulto_filtrado", "kind": "insulto", "type": "news", "after": 2, "before": 60, "w": 1.2,
+		"text": ["Filtrado: el presidente perdió los nervios con {m_name} en pleno despacho", "«Gritos en el Palacio»: {periodico} cuenta la bronca del presidente a {m_name}",
+			"Fuentes del Gobierno: {m_name} salió del despacho del presidente «blanco como la pared»"],
+		"fx": {"estabilidad": -1, "clase_media": -1}},
+	{"id": "orden_turbia", "kind": "orden_turbia", "type": "advisor", "after": 20, "before": 300, "w": 1.3, "who": "jefa",
+		"title": "Alguien lo ha contado",
+		"text": "Presidente, tenemos una fuga. {periodista}, de {periodico}, sabe lo que usted le dijo a {m_name}: «{m_t}». No tiene grabación, pero tiene una fuente. Mañana lo publica.",
+		"choices": [
+			{"t": "Negarlo todo. Es su palabra contra la mía.", "fx": {"risk": {"p": 0.55, "fx": {}}, "else": {"fx": {"clase_media": -4, "estabilidad": -3, "corr": 2}, "news": "{periodico} publica la frase del presidente: «{m_t}»"}}},
+			{"t": "Decir que era una broma de mal gusto y pedir disculpas.", "fx": {"approval": -1, "clase_media": -1, "corr_mult": 0.9}},
+			{"t": "Buscar al topo y echarlo.", "fx": {"pc": -3, "estabilidad": -1}},
+		], "default": 0},
+	{"id": "tuit_capturas", "kind": "tuit_polemico", "type": "news", "after": 3, "before": 120, "w": 0.8,
+		"text": ["Las capturas del mensaje del presidente siguen circulando: «{m_t}»", "Tertulianos de toda Valdoria analizan el mensaje del presidente sobre {m_tag}"],
+		"fx": {"estabilidad": -1}},
+	{"id": "tuit_viral_eco", "kind": "tuit_viral", "type": "news", "after": 2, "before": 40, "w": 0.7,
+		"text": ["El mensaje del presidente sobre {m_tag}, el más compartido del mes en Pío", "Hasta la oposición comparte el mensaje del presidente sobre {m_tag}"],
+		"fx": {"jovenes": 1}},
 	# ================================================================== Congreso y debates
 	{"id": "control_meme", "kind": "control_ganado", "type": "news", "after": 1, "before": 15, "w": 0.6,
 		"text": ["El «zasca» del presidente a {opo} en la sesión de control, lo más compartido del día", "Los memes de la sesión de control: «{opo}, ¿quiere un pañuelo?»"],
@@ -293,6 +312,8 @@ const OPP_ATTACKS := [
 	{"kind": "control_ganado", "topic": "Revancha", "attack": ["Hoy no le va a salvar ningún chiste ensayado, presidente.", "Disfrutó mucho con su «zasca» de la otra vez. Pues los ciudadanos no comen zascas."], "akind": "emocional", "meter": "economia"},
 	{"kind": "sanciones", "topic": "Política exterior", "attack": ["Sus sanciones a {m_country} las están pagando nuestros agricultores.", "Juega a ser duro con {m_country} y el que pierde es el campo de Valdoria."], "akind": "emocional", "meter": "economia"},
 	{"kind": "contrato", "need": {"tipo": "corrupta"}, "topic": "Contratos", "attack": ["¿Nos explica por qué {m_company} se llevó {m_title}? Porque la letra pequeña lo explica todo.", "{m_company}, {m_title}... ¿Le suenan, presidente? Al juez sí."], "akind": "personal", "meter": "estabilidad"},
+	{"kind": "insulto", "topic": "Las formas", "attack": ["Dicen que en su despacho se grita mucho, presidente. ¿Es verdad lo que le dijo a {m_name}?", "Quien trata así a sus colaboradores, ¿cómo va a tratar a los ciudadanos?"], "akind": "personal", "meter": "estabilidad"},
+	{"kind": "tuit_polemico", "topic": "Redes sociales", "attack": ["Gobierna a golpe de mensaje: «{m_t}». ¿Eso es serio, presidente?", "Mientras el país sufre, usted publica cosas como «{m_t}»."], "akind": "personal", "meter": "estabilidad"},
 	{"kind": "promesa_rota", "topic": "Promesas", "attack": ["«{m_name}». Lo prometió usted. Lo tengo aquí escrito. ¿Quiere que se lo lea?"], "akind": "personal", "meter": "estabilidad"},
 ]
 
