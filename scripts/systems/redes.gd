@@ -249,7 +249,7 @@ static func _weighted(pool: Array) -> Dictionary:
 static func _chat_pool(force_id: String, reuse: bool) -> Array:
 	var pool := []
 	var used: Dictionary = GS.social.get("used_chats", {})
-	for c in D.CHATS:
+	for c in D.CHATS + D.CHATS2:
 		if force_id != "" and c["id"] != force_id:
 			continue
 		if used.has(c["id"]) and (c.get("once", false) or not reuse or GS.day - int(used[c["id"]]) < 300):
@@ -282,7 +282,7 @@ static func _send_chat(pick: Dictionary) -> void:
 
 
 static func chat_def(id: String) -> Dictionary:
-	for c in D.CHATS:
+	for c in D.CHATS + D.CHATS2:
 		if c["id"] == id:
 			return c
 	return {}

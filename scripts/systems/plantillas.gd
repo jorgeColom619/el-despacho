@@ -154,7 +154,7 @@ static func _protesta() -> Dictionary:
 		"title": "%s, en la calle" % pr["who"],
 		"text": "Presidente, %s están concentrados frente al Palacio: dicen que %s. Son miles, han cortado la avenida principal y las televisiones llevan toda la mañana en directo. Quieren que usted les reciba." % [String(pr["who"]).to_lower(), why],
 		"choices": [
-			{"t": "Recibirles y comprometer una solución.", "fx": {"monthly": -cost, grp: 3, "pc": -2}, "news": "El presidente recibe a %s y se compromete a atender sus demandas" % String(pr["who"]).to_lower()},
+			{"t": "Recibirles y comprometer una solución (%s)." % _money_txt(cost * 10.0), "fx": {"money": -cost * 10.0, grp: 3, "pc": -2}, "news": "El presidente recibe a %s y se compromete a atender sus demandas" % String(pr["who"]).to_lower()},
 			{"t": "Abrir una mesa de diálogo, sin compromisos.", "fx": {"pc": -1, "risk": {"p": 0.5, "fx": {grp: 1}}, "else": {"fx": {grp: -2}, "news": "%s abandonan la mesa de diálogo: «Nos toman el pelo»" % pr["who"]}}},
 			{"t": "Ni caso. Ya se cansarán.", "fx": {grp: -2}},
 			{"t": "Desalojar la avenida: han cortado el tráfico.", "fx": {"seguridad": 1, grp: -3, "jubilados": 1, "clase_media": 1}, "news": "La policía desaloja a %s frente al Palacio" % String(pr["who"]).to_lower()},

@@ -189,7 +189,7 @@ func _suite() -> void:
 	print("OK fichaje: ", GS.ministers["economia"]["name"], " rasgos ", GS.ministers["economia"]["traits"])
 	await _close_current()
 	# crisis de varios tipos
-	for cid in ["incendios", "terrorismo", "migrantes"]:
+	for cid in ["incendios", "terrorismo", "migrantes", "sequia", "terremoto", "marea_negra", "ciber_bancos", "temporal_nieve", "plaga"]:
 		GS.spawn({"id": "t_" + cid, "type": "crisis", "crisis": cid, "title": cid, "text": "", "gen": true})
 		o = await _open("crisis", {"item": GS.alerts[0], "autostart": true})
 		await _wait(2.0)

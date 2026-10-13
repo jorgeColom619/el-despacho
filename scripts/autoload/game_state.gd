@@ -1165,13 +1165,17 @@ func _stale(ev: Dictionary) -> bool:
 		return false
 	if "--notpl" in OS.get_cmdline_user_args():
 		return false
+	# (lo visto en legislaturas anteriores de esta misma partida ya sale menos por su peso; no se sustituye)
 	var f := Perfil.recent_factor(str(ev.get("id", "")))
-	if seen_terms.has(ev.get("id", "")):
-		f *= 0.35
 	return rng.randf() < 0.1 + (1.0 - f) * 0.8
 
 
 func spawn(ev: Dictionary) -> void:
+	# a partir de la segunda partida, la bienvenida y las presentaciones cambian de texto (y son más cortas)
+	if ev.has("variants") and Perfil.game_index > 1:
+		ev = ev.duplicate()
+		var vs: Array = ev["variants"]
+		ev["text"] = vs[(Perfil.game_index - 2) % vs.size()]
 	var item := {"uid": next_uid(), "ev": ev, "day": day}
 	# (reto «plazos imposibles»: caducan como en difícil)
 	var di := 2 if flags.has("reto_plazos") else difficulty

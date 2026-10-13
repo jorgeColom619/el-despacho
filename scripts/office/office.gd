@@ -39,7 +39,8 @@ var _pet_cd := 0.0
 var _pet_happy := 0.0
 var _parrot_line := ""
 var _parrot_t := 12.0
-const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!"]
+const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!",
+	"¡Siguiente pregunta!", "¡Sin comentarios!", "¡Lo que diga la ministra!", "¡Pío, pío, que no se diga!", "¡Café! ¡Café!", "¡Que hable la oposición!", "¡Señorías!", "¡Esto lo arreglamos!", "¡Hasta las urnas!", "¡Prima de riesgo!", "¡Gracias, Valdoria!", "¡Rueda de prensa! ¡Rrrueda!"]
 const PARROT_MEME := ["¡Un vaso es un vaso!", "¡Sé fuerte!", "¡Con cebolla!", "¡Sin cebolla!", "¡Me gusta la fruta!", "¡Plasma! ¡Plasma!", "¡Bueno... eso!", "¡Es muy difícil todo esto!"]
 
 

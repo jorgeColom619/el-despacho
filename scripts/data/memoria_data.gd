@@ -272,6 +272,60 @@ const TEMPLATES := [
 	{"id": "control_burla", "kind": "control_perdido", "type": "news", "after": 1, "before": 15, "w": 0.6,
 		"text": ["El silencio del presidente ante {opo}, convertido en meme", "{opo} presume en las redes de su victoria en la sesión de control"],
 		"fx": {"jovenes": -1}},
+	# ================================================================== más recuerdos
+	{"id": "encubrir_juez", "kind": "encubrir", "type": "advisor", "after": 60, "before": 400, "w": 1.1, "who": "jefa",
+		"title": "Lo de {m_name} vuelve",
+		"text": ["Presidente, ¿recuerda cuando defendió a {m_name}? Un juzgado acaba de abrir diligencias. Los periódicos han rescatado sus palabras de entonces y las ponen al lado de las pruebas.",
+			"Presidente, aquello que usted tapó {m_ago} ha vuelto: hay nuevos documentos sobre {m_name} y la oposición pide su comparecencia."],
+		"choices": [
+			{"t": "Comparecer y reconocer que me equivoqué al defenderle.", "fx": {"approval": -1, "clase_media": 2, "corr_mult": 0.9, "pc": -2}},
+			{"t": "Mantener la defensa: presunción de inocencia.", "fx": {"clase_media": -3, "estabilidad": -2, "risk": {"p": 0.4, "fx": {}}, "else": {"fx": {"clase_media": -3}, "news": "Nuevas pruebas contra {m_name} complican al presidente"}}},
+			{"t": "Que dimita hoy mismo.", "fx": {"pc": -3, "estabilidad": -1, "clase_media": 1}, "news": "Dimite {m_name} tras la apertura de diligencias"},
+		], "default": 1},
+	{"id": "estatua_pintadas", "kind": "estatua", "type": "news", "after": 30, "before": 300, "w": 1.0,
+		"text": ["Aparece pintada con un bigote la estatua del presidente en Villaclara", "La estatua del presidente en Villaclara, convertida en atracción turística... por los memes"],
+		"fx": {"jovenes": -1}},
+	{"id": "indulto_aniversario", "kind": "indulto", "type": "news", "after": 300, "before": 700, "w": 0.4, "excl": ["indulto_reincide", "indulto_reinsercion"],
+		"text": ["Un año después, {m_name} da su primera entrevista tras el indulto: «No sé si lo merecía»"],
+		"fx": {}},
+	{"id": "ley_tumbada_calle", "kind": "ley_tumbada", "type": "news", "after": 5, "before": 60, "w": 0.7,
+		"text": ["Concentraciones en varias ciudades tras el rechazo de la {m_law}", "Los colectivos que apoyaban la {m_law} acusan al Gobierno de «no saber contar votos»"],
+		"fx": {"estabilidad": -1}},
+	{"id": "control_ganado_revancha", "kind": "control_ganado", "type": "advisor", "after": 20, "before": 120, "w": 0.4, "once": true, "who": "jefa",
+		"title": "La oposición prepara la revancha",
+		"text": "Presidente, nos llega que {opo} ha contratado a un equipo de guionistas para la próxima sesión de control. Quieren devolverle el golpe. ¿Preparamos algo?",
+		"choices": [
+			{"t": "Ensayar la próxima sesión como un debate de final de Copa.", "fx": {"stress": 4, "pc": 2}},
+			{"t": "No. La verdad no necesita ensayo.", "fx": {"stress": -1}},
+		], "default": 1},
+	{"id": "nego_ok_visita", "kind": "nego_ok", "type": "advisor", "after": 90, "before": 500, "w": 0.6, "who": "exteriores",
+		"title": "{m_country} quiere ampliar el acuerdo",
+		"text": "Presidente, el acuerdo con {m_country} funciona tan bien que {m_leader} propone ampliarlo: más comercio, más inversiones y una visita de Estado. A cambio, pide que apoyemos a su candidato en un organismo internacional.",
+		"choices": [
+			{"t": "Ampliarlo y apoyar a su candidato.", "fx": {"rel": {"@": 8}, "economia": 1, "empresarios": 1, "prestigio": -1}},
+			{"t": "Ampliarlo, pero sin compromisos de voto.", "fx": {"rel": {"@": 2}, "economia": 1}},
+			{"t": "Dejarlo como está.", "fx": {"rel": {"@": -2}}},
+		], "default": 1},
+	{"id": "crisis_regular_informe", "kind": "crisis_regular", "type": "news", "after": 30, "before": 200, "w": 0.7,
+		"text": ["Un informe independiente sobre {m_crisis}: «Se pudo hacer mejor, pero se evitó lo peor»"],
+		"fx": {}},
+	{"id": "visita_devuelta", "kind": "visita", "type": "advisor", "after": 60, "before": 400, "w": 0.5, "who": "exteriores",
+		"title": "{m_leader} devuelve la visita",
+		"text": "Presidente, {m_leader} quiere devolverle la visita de Estado. Llegará con una delegación de empresarios y quiere un acto en el Congreso. Será caro y complicado, pero la relación saldría reforzada.",
+		"choices": [
+			{"t": "Recibirle con todos los honores.", "fx": {"rel": {"@": 8}, "money": -20, "prestigio": 2, "empresarios": 1}},
+			{"t": "Una visita discreta, sin Congreso.", "fx": {"rel": {"@": 3}}},
+		], "default": 1},
+	{"id": "carta_ayuda_tele", "kind": "carta_ayuda", "type": "news", "after": 20, "before": 200, "w": 0.6, "excl": ["carta_gracias"],
+		"text": ["{m_from} cuenta en la radio que el presidente contestó a su carta: «No me lo podía creer»"],
+		"fx": {"clase_media": 1}},
+	{"id": "llamada_segunda", "kind": "llamada_perdida", "type": "call", "after": 20, "before": 200, "w": 0.6, "who": "{m_country_id}",
+		"title": "{m_leader}, molesto",
+		"text": "Presidente, le llamo para decirle una cosa: la última vez que le llamé no contestó. En mi país eso se considera un desprecio. Quiero saber si Valdoria sigue considerándonos un socio.",
+		"choices": [
+			{"t": "Le pido disculpas. Fue un día terrible.", "fx": {"rel": {"@": 5}}},
+			{"t": "Valdoria atiende a todos sus socios cuando puede.", "fx": {"rel": {"@": -3}, "militares": 1}},
+		], "default": 0},
 ]
 
 ## Frases con las que un líder extranjero empieza una llamada si recuerda algo
@@ -315,6 +369,11 @@ const OPP_ATTACKS := [
 	{"kind": "insulto", "topic": "Las formas", "attack": ["Dicen que en su despacho se grita mucho, presidente. ¿Es verdad lo que le dijo a {m_name}?", "Quien trata así a sus colaboradores, ¿cómo va a tratar a los ciudadanos?"], "akind": "personal", "meter": "estabilidad"},
 	{"kind": "tuit_polemico", "topic": "Redes sociales", "attack": ["Gobierna a golpe de mensaje: «{m_t}». ¿Eso es serio, presidente?", "Mientras el país sufre, usted publica cosas como «{m_t}»."], "akind": "personal", "meter": "estabilidad"},
 	{"kind": "promesa_rota", "topic": "Promesas", "attack": ["«{m_name}». Lo prometió usted. Lo tengo aquí escrito. ¿Quiere que se lo lea?"], "akind": "personal", "meter": "estabilidad"},
+	{"kind": "encubrir", "topic": "Corrupción", "attack": ["Usted defendió a {m_name} cuando todos sabíamos lo que había. ¿A quién más está protegiendo?"], "akind": "personal", "meter": "estabilidad"},
+	{"kind": "estatua", "topic": "Su ego", "attack": ["Tiene usted una estatua en vida, presidente. Ni los emperadores romanos tenían tanta prisa."], "akind": "personal", "meter": "estabilidad"},
+	{"kind": "orden_turbia", "topic": "Su despacho", "attack": ["Hay quien cuenta cosas muy feas de lo que se dice en su despacho. ¿Quiere desmentirlo aquí, ante la Cámara?"], "akind": "personal", "meter": "estabilidad"},
+	{"kind": "ley", "topic": "Sus leyes", "attack": ["Su {m_law} es un desastre. Pregunte a cualquiera que la sufra.", "Aprobó la {m_law} a toda prisa y ahora todos pagamos las consecuencias."], "akind": "cifras", "meter": "estabilidad"},
+	{"kind": "crisis_ok", "topic": "Propaganda", "attack": ["Se pasea por las televisiones presumiendo de cómo gestionó {m_crisis}. Los afectados no opinan lo mismo."], "akind": "emocional", "meter": "seguridad"},
 ]
 
 ## La periodista incómoda recuerda lo que le contestó

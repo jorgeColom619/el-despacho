@@ -56,7 +56,7 @@ func _ready() -> void:
 	var bal := UI.lbl("%s Laureles  ·  %s Lingotes  ·  %d/%d logros%s" % [UI.num(Perfil.laureles), UI.num(Perfil.lingotes), Perfil.achievements.size(), Perfil.S.ACHIEVEMENTS.size(), ("  ·  Récord en modo infinito: %s años" % UI.num(rec, 1)) if rec > 0.0 else ""], UI.f_sans_m, 18, UI.GOLD_L)
 	bal.position = Vector2(150, 990)
 	add_child(bal)
-	var foot := UI.lbl("v2.0  ·  F11 pantalla completa  ·  Hecho con Godot", UI.f_sans, 15, Color(UI.DIM, 0.7))
+	var foot := UI.lbl("v3.0  ·  F11 pantalla completa  ·  Hecho con Godot", UI.f_sans, 15, Color(UI.DIM, 0.7))
 	foot.position = Vector2(150, 1030)
 	add_child(foot)
 	var quote := UI.lbl("«Gobernar es elegir entre inconvenientes.»", UI.f_serif, 22, Color(UI.CREAM, 0.55))

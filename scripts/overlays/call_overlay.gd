@@ -201,7 +201,9 @@ func _dialog_choice(i: int, said: String = "", extra: Dictionary = {}, typed: St
 	elif said != "":
 		say(said)
 	else:
-		say(["Entendido, presidente. Hasta pronto.", "Tomo nota. Buenas tardes.", "Muy bien. Seguiremos en contacto."].pick_random())
+		say(["Entendido, presidente. Hasta pronto.", "Tomo nota. Buenas tardes.", "Muy bien. Seguiremos en contacto.", "Se lo agradezco. Saludos a su Gobierno.",
+			"Así lo transmitiré. Que tenga un buen día.", "Bien. Hablaremos pronto, presidente.", "Tomo nota de su respuesta. Adiós.", "De acuerdo. Mis ministros le llamarán.",
+			"Gracias por atenderme. No es habitual.", "Muy bien. Ya veremos cómo acaba esto."].pick_random())
 	await get_tree().create_timer(2.2).timeout
 	Sfx.play("close", -4.0)
 	close()

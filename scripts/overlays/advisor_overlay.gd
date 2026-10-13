@@ -200,8 +200,12 @@ func _decide(i: int, timeout: bool, said: String = "", extra: Dictionary = {}) -
 	if visitor != null:
 		visitor.mood = clampf(s / 8.0, -0.8, 0.8)
 		visitor.anger = 0.6 if s < -8 else 0.0
-	var lines_ok := ["Entendido, presidente. Me pongo con ello.", "Muy bien. Lo comunicaré de inmediato.", "Sabia decisión. Manos a la obra.", "Así se hará."]
-	var lines_bad := ["Como usted diga... aunque no me convence.", "Espero que sepa lo que hace, presidente.", "Lo haré. Pero esto nos va a costar caro."]
+	var lines_ok := ["Entendido, presidente. Me pongo con ello.", "Muy bien. Lo comunicaré de inmediato.", "Sabia decisión. Manos a la obra.", "Así se hará.",
+		"Perfecto. Esta tarde estará en marcha.", "Me parece lo más sensato. Gracias, presidente.", "Bien. Prepararé el comunicado.", "Hecho. Mañana lo verá en los periódicos.",
+		"Era lo que esperaba que dijera.", "Así me gusta, presidente. Con decisión.", "Lo pongo en marcha antes de que cambie de opinión.", "De acuerdo. Informaré al resto del Gobierno."]
+	var lines_bad := ["Como usted diga... aunque no me convence.", "Espero que sepa lo que hace, presidente.", "Lo haré. Pero esto nos va a costar caro.",
+		"Usted manda. Yo dejo constancia de mi opinión.", "Mmm. Prepararé también un plan B, por si acaso.", "No es lo que yo habría hecho, pero lo haré.",
+		"La oposición va a disfrutar con esto.", "Me lo temía. En fin, a trabajar.", "Mañana tendremos que dar muchas explicaciones.", "Lo acato, presidente. Con todas mis reservas."]
 	if timeout:
 		reaction.text = "«Se acabó el tiempo, presidente. He tenido que decidir yo.»"
 	elif said != "":

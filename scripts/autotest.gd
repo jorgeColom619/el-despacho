@@ -172,6 +172,11 @@ func _variety(n: int, days: int) -> void:
 	print("   Coincidencia entre partidas seguidas: %d%% · entre dos partidas cualesquiera: %d%%" % [int(consec / maxf(1.0, n - 1) * 100.0), int(anyp / maxf(1.0, pairs) * 100.0)])
 	print("   Eventos que salen en casi todas (>=90%%): %d · comienzos distintos (3 primeros eventos): %d" % [always, firsts.size()])
 	print("   Siempre: ", always_ids)
+	var half := []
+	for k in freq.keys():
+		if float(freq[k]) / n >= 0.5 and not (k in always_ids):
+			half.append("%s:%d" % [k, freq[k]])
+	print("   En la mitad o más: ", half)
 	print("   Escenarios: ", scen)
 	print("   Tramas: ", tram)
 

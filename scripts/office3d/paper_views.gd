@@ -6,7 +6,9 @@ const Flags := preload("res://scripts/ui/flags.gd")
 const PetArt := preload("res://scripts/office/pet_art.gd")
 
 const DIARY_JOBS := ["Taxista", "Jubilado", "Jubilada", "Enfermera", "Comerciante", "Estudiante",
-	"Profesor", "Camionero", "Panadera", "Bombero", "Cajera", "Albañil", "Repartidora", "Funcionario"]
+	"Profesor", "Camionero", "Panadera", "Bombero", "Cajera", "Albañil", "Repartidora", "Funcionario",
+	"Agricultora", "Pescador", "Camarera", "Ingeniera", "Peluquero", "Farmacéutica", "Conductor de autobús", "Fontanero",
+	"Abogada", "Cocinero", "Kiosquera", "Electricista", "Cuidadora", "Mecánico", "Investigadora", "Barrendero"]
 const DIARY_GOOD := [
 	"«Por fin se nota que las cosas mejoran.»",
 	"«Yo antes no confiaba, pero ahora veo cambios de verdad.»",
@@ -14,6 +16,16 @@ const DIARY_GOOD := [
 	"«Al menos este gobierno escucha a la gente de la calle.»",
 	"«Mis hijos tienen más oportunidades que antes.»",
 	"«No todo es perfecto, pero vamos por buen camino.»",
+	"«Hacía años que no veía tanta obra en mi barrio.»",
+	"«Mi nieto ha encontrado trabajo aquí. No se ha tenido que ir.»",
+	"«Este mes me ha sobrado algo. No me pasaba desde hace años.»",
+	"«La gente está de mejor humor. Se nota en la calle.»",
+	"«He vuelto a abrir la persiana del negocio con ganas.»",
+	"«Por fin han arreglado el centro de salud del pueblo.»",
+	"«No me gusta su partido, pero reconozco que lo hacen bien.»",
+	"«Este año sí que nos vamos de vacaciones.»",
+	"«Hay cosas que funcionan. Que no se tuerzan.»",
+	"«Mis clientes vuelven a gastar. Eso es buena señal.»",
 ]
 const DIARY_BAD := [
 	"«Esto va de mal en peor, que alguien haga algo.»",
@@ -22,6 +34,16 @@ const DIARY_BAD := [
 	"«Prometieron cambios y seguimos esperando.»",
 	"«La gente está harta, se nota en la calle.»",
 	"«Si esto no cambia pronto, lo vamos a pagar caro.»",
+	"«Los políticos viven en otro planeta.»",
+	"«El alquiler se me come el sueldo entero.»",
+	"«En el ambulatorio me han dado cita para dentro de un mes.»",
+	"«Mis hijos están pensando en irse a Norland.»",
+	"«Cada vez más persianas cerradas en mi calle.»",
+	"«Ya no me fío de nadie, ni de unos ni de otros.»",
+	"«Trabajo más que nunca y vivo peor que mis padres.»",
+	"«La luz, el gas, la compra... no hay manera.»",
+	"«Me prometieron un tren y sigo cogiendo tres autobuses.»",
+	"«Que alguien en el Palacio baje a la calle de vez en cuando.»",
 ]
 const DIARY_MID := [
 	"«Ni bien ni mal, el país sigue su marcha.»",
@@ -30,6 +52,16 @@ const DIARY_MID := [
 	"«Un día se vive mejor, otro peor. Como siempre.»",
 	"«No me quejo, pero tampoco me cuadran las cuentas.»",
 	"«Algo se mueve, aunque despacio.»",
+	"«Yo, mientras no me suban la luz, contento.»",
+	"«La política me da igual; el fútbol, no.»",
+	"«Hay días buenos y días malos, como en todas partes.»",
+	"«Ni me va mejor ni me va peor: me va igual.»",
+	"«Lo importante es que los críos estén bien.»",
+	"«Ya veremos en las elecciones. Todavía no lo tengo claro.»",
+	"«Que hagan menos ruido y más cosas.»",
+	"«Me entero de las noticias por el grupo de la familia. Imagínese.»",
+	"«Aquí en el pueblo las cosas van a otro ritmo.»",
+	"«Cuando llueve, los del Gobierno no tienen la culpa. Creo.»",
 ]
 const DIARY_TOPIC_GOOD := {
 	"economia": "«Al menos los precios ya no suben como antes.»",

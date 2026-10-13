@@ -533,10 +533,10 @@ func _debug_start() -> void:
 			open_overlay("cabinet", {})
 			current_overlay._open_picker("economia", GS.gen_candidates("economia"))
 		"crisis":
-			GS.spawn(DB.event("crisis_incendios"))
+			GS.spawn(DB.event(OS.get_environment("CRISIS") if OS.get_environment("CRISIS") != "" else "crisis_incendios"))
 			open_overlay("crisis", {"item": GS.alerts[0]})
 		"crisisrun":
-			GS.spawn(DB.event("crisis_incendios"))
+			GS.spawn(DB.event(OS.get_environment("CRISIS") if OS.get_environment("CRISIS") != "" else "crisis_incendios"))
 			open_overlay("crisis", {"item": GS.alerts[0], "autostart": true})
 		"vote":
 			open_overlay("vote", {"law": "vivienda"})

@@ -71,6 +71,38 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 | Tab | Liberar el cursor para usar los botones de la barra superior |
 | H | Mostrar u ocultar la ayuda de controles |
 
+## Novedades de la versión 3.0
+
+- **Promesas electorales**: antes de jurar el cargo elige hasta tres de las seis que se ofrecen (distintas en cada
+  partida). Las de «nunca» («No subiré el IVA», «Las pensiones no se tocan»...) se rompen en cuanto hagas lo
+  contrario; las de objetivo («Bajaré el paro por debajo del 9 %») se juzgan al empezar la campaña. Cada promesa
+  cumplida suma votos y cada una incumplida los resta, y la oposición y la prensa te las recuerdan. Pestaña
+  «Promesas» en el ordenador.
+- **Personajes con memoria**: lo que haces vuelve meses después. El exministro que cesaste va a las tertulias,
+  escribe sus memorias o ficha por la oposición; el indultado reincide (o abre un comedor social); quien te
+  escribió una carta vuelve a escribir; las obras que adjudicaste se inauguran, se encarecen o acaban en el juzgado;
+  los líderes extranjeros empiezan la llamada recordando que no les cogiste el teléfono; y cada partida tiene una
+  **periodista incómoda** que te recuerda lo que le contestaste.
+- **El móvil del presidente**: sobre la mesa (también en 3D, donde se puede coger). Dentro, **Pío**, la red social
+  de Valdoria: lo que dice la gente de cada noticia, las tendencias y tus publicaciones (según el tema y el tono,
+  viral o incendio). Y **mensajes privados**: tu madre, la Jefa de Gabinete, los ministros, la oposición, la
+  periodista, líderes extranjeros y tu jefe de comunicación. Si los dejas en visto, a veces se paga.
+- **Reto del día**: la misma partida para todos cada día (presidente, partido, escenario y tres promesas
+  obligatorias) con dos reglas especiales de veinte posibles. Se guarda tu mejor puntuación del día y la racha.
+- **Responder con tus propias palabras**: en las visitas y en las llamadas puedes escribir lo que dirías. El juego
+  lo entiende sin internet (reglas de `scripts/data/interprete_reglas.gd`): a qué opción se parece, negaciones
+  («no pienso rescatar a nadie»), «la segunda», un «vale» a lo que te recomiendan, pedir tiempo o un informe (vuelve
+  en unos días y con el informe ves los efectos ocultos), delegar, bromas, insultos y órdenes turbias, y el tono.
+  Está preparado para conectar una IA más adelante (ver `scripts/systems/interprete.gd`).
+- **Muchísima más variedad**: el juego recuerda las **diez** últimas partidas y lo que salió en ellas casi no
+  vuelve; cuando lo escrito a mano ya salió hace poco, se genera una situación nueva combinando piezas (alcaldes que
+  piden algo, empresas que quieren invertir, protestas, polémicas, sucesos, propuestas de ministros, visitas de
+  famosos y propuestas de otros países). Además: unos 80 ataques de la oposición según cómo esté el país (antes, 8),
+  el doble de frases de discurso, más preguntas de prensa, más de 60 eventos y 60 noticias nuevas, seis tipos de
+  crisis nuevos (sequía, terremoto, marea negra, ciberataque a los bancos, temporal de nieve y plaga), cientos de
+  leyes menores, cartas, indultos y obras, y la bienvenida y las presentaciones cambian de texto a partir de la
+  segunda partida. En 10 partidas seguidas, de una a la siguiente se repite menos del 20 % (antes, el 80 %).
+
 ## Novedades de la versión 2.0
 
 - **Tres modos de juego**: *Clásico* (una legislatura), *Infinito* (legislaturas encadenadas hasta
@@ -121,7 +153,8 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
   Altamira...). Cada partida sortea unas pocas.
 - **Mundo aleatorio**: ministros, rasgos, carácter de los líderes extranjeros, relaciones y escaños
   cambian en cada partida.
-- **Memoria**: lo que viste en tus dos últimas partidas sale mucho menos.
+- **Memoria**: lo que viste en tus diez últimas partidas sale cada vez menos (mucho menos cuanto más reciente).
+- **Situaciones generadas**: si lo escrito a mano ya salió hace poco, sale una situación nueva hecha con piezas.
 - **Consecuencias**: eventos que dependen del estado del país y de las leyes que hayas aprobado.
 
 ## El despacho (todo es interactivo)
@@ -135,6 +168,7 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
 | Ordenador (SIGEP) | Datos, grupos sociales, **agenda legislativa** (presentar leyes), Congreso (reunirse con los partidos), agenda y gabinete. |
 | Globo | Mapa diplomático: tratados, visitas de Estado, ayudas, sanciones. |
 | Micrófono | Discurso a la nación (minijuego de ritmo con el teleprompter). En campaña abre el **mapa de campaña por regiones**. |
+| Móvil | La red social Pío (lo que dice la gente, tendencias, publicar) y los mensajes privados. |
 | Mascota | Si has comprado una en la tienda (gato, perro, loro, pez o tortuga), haz clic para bajar el estrés. |
 | Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. |
 | Periódico, TV, calendario, reloj, café | Noticias, encuestas, agenda... y un café para el estrés. |
@@ -215,6 +249,11 @@ a su sustituto entre tres candidatos.
 - `scripts/data/scenarios_data.gd` — escenarios iniciales y tramas; `events_tramas.gd`, `events_extra.gd`
   y `events_meme.gd` — eventos de las tramas, eventos adicionales y modo meme.
 - `tools/gen_audio.gd` y `tools/gen_maps.gd` — generan la música, los efectos y los mapas.
+- `scripts/systems/` — los sistemas de la 3.0: `promesas.gd`, `memoria.gd` (personajes con memoria), `redes.gd`
+  (el móvil), `reto.gd` (reto del día), `interprete.gd` (respuestas escritas) y `plantillas.gd` (situaciones
+  generadas). Sus datos, en `scripts/data/` (`promises_data.gd`, `memoria_data.gd`, `social_data.gd`,
+  `reto_data.gd`, `interprete_reglas.gd`, `plantillas_data.gd`, `generadores_data.gd`, `conversaciones_data.gd`,
+  `events_v3a.gd` y `events_v3b.gd`).
 
 ## Pruebas automáticas
 
@@ -226,6 +265,8 @@ godot --headless --path . -- --autotest=730 --runs=30 --strategy=player --diffic
 godot --headless --path . -- --autotest=9125 --runs=20 --mode=infinito --strategy=casual
 godot --headless --path . -- --autotest=270 --variety=30   # cuánto se parecen las partidas
 godot --headless --path . -- --uitest                      # abre y prueba cada pantalla
+godot --headless --path . -- --autotest=365 --runs=20 --daily --strategy=casual   # los retos de los próximos días
+godot --headless --path . -- --interptest                  # prueba las respuestas escritas
 ```
 
 Estrategias: `random`, `smart`, `casual` (jugador medio), `player` (jugador experto) y `worst`.

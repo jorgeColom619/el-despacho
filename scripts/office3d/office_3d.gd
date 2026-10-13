@@ -34,7 +34,8 @@ const INTERACT_RANGE := 12.0
 ## Capa de render exclusiva del doble del jugador en el espejo: invisible para su propia cámara
 ## en primera persona, visible para la cámara que pinta el reflejo
 const AVATAR_LAYER := 1 << 4
-const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!"]
+const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!",
+	"¡Siguiente pregunta!", "¡Sin comentarios!", "¡Lo que diga la ministra!", "¡Pío, pío, que no se diga!", "¡Café! ¡Café!", "¡Que hable la oposición!", "¡Señorías!", "¡Esto lo arreglamos!", "¡Hasta las urnas!", "¡Prima de riesgo!", "¡Gracias, Valdoria!", "¡Rueda de prensa! ¡Rrrueda!"]
 const PARROT_MEME := ["¡Un vaso es un vaso!", "¡Sé fuerte!", "¡Con cebolla!", "¡Sin cebolla!", "¡Me gusta la fruta!", "¡Plasma! ¡Plasma!", "¡Bueno... eso!", "¡Es muy difícil todo esto!"]
 const HELP := "Ratón: mirar   ·   Clic: usar   ·   Clic derecho: coger / soltar (clic para lanzar)   ·   WASD: levantarse y andar (Mayús: correr)\nF: sentarse (sillón, sillones o sofá) / levantarse   ·   R: ordenar la mesa   ·   Tab: liberar el cursor   ·   Espacio: pausa   ·   1-3: velocidad   ·   H: mostrar u ocultar esta ayuda"
 
