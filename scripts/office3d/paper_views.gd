@@ -132,9 +132,7 @@ func _newspaper() -> void:
 		hl = GS.news_feed[0]["t"]
 	draw_multiline_string(UI.f_serif_b, Vector2(12, 128), hl, HORIZONTAL_ALIGNMENT_LEFT, w - 24, 25, 4, Color(0.06, 0.06, 0.06))
 	var py := 250.0
-	draw_rect(Rect2(12, py, w * 0.55, 110), Color(0.55, 0.55, 0.57))
-	for i in 9:
-		draw_line(Vector2(12 + i * 18, py), Vector2(12 + i * 18 + 60, py + 110), Color(1, 1, 1, 0.06), 6.0)
+	_news_photo(Rect2(12, py, w * 0.55, 110), hl)
 	for k in 12:
 		var x0 := w * 0.55 + 22.0
 		draw_line(Vector2(x0, py + 4 + k * 9), Vector2(w - 12, py + 4 + k * 9), Color(0.3, 0.3, 0.3, 0.55), 2.0)
@@ -142,6 +140,119 @@ func _newspaper() -> void:
 		draw_line(Vector2(12, py + 124 + k2 * 9), Vector2(w - 12, py + 124 + k2 * 9), Color(0.3, 0.3, 0.3, 0.55), 2.0)
 	if GS.news_feed.size() > 1:
 		draw_string(UI.f_serif_b, Vector2(12, h - 14), GS.news_feed[1]["t"], HORIZONTAL_ALIGNMENT_LEFT, w - 24, 13, Color(0.1, 0.1, 0.1))
+
+
+## Foto en blanco y negro de la portada, según el titular (fuego, protesta, Congreso, acuerdo, temporal o el
+## Palacio), con su trama de puntos de papel de periódico
+func _news_photo(r: Rect2, hl: String) -> void:
+	var t := hl.to_lower()
+	var kind := "palacio"
+	var keys := {"fuego": ["incend", "fuego", "arde", "llamas"],
+		"temporal": ["temporal", "nieve", "lluvia", "inunda", "sequía", "terremoto", "riada", "dana", "tormenta"],
+		"multitud": ["huelga", "disturb", "protest", "calle", "manifest", "revuelta", "marcha", "concentra"],
+		"congreso": ["congreso", "ley", "moción", "presupuesto", "diputad", "votación", "escaño"],
+		"acuerdo": ["acuerdo", "cumbre", "tratado", "norland", "unión", "kharovia", "tsaing", "sarvenia", "qadar", "aldora", "visita"]}
+	for k in keys:
+		for word in keys[k]:
+			if word in t:
+				kind = k
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(hl)
+	var x0 := r.position.x
+	var y0 := r.position.y
+	var w := r.size.x
+	var h := r.size.y
+	var g := func(v: float) -> Color: return Color(v, v, v)
+	# cielo / fondo
+	for i in 10:
+		var c0: float = 0.78 - i * 0.025 if kind != "fuego" else 0.32 + i * 0.02
+		draw_rect(Rect2(x0, y0 + h * i / 10.0, w, h / 10.0 + 1.0), g.call(c0))
+	match kind:
+		"fuego":
+			for i in 14:
+				draw_circle(Vector2(x0 + rng.randf() * w, y0 + rng.randf() * h * 0.5), rng.randf_range(10, 24), Color(0.15, 0.15, 0.15, 0.35))
+			for i in 9:
+				var fx := x0 + rng.randf() * w
+				draw_colored_polygon(PackedVector2Array([Vector2(fx - 12, y0 + h), Vector2(fx, y0 + h * rng.randf_range(0.35, 0.65)), Vector2(fx + 12, y0 + h)]), g.call(0.93))
+			for i in 6:
+				var tx := x0 + rng.randf() * w
+				draw_rect(Rect2(tx, y0 + h * 0.62, 3, h * 0.38), g.call(0.06))
+				draw_circle(Vector2(tx + 1.5, y0 + h * 0.6), 9, g.call(0.08))
+		"temporal":
+			for i in 8:
+				draw_circle(Vector2(x0 + rng.randf() * w, y0 + rng.randf() * h * 0.3), rng.randf_range(14, 26), g.call(0.48))
+			draw_rect(Rect2(x0, y0 + h * 0.72, w, h * 0.28), g.call(0.85))
+			for i in 7:
+				var hx := x0 + 6 + i * w / 7.0
+				var hh := rng.randf_range(18, 34)
+				draw_rect(Rect2(hx, y0 + h * 0.72 - hh, w / 9.0, hh), g.call(0.3))
+				draw_colored_polygon(PackedVector2Array([Vector2(hx - 3, y0 + h * 0.72 - hh), Vector2(hx + w / 18.0, y0 + h * 0.72 - hh - 10), Vector2(hx + w / 9.0 + 3, y0 + h * 0.72 - hh)]), g.call(0.22))
+			for i in 40:
+				var sx := x0 + rng.randf() * w
+				var sy := y0 + rng.randf() * h * 0.7
+				draw_line(Vector2(sx, sy), Vector2(sx - 3, sy + 8), Color(1, 1, 1, 0.5), 1.0)
+		"multitud":
+			draw_rect(Rect2(x0, y0 + h * 0.18, w, h * 0.45), g.call(0.55))
+			for i in 9:
+				draw_rect(Rect2(x0 + 6 + i * w / 9.0, y0 + h * 0.24, w / 22.0, h * 0.1), g.call(0.35))
+			for i in 60:
+				var px := x0 + rng.randf() * w
+				var pyy := y0 + h * 0.55 + rng.randf() * h * 0.45
+				var s := 0.6 + (pyy - y0 - h * 0.55) / (h * 0.45) * 0.7
+				draw_circle(Vector2(px, pyy - 9 * s), 4.5 * s, g.call(0.1))
+				draw_rect(Rect2(px - 5 * s, pyy - 5 * s, 10 * s, 18 * s), g.call(0.13))
+				if rng.randf() < 0.12:
+					draw_rect(Rect2(px - 9 * s, pyy - 30 * s, 18 * s, 11 * s), g.call(0.95))
+		"congreso":
+			draw_rect(Rect2(x0, y0, w, h), g.call(0.42))
+			for i in 6:
+				draw_rect(Rect2(x0 + 8 + i * w / 6.0, y0 + 6, 8, h * 0.45), g.call(0.78))
+			draw_rect(Rect2(x0, y0 + 4, w, 6), g.call(0.75))
+			for row in 4:
+				var ry := y0 + h * 0.58 + row * 12
+				var n := 12 + row * 3
+				for i in n:
+					var a := PI * (0.08 + 0.84 * float(i) / float(n - 1))
+					var cx := x0 + w * 0.5 - cos(a) * (w * 0.32 + row * 14)
+					draw_circle(Vector2(cx, ry - sin(a) * 10), 3.2, g.call(0.12 + row * 0.03))
+		"acuerdo":
+			for i in 2:
+				var fx2 := x0 + w * (0.12 + i * 0.68)
+				draw_line(Vector2(fx2, y0 + 6), Vector2(fx2, y0 + h), g.call(0.3), 2.0)
+				draw_rect(Rect2(fx2 + 1, y0 + 8, 22, 30), g.call(0.55 + i * 0.2))
+			for sx in [0.36, 0.64]:
+				var cx2: float = x0 + w * float(sx)
+				draw_circle(Vector2(cx2, y0 + h * 0.3), 11, g.call(0.82))
+				draw_rect(Rect2(cx2 - 17, y0 + h * 0.42, 34, h * 0.58), g.call(0.13))
+				draw_rect(Rect2(cx2 - 3, y0 + h * 0.42, 6, 14), g.call(0.9))
+			draw_line(Vector2(x0 + w * 0.42, y0 + h * 0.66), Vector2(x0 + w * 0.58, y0 + h * 0.66), g.call(0.8), 8.0)
+		_:
+			# fachada del Palacio con su bandera
+			draw_rect(Rect2(x0 + w * 0.1, y0 + h * 0.36, w * 0.8, h * 0.5), g.call(0.86))
+			draw_colored_polygon(PackedVector2Array([Vector2(x0 + w * 0.06, y0 + h * 0.37), Vector2(x0 + w * 0.5, y0 + h * 0.16), Vector2(x0 + w * 0.94, y0 + h * 0.37)]), g.call(0.8))
+			draw_colored_polygon(PackedVector2Array([Vector2(x0 + w * 0.2, y0 + h * 0.34), Vector2(x0 + w * 0.5, y0 + h * 0.22), Vector2(x0 + w * 0.8, y0 + h * 0.34)]), g.call(0.62))
+			for i in 7:
+				var cx3 := x0 + w * (0.16 + i * 0.113)
+				draw_rect(Rect2(cx3, y0 + h * 0.4, 6, h * 0.42), g.call(0.97))
+				draw_rect(Rect2(cx3 + 6, y0 + h * 0.4, 2, h * 0.42), g.call(0.55))
+			draw_rect(Rect2(x0 + w * 0.06, y0 + h * 0.84, w * 0.88, h * 0.06), g.call(0.7))
+			draw_rect(Rect2(x0, y0 + h * 0.9, w, h * 0.1), g.call(0.6))
+			draw_line(Vector2(x0 + w * 0.5, y0 + h * 0.17), Vector2(x0 + w * 0.5, y0 + h * 0.02), g.call(0.25), 1.5)
+			draw_rect(Rect2(x0 + w * 0.5, y0 + h * 0.03, 16, 10), g.call(0.4))
+			for i in 5:
+				var px2 := x0 + rng.randf_range(0.05, 0.95) * w
+				draw_circle(Vector2(px2, y0 + h * 0.86), 3, g.call(0.12))
+				draw_rect(Rect2(px2 - 3, y0 + h * 0.87, 6, 10), g.call(0.15))
+	# trama de puntos (papel de periódico) y marco
+	var step := 4.0
+	var yy := 0.0
+	while yy < h:
+		var xx := fmod(yy, step * 2.0) * 0.5
+		while xx < w:
+			draw_circle(Vector2(x0 + xx, y0 + yy), 0.8, Color(0, 0, 0, 0.12))
+			xx += step
+		yy += step
+	draw_rect(r, Color(0.1, 0.1, 0.1), false, 1.0)
 
 
 ## Elige nombre, oficio, cita y tono (favorable/tibio/crítico) de un vecino cualquiera según la

@@ -64,6 +64,8 @@ var env: Environment
 var globe_mat: ShaderMaterial
 var globe_spin: Node3D
 var cursor_mode := false
+## Capturas de prueba (--shot): el ratón de verdad no mueve la cámara ni pulsa nada
+var _shot_mode := false
 var pet_kind := ""
 var _t := 0.0
 var _knock_t := 0.0
@@ -224,6 +226,8 @@ func _ready() -> void:
 	apply_quality()
 	# depuración (capturas): --cam=x,y,z,giro,inclinación coloca al presidente de pie en ese punto
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--shot"):
+			_shot_mode = true
 		if a.begins_with("--cam="):
 			var v := a.substr(6).split_floats(",")
 			if v.size() >= 5:
@@ -284,6 +288,7 @@ func apply_quality() -> void:
 	# luces y sombras
 	room.window_light.shadow_enabled = not low_quality
 	_lamp_light.shadow_enabled = not low_quality
+	_lamp_light.light_volumetric_fog_energy = 0.0
 	room.chandelier_light.shadow_enabled = advanced and hi
 	room.fire_light.shadow_enabled = advanced and hi
 	room.window_light.light_volumetric_fog_energy = 1.0
@@ -549,9 +554,14 @@ func _desk_objects() -> void:
 	lamp.add_child(_lamp_light)
 	_lamp_light.position = Vector3(0, 0.27, 0.05)
 	_lamp_light.look_at_from_position(lamp.global_position + Vector3(0, 0.27, 0.05), Vector3(-0.45, top, dz + 0.25))
-	_lamp_light.spot_angle = 62.0
+	_lamp_light.spot_angle = 64.0
 	_lamp_light.spot_range = 2.4
-	_lamp_light.light_energy = 1.25
+	_lamp_light.spot_angle_attenuation = 1.6
+	# tan cerca de la mesa, con más potencia quemaba el teléfono; sin brillo especular (la bombilla está dentro de
+	# la pantalla y hacía una mancha blanca en ella) ni halo en la niebla
+	_lamp_light.light_energy = 0.5
+	_lamp_light.light_specular = 0.0
+	_lamp_light.light_volumetric_fog_energy = 0.0
 	_lamp_light.light_color = Color(1.0, 0.84, 0.6)
 	_lamp_light.light_size = 0.08
 	_lamp_light.shadow_enabled = true
@@ -714,34 +724,46 @@ func _desk_objects() -> void:
 	ub.cyl(Vector3(0, 0.0, 0.0415), 0.013, 0.013, 0.003, gold, Vector3(PI / 2.0, 0, 0), 20)
 	ub.commit(_mug)
 	Kit.mesh(_mug, Kit.torus_mesh(0.017, 0.026, 24), cer, Vector3(0.048, 0.0, 0), Vector3(PI / 2.0, 0, 0))
+	# vapor: volutas difuminadas que crecen y se deshacen al subir (con discos de borde duro parecían burbujas)
 	_steam = CPUParticles3D.new()
-	_steam.amount = 10
-	_steam.lifetime = 2.2
-	_steam.position = Vector3(0, 0.05, 0)
+	_steam.amount = 14
+	_steam.lifetime = 2.6
+	_steam.position = Vector3(0, 0.045, 0)
 	_steam.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_steam.emission_sphere_radius = 0.018
+	_steam.emission_sphere_radius = 0.016
 	_steam.direction = Vector3.UP
-	_steam.spread = 12.0
-	_steam.initial_velocity_min = 0.04
-	_steam.initial_velocity_max = 0.08
-	_steam.gravity = Vector3(0, 0.02, 0)
-	_steam.scale_amount_min = 0.6
-	_steam.scale_amount_max = 1.4
+	_steam.spread = 14.0
+	_steam.initial_velocity_min = 0.025
+	_steam.initial_velocity_max = 0.05
+	_steam.gravity = Vector3(0.006, 0.012, 0)
+	_steam.damping_min = 0.004
+	_steam.damping_max = 0.01
+	_steam.angle_min = 0.0
+	_steam.angle_max = 360.0
+	_steam.angular_velocity_min = -25.0
+	_steam.angular_velocity_max = 25.0
+	_steam.scale_amount_min = 0.7
+	_steam.scale_amount_max = 1.1
+	var sc := Curve.new()
+	sc.add_point(Vector2(0.0, 0.35))
+	sc.add_point(Vector2(1.0, 1.0))
+	_steam.scale_amount_curve = sc
 	_steam.local_coords = false
 	var sq := QuadMesh.new()
-	sq.size = Vector2(0.035, 0.035)
+	sq.size = Vector2(0.06, 0.06)
 	var smat := StandardMaterial3D.new()
 	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	smat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	smat.vertex_color_use_as_albedo = true
-	smat.albedo_texture = Kit.disc_tex()
+	smat.albedo_texture = Kit.puff_tex()
 	sq.material = smat
 	_steam.mesh = sq
 	var grad := Gradient.new()
-	grad.set_color(0, Color(1, 1, 1, 0.0))
-	grad.set_color(1, Color(1, 1, 1, 0.0))
-	grad.add_point(0.25, Color(1, 1, 1, 0.07))
+	grad.set_color(0, Color(0.95, 0.93, 0.9, 0.0))
+	grad.set_color(1, Color(0.95, 0.93, 0.9, 0.0))
+	grad.add_point(0.2, Color(0.95, 0.93, 0.9, 0.05))
+	grad.add_point(0.55, Color(0.95, 0.93, 0.9, 0.035))
 	_steam.color_ramp = grad
 	_mug.add_child(_steam)
 	_obj("mug", _mug, "Café", null, 0.15)
@@ -1401,7 +1423,7 @@ func _ui_open() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if player == null or not GS.active or _ui_open():
+	if player == null or not GS.active or _ui_open() or (_shot_mode and event is InputEventMouse):
 		return
 	if event is InputEventMouseMotion:
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -1569,7 +1591,7 @@ func _process(delta: float) -> void:
 		player.drop()
 	_ui_was_open = ui
 	var want := Input.MOUSE_MODE_VISIBLE
-	if GS.active and not ui and not cursor_mode and get_window().has_focus():
+	if GS.active and not ui and not cursor_mode and not _shot_mode and get_window().has_focus():
 		want = Input.MOUSE_MODE_CAPTURED
 	if Input.mouse_mode != want and DisplayServer.get_name() != "headless":
 		Input.mouse_mode = want

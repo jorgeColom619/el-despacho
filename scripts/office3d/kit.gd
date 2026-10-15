@@ -502,6 +502,27 @@ static func disc_tex() -> ImageTexture:
 	return t
 
 
+## Bocanada blanca muy difuminada y algo irregular (vapor, humo): sin borde, para que no parezcan burbujas
+static func puff_tex() -> ImageTexture:
+	if _tex_cache.has("puff"):
+		return _tex_cache["puff"]
+	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	var n := FastNoiseLite.new()
+	n.seed = 7
+	n.frequency = 0.09
+	for y in 64:
+		for x in 64:
+			var d := Vector2((x - 31.5) / 31.5, (y - 31.5) / 31.5).length()
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			a = a * a * (3.0 - 2.0 * a)
+			a *= clampf(0.55 + n.get_noise_2d(x, y) * 0.9, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1, 1, 1, a))
+	img.generate_mipmaps()
+	var t := ImageTexture.create_from_image(img)
+	_tex_cache["puff"] = t
+	return t
+
+
 ## Degradado radial para sombras de contacto (negro con alfa)
 static func blob_tex() -> ImageTexture:
 	if _tex_cache.has("blob"):

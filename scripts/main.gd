@@ -395,6 +395,9 @@ func _on_game_over(data: Dictionary) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
+	# en las capturas de prueba el teclado de verdad no abre ni cambia nada
+	if debug_shot != "":
+		return
 	var k: int = event.keycode
 	if k == KEY_F11:
 		Sfx.set_setting("fullscreen", not Sfx.settings["fullscreen"])
@@ -461,10 +464,12 @@ func _debug_opts() -> Dictionary:
 
 
 func _debug_start() -> void:
-	if debug_shot == "menu" or debug_shot == "reto":
+	if debug_shot in ["menu", "reto", "opciones"]:
 		show_menu()
 		if debug_shot == "reto":
 			screen.call_deferred("_open_daily")
+		elif debug_shot == "opciones":
+			screen.call_deferred("_open_settings")
 		return
 	if debug_shot == "shop":
 		show_shop()

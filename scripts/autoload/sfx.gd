@@ -9,7 +9,7 @@ var _music_a: AudioStreamPlayer
 var _music_b: AudioStreamPlayer
 var _music_on_a := true
 var current_music := ""
-var settings := {"master": 0.85, "music": 0.55, "sfx": 0.9, "fullscreen": false, "grain": true, "text_speed": 1.0, "view3d": true, "mouse_sens": 1.0, "gfx": "auto", "engine": "auto"}
+var settings := {"master": 0.85, "music": 0.55, "sfx": 0.9, "fullscreen": false, "grain": true, "text_speed": 1.0, "view3d": true, "stage3d": true, "mouse_sens": 1.0, "gfx": "auto", "engine": "auto"}
 
 
 func _ready() -> void:
@@ -178,6 +178,9 @@ func load_settings() -> void:
 	if cf.load("user://settings.cfg") == OK:
 		for k in settings.keys():
 			settings[k] = cf.get_value("settings", k, settings[k])
+		# antes una sola opción decidía el despacho y los minijuegos: quien la tenía quitada sigue igual
+		if not cf.has_section_key("settings", "stage3d"):
+			settings["stage3d"] = settings["view3d"]
 	_apply()
 
 

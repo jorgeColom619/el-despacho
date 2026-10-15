@@ -57,8 +57,10 @@ sobrevivir a las crisis, negociar con el mundo y ganar la reelección. Todo ocur
     resto del hemiciclo bota en sus escaños; si es mala, la oposición se ríe y abuchea. La presidenta pide silencio
     con el mazo y los marcadores bajo la galería llevan la pregunta, quién tiene la palabra, el **aplausómetro** y
     el combo.
-- En **Opciones** puedes volver al despacho 2D clásico, ajustar la sensibilidad del ratón y activar
-  los **gráficos 3D reducidos** (se activan solos en equipos sin aceleración gráfica, como máquinas virtuales).
+- En **Opciones** puedes volver al despacho 2D clásico y, aparte, elegir si los minijuegos son en 3D o con los
+  fondos de siempre (cualquier combinación: despacho 2D con minijuegos 3D, o al revés), ajustar la sensibilidad
+  del ratón y activar los **gráficos 3D reducidos** (se activan solos en equipos sin aceleración gráfica, como
+  máquinas virtuales).
 
 | Control | Acción |
 |---|---|

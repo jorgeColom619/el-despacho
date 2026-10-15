@@ -11,6 +11,9 @@ var _stack: VBoxContainer
 var _last_text := ""
 var _last_time := 0
 var _floats := {}
+## Mientras hay un minijuego 3D abierto los avisos esperan (y salen al volver al despacho)
+var _held := 0
+var _waiting: Array = []
 
 
 func _ready() -> void:
@@ -23,7 +26,32 @@ func _ready() -> void:
 	GS.toast.connect(push)
 
 
+## Retiene los avisos (on = true) o los suelta (on = false; salen los últimos que llegaron mientras tanto)
+func hold(on: bool) -> void:
+	_held = maxi(0, _held + (1 if on else -1))
+	if _held > 0:
+		# los que ya estaban en pantalla se van enseguida
+		for p in _stack.get_children():
+			var t := (p as Control).create_tween()
+			t.tween_property(p, "modulate:a", 0.0, 0.25)
+			t.tween_callback(p.queue_free)
+		for l in _floats.values():
+			if is_instance_valid(l["l"]):
+				(l["l"] as Control).visible = false
+		return
+	var pend := _waiting.duplicate()
+	_waiting.clear()
+	_last_text = ""
+	for w in pend:
+		push(w[0], w[1], w[2])
+
+
 func push(text: String, kind: String = "info", icon_name: String = "info") -> void:
+	if _held > 0:
+		_waiting.append([text, kind, icon_name])
+		if _waiting.size() > MAX_TOASTS:
+			_waiting.pop_front()
+		return
 	var now := Time.get_ticks_msec()
 	if text == _last_text and now - _last_time < 1500:
 		return
@@ -72,6 +100,9 @@ func float_text(pos: Vector2, text: String, col: Color, fsize: int = 26) -> void
 
 ## Número flotante agrupado: si el mismo indicador cambia varias veces seguidas, se suma en un solo número
 func float_delta(key: String, pos: Vector2, v: float, fmt: Callable, good: Color, bad: Color, fsize: int = 22) -> void:
+	# en un minijuego 3D no se ve el marcador del despacho: los números no tendrían a qué señalar
+	if _held > 0:
+		return
 	var now := Time.get_ticks_msec()
 	if _floats.has(key):
 		var e: Dictionary = _floats[key]

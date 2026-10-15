@@ -45,7 +45,11 @@ func build() -> void:
 	_monitor()
 	b.commit(world)
 	interviewer = person(W.CHARACTERS["periodista"]["look"], HOST, yaw_to(HOST, Vector3.ZERO), "table")
-	time_strip(facing(Vector3(0.1, PLAT_H + 0.72, 1.02), eye), 0.5)
+	# la luz del tiempo, embutida en el tablero entre las tarjetas y la entrevistadora (de pie sobre la mesa, con su regleta, parecía una barra
+	# negra flotando): mira hacia arriba, de frente al presidente como las tarjetas y con los segundos a su derecha
+	var sp := Vector3(0.12, PLAT_H, 0.9) + Basis(Vector3.UP, -0.2) * Vector3(-0.05, 0.707, -0.06)
+	var away := Vector3(sp.x - eye.x, 0.0, sp.z - eye.z).normalized()
+	time_strip(Transform3D(Basis(away.cross(Vector3.UP), away, Vector3.UP), sp), 0.5, false)
 	pov(false)
 
 

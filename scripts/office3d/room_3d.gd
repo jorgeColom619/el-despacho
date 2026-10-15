@@ -384,6 +384,8 @@ func _window() -> void:
 	window_light.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
 	window_light.light_color = Color(1.0, 0.95, 0.86)
 	window_light.light_energy = 3.0
+	# el reflejo del sol en el cuero de la mesa era un resplandor blanco junto a la lámpara
+	window_light.light_specular = 0.15
 
 
 ## Cortina de terciopelo con pliegues. Recogida (0) se ciñe al alzapaños hacia el lado exterior;

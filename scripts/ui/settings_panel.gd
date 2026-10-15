@@ -22,6 +22,7 @@ func _ready() -> void:
 	_check(v, "Pantalla completa (F11)", "fullscreen")
 	_check(v, "Grano cinematográfico", "grain")
 	_check(v, "Despacho en 3D (desactívelo en equipos lentos)", "view3d")
+	_check(v, "Minijuegos en 3D (rueda de prensa, entrevista, Congreso y negociaciones)", "stage3d")
 	_option(v, "Calidad gráfica", "gfx", [["auto", "Automática (%s)" % Sfx.gfx_preset().capitalize()], ["baja", "Baja"], ["media", "Media"], ["alta", "Alta"], ["ultra", "Ultra"]])
 	_option(v, "Motor gráfico", "engine", [["auto", "Automático"], ["avanzado", "Avanzado (Forward+)"], ["compatible", "Compatible (sin tarjeta gráfica)"]])
 	var note := UI.lbl("", UI.f_sans, 15, UI.DIM)

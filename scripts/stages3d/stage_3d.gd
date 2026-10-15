@@ -89,6 +89,8 @@ var _strip_mat: StandardMaterial3D
 var _strip_lbl: Label3D
 var _strip_xf := Transform3D()
 var _strip_w := 0.5
+## Acreditaciones de tag3d() (se mantienen dentro de la pantalla)
+var _tags: Array = []
 ## Pruebas: clics simulados [x, y, fotograma] (en píxeles de la ventana), teclas [número, fotograma] y un ratón fijo
 var _test_clicks: Array = []
 var _test_keys: Array = []
@@ -120,9 +122,9 @@ class Pick:
 	var glow: ShaderMaterial
 
 
-## Los escenarios 3D acompañan al despacho 3D (con el despacho 2D, los fondos de siempre)
+## Minijuegos en 3D (opción propia, aparte del despacho: con ella quitada, los fondos de siempre)
 static func enabled() -> bool:
-	return bool(Sfx.settings.get("view3d", true))
+	return bool(Sfx.settings.get("stage3d", true))
 
 
 ## Texturas que usan las salas (se preparan en segundo plano desde el menú, como las del despacho)
@@ -145,12 +147,15 @@ func _ready() -> void:
 	vp = SubViewport.new()
 	vp.own_world_3d = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	vp.msaa_3d = rv.msaa_3d
-	vp.screen_space_aa = rv.screen_space_aa
-	vp.use_debanding = rv.use_debanding
-	vp.scaling_3d_mode = rv.scaling_3d_mode
-	vp.scaling_3d_scale = rv.scaling_3d_scale
-	vp.positional_shadow_atlas_size = rv.positional_shadow_atlas_size
+	# la calidad sale de Opciones (como en el despacho 3D; con el despacho 2D la ventana no la tiene puesta)
+	vp.msaa_3d = Viewport.MSAA_DISABLED if low else (Viewport.MSAA_2X if gfx == "media" else Viewport.MSAA_4X)
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if low or (advanced and hi) else Viewport.SCREEN_SPACE_AA_DISABLED
+	vp.use_debanding = hi
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = 0.75 if low else 1.0
+	vp.positional_shadow_atlas_size = 8192 if gfx == "ultra" else 4096
+	RenderingServer.positional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if hi else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if hi else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	add_child(vp)
 	var view := TextureRect.new()
 	view.texture = vp.get_texture()
@@ -181,6 +186,7 @@ func _ready() -> void:
 	_cam_look_now = cam_look
 	cam.look_at(cam_look)
 	_show_office(false)
+	_hold_toasts(true)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--stageshot="):
 			_shot_path = a.substr(12)
@@ -203,6 +209,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_show_office(true)
+	_hold_toasts(false)
 	if is_instance_valid(_hover) and _hover.on_hover.is_valid():
 		_hover.on_hover.call(false)
 
@@ -254,6 +261,13 @@ func _show_office(on: bool) -> void:
 	if main != null and main.get("office") != null and main.office.get("world") is Node3D:
 		_office_world = main.office.world
 		_office_world.visible = false
+
+
+## Los avisos del despacho («Fulano quiere verle...») no salen encima de la escena: esperan a que se cierre
+func _hold_toasts(on: bool) -> void:
+	var main := get_tree().root.get_node_or_null("Main") if is_inside_tree() else null
+	if main != null and main.get("toasts") != null and main.toasts.has_method("hold"):
+		main.toasts.hold(on)
 
 
 func _environment() -> void:
@@ -328,6 +342,7 @@ func _process(delta: float) -> void:
 		cam.rotate_object_local(Vector3.RIGHT, deg_to_rad(randf_range(-1.0, 1.0) * _shake * 1.6))
 		cam.rotate_object_local(Vector3.UP, deg_to_rad(randf_range(-1.0, 1.0) * _shake * 1.6))
 	_update_flashes(delta)
+	_keep_tags_on_screen()
 	# lo que hay bajo el ratón (también si se mueve la cámara o la tarjeta sin mover el ratón)
 	if mp.x >= 0.0 and _drag == null:
 		_hover_at(mp)
@@ -903,14 +918,16 @@ func dim_cards() -> void:
 # ------------------------------------------------------------------ tiempo de palabra
 
 ## Luz del tiempo en el borde del atril o de la mesa (xf: centro, mirando a los ojos con +Z): una tira que se acorta,
-## dorada, ámbar y roja, con los segundos al lado
-func time_strip(xf: Transform3D, width: float) -> void:
+## dorada, ámbar y roja, con los segundos al lado. housing: con su regleta negra (en el canto de un atril); sin ella,
+## embutida en el tablero y solo se ve mientras corre el tiempo
+func time_strip(xf: Transform3D, width: float, housing := true) -> void:
 	_strip_xf = xf
 	_strip_w = width
-	# lote propio: no se mezcla con la geometría de la sala que aún no se haya montado
-	var bb := Kit.Batch.new()
-	bb.box(xf * Transform3D(Basis(), Vector3(0, 0, -0.006)), Vector3(width + 0.03, 0.03, 0.012), Kit.mat(Color("0c0d10"), 0.4, 0.2), 1.0, 0.004)
-	bb.commit(world, false)
+	if housing:
+		# lote propio: no se mezcla con la geometría de la sala que aún no se haya montado
+		var bb := Kit.Batch.new()
+		bb.box(xf * Transform3D(Basis(), Vector3(0, 0, -0.006)), Vector3(width + 0.03, 0.03, 0.012), Kit.mat(Color("0c0d10"), 0.4, 0.2), 1.0, 0.004)
+		bb.commit(world, false)
 	_strip = MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(width, 0.012)
@@ -1226,7 +1243,57 @@ func tag3d(title: String, sub: String, col: Color, pos: Vector3, width := 0.62) 
 	world.add_child(s)
 	s.global_position = pos
 	s.set_meta("vp", sv)
+	s.set_meta("anchor", pos)
+	s.set_meta("w", width)
+	_tags.append(s)
+	_keep_tags_on_screen()
 	return s
+
+
+## Las acreditaciones se leen enteras: si el periodista está junto al borde, la suya se corre hacia dentro, y si dos
+## quedan a la misma altura y se pisan, se separan (sin salirse de la pantalla)
+func _keep_tags_on_screen() -> void:
+	if _tags.is_empty():
+		return
+	var vw := float(vp.size.x)
+	var margin := vw * 0.015
+	var gap := vw * 0.008
+	var right := cam.global_transform.basis.x
+	var items := []
+	for s in _tags.duplicate():
+		if not is_instance_valid(s):
+			_tags.erase(s)
+			continue
+		var anchor: Vector3 = s.get_meta("anchor")
+		if cam.is_position_behind(anchor):
+			continue
+		var w := float(s.get_meta("w"))
+		var c := cam.unproject_position(anchor)
+		var half := absf(cam.unproject_position(anchor + right * w * 0.5).x - c.x)
+		# alto de la placa: 150 de 560 píxeles de ancho (tag3d)
+		var hh := half * 150.0 / 560.0
+		var lo := margin + half
+		var hi := maxf(lo, vw - margin - half)
+		items.append({"s": s, "anchor": anchor, "w": w, "cx": c.x, "cy": c.y, "half": half, "hh": hh, "x": clampf(c.x, lo, hi), "lo": lo, "hi": hi})
+	items.sort_custom(func(a, b2): return a["x"] < b2["x"])
+	var near := func(a: Dictionary, b2: Dictionary) -> bool:
+		return absf(float(a["cy"]) - float(b2["cy"])) < float(a["hh"]) + float(b2["hh"])
+	# de izquierda a derecha: cada una, a la derecha de la anterior si se pisan
+	for k in range(1, items.size()):
+		var a: Dictionary = items[k - 1]
+		var b2: Dictionary = items[k]
+		if near.call(a, b2):
+			b2["x"] = maxf(float(b2["x"]), float(a["x"]) + float(a["half"]) + gap + float(b2["half"]))
+	# de derecha a izquierda: que la última no se salga, empujando a las demás
+	for k in range(items.size() - 1, -1, -1):
+		var b2: Dictionary = items[k]
+		b2["x"] = minf(float(b2["x"]), float(b2["hi"]))
+		if k > 0 and near.call(items[k - 1], b2):
+			var a: Dictionary = items[k - 1]
+			a["x"] = minf(float(a["x"]), float(b2["x"]) - float(b2["half"]) - gap - float(a["half"]))
+	for it in items:
+		var shift := maxf(float(it["x"]), float(it["lo"])) - float(it["cx"])
+		(it["s"] as Node3D).global_position = it["anchor"] + right * (shift / maxf(float(it["half"]) * 2.0, 1.0) * float(it["w"]))
 
 
 ## Quita una acreditación de tag3d() (con su SubViewport)
