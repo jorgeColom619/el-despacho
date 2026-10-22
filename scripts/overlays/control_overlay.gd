@@ -11,7 +11,7 @@ const P := preload("res://scripts/data/press_data.gd")
 const W := preload("res://scripts/data/world_data.gd")
 const Congress := preload("res://scripts/stages3d/congress_3d.gd")
 
-const ROUNDS := 5
+const ROUNDS := 4
 const ROWS := 7
 const HEMI_C := Vector2(960, 1010)
 const HEMI_SX := 1.5
@@ -169,35 +169,26 @@ func _intro() -> void:
 	stage.title_card("Miércoles · Pleno del Congreso", "Sesión de control al Gobierno",
 		"%s le hará %d preguntas. Elija su réplica entre las tarjetas del atril antes de que se apague la luz del tiempo. Encadenar aciertos multiplica el efecto." % [_opp_name(), ROUNDS], 0.0)
 	speaker_lbl.text = "Pregunta del líder de la oposición al presidente del Gobierno"
-	# del plano general a la tribuna: en el atril esperan dos tarjetas
+	# del plano general a la tribuna: en el atril espera la tarjeta para empezar (si va o no se decidió en el
+	# despacho, cuando vino la Jefa de Gabinete)
 	_after(1.6, func():
 		if ri >= 0 or not is_instance_valid(intro):
 			return
 		stage.pov(true)
 		stage.cam_speed = 1.3
-		stage.notice("Haga clic en una tarjeta del atril")
+		stage.notice("Haga clic en la tarjeta del atril cuando esté listo")
 		stage.deal_cards([
 			{"tag": "Sesión de control", "title": "Tomar la palabra", "desc": "Subir a la tribuna y contestar a las preguntas de la oposición.", "col": UI.GOLD, "icon": "microfono"},
-			{"tag": "Escurrir el bulto", "title": "Delegar en la vicepresidenta", "desc": "Estabilidad −2 · Clase media −1. La prensa lo notará.", "col": Color("6b7280"), "icon": "salir"},
 		], stage.top_center(), stage.top_normal(), 0.27, _on_intro_card, Vector2(0.235, 0.15), 0.9))
 
 
-func _on_intro_card(i: int) -> void:
-	if i == 0:
-		if is_instance_valid(intro):
-			intro.queue_free()
-		Sfx.play("gavel", -2.0)
-		stage.hide_title()
-		stage.notice("")
-		_next()
-	else:
-		_delegate()
-
-
-func _delegate() -> void:
-	GS.apply_fx({"estabilidad": -2, "clase_media": -1}, "Sesión de control")
-	GS.push_news("El presidente esquiva la sesión de control", 1)
-	close()
+func _on_intro_card(_i: int) -> void:
+	if is_instance_valid(intro):
+		intro.queue_free()
+	Sfx.play("gavel", -2.0)
+	stage.hide_title()
+	stage.notice("")
+	_next()
 
 
 func _seconds() -> float:
@@ -320,7 +311,7 @@ func _answer(rep) -> void:
 	# (si contesta antes de que acabe la pregunta, le corta)
 	stage.clear_lines()
 	if rep != null:
-		stage.say(who, DB.debate_lines(rep["id"]).pick_random(), UI.GOLD_L, me, 0.25)
+		stage.say(who, DB.fresh_line(DB.debate_lines(rep["id"]), "rl_" + str(rep["id"])), UI.GOLD_L, me, 0.25)
 	else:
 		stage.say(who, "Eh... Señorías, yo... Bueno, como iba diciendo...", UI.GOLD_L, me, 0.25)
 	stage.after_lines(_react.bind(s, rep != null, gen))
@@ -348,7 +339,7 @@ func _react(s: float, replied: bool, gen: int) -> void:
 		Sfx.play("applause", -4.0)
 		if combo >= 2:
 			_after(0.45, func(): stage.big_text("COMBO x%d" % combo, Color("ffd66b"), 92, Vector2(960, 560), 0.9))
-		_after(0.9, func(): stage.say(_opp_name(), DB.opp_reactions("good").pick_random(), UI.RED.lightened(0.3), opp, 0.3))
+		_after(0.9, func(): stage.say(_opp_name(), DB.fresh_line(DB.opp_reactions("good"), "orx_good"), UI.RED.lightened(0.3), opp, 0.3))
 		loud = true
 	elif s >= 0.5:
 		points += s
@@ -370,7 +361,7 @@ func _react(s: float, replied: bool, gen: int) -> void:
 		stage.big_text("¡ABUCHEOS!" if replied else "¡SE HA QUEDADO EN BLANCO!", UI.RED.lightened(0.15), 120 if replied else 96)
 		stage.shake(0.25)
 		Sfx.play("crowd", -4.0, 1.2)
-		_after(0.7, func(): stage.say(_opp_name(), DB.opp_reactions("bad").pick_random(), UI.RED.lightened(0.3), opp, 0.3))
+		_after(0.7, func(): stage.say(_opp_name(), DB.fresh_line(DB.opp_reactions("bad"), "orx_bad"), UI.RED.lightened(0.3), opp, 0.3))
 		loud = true
 	combo_lbl.text = ("COMBO x%d" % combo) if combo >= 2 else ""
 	if combo >= 2:
@@ -378,7 +369,7 @@ func _react(s: float, replied: bool, gen: int) -> void:
 		combo_lbl.create_tween().tween_property(combo_lbl, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	# tras el alboroto, la presidenta pide silencio
 	if loud and randf() < 0.65:
-		_after(2.2, func(): stage.say(stage.order(), (ORDER_LINES + DB.C.ORDER_LINES).pick_random(), UI.GOLD, stage.chair_pres, 0.2))
+		_after(2.2, func(): stage.say(stage.order(), DB.fresh_line(ORDER_LINES + DB.C.ORDER_LINES, "ord"), UI.GOLD, stage.chair_pres, 0.2))
 	_after(3.0 if loud else 2.2, func():
 		if gen == _gen:
 			stage.after_lines(_next_if.bind(gen)))
@@ -535,9 +526,6 @@ func _intro_2d() -> void:
 		Sfx.play("gavel", -2.0)
 		_next())
 	h.add_child(go)
-	var no := UI.btn("Delegar en la vicepresidenta", "ghost", 18)
-	no.pressed.connect(_delegate)
-	h.add_child(no)
 	v.add_child(h)
 	ip.position = Vector2(560, 380)
 	root.add_child(ip)

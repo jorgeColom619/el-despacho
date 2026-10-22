@@ -262,11 +262,11 @@ static func attacks() -> Array:
 	var opener := ["Usted prometió «%s». ¿Qué ha pasado con aquello, presidente?", "«%s». Lo dijo usted, en campaña, mirando a la cámara. ¿Se acuerda?", "Los ciudadanos tienen memoria: usted prometió «%s». Y les ha fallado.", "¿Qué vale su palabra, presidente? Prometió «%s» y mire."]
 	for e in broken():
 		var p := def(e["id"])
-		out.append({"topic": "Promesas", "attack": opener.pick_random() % p["name"], "kind": "personal", "meter": "estabilidad", "promise": true})
+		out.append({"topic": "Promesas", "attack": opener.pick_random() % p["name"], "kind": "personal", "meter": "estabilidad", "promise": true, "key": "prom_" + str(e["id"])})
 	for e in active():
 		var p2 := def(e["id"])
 		if p2["kind"] == "meta" and not on_track(e) and GS.day - GS.term_start > 200:
-			out.append({"topic": "Promesas", "attack": "Le queda poco tiempo y sigue lejos de cumplir lo que prometió: «%s». ¿Lo da usted por perdido?" % p2["name"], "kind": "cifras", "meter": "estabilidad", "promise": true})
+			out.append({"topic": "Promesas", "attack": "Le queda poco tiempo y sigue lejos de cumplir lo que prometió: «%s». ¿Lo da usted por perdido?" % p2["name"], "kind": "cifras", "meter": "estabilidad", "promise": true, "key": "meta_" + str(e["id"])})
 	return out
 
 

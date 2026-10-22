@@ -139,6 +139,8 @@ func _ready() -> void:
 	var movil := _object("movil", Rect2(1290, 896, 196, 158), null, "Móvil · Pío y mensajes")
 	movil.extra_draw = _draw_movil
 	movil.glow_color = Color(0.45, 0.72, 1.0)
+	var lawbook := _object("leyes", Rect2(1648, 946, 236, 118), null, "Libro de Leyes")
+	lawbook.extra_draw = _draw_lawbook
 	var mug := _object("mug", Rect2(1500, 918, 100, 110), OfficeArt.tex("mug"), "Café")
 	mug.extra_draw = _draw_steam
 	mug.animated = true
@@ -317,6 +319,11 @@ func _refresh() -> void:
 	objs["globe"].status = "Relaciones internacionales y acuerdos"
 	objs["calendar"].status = "Próximos acontecimientos"
 	objs["folder"].status = "Gasto por partidas e impuestos"
+	var lb: Control = objs["leyes"]
+	lb.status = GS.law_book_status()
+	lb.badge = str(GS.law_book_new()) if GS.law_book_new() > 0 else ""
+	lb.badge_color = UI.GOLD_D
+	lb.pulse = GS.law_book_new() > 0
 	for k in ["globe", "folder", "mic", "phone"]:
 		var lk := _lock_key(k)
 		var locked := lk != "" and not GS.is_unlocked(lk)
@@ -391,6 +398,8 @@ func _on_object(key: String) -> void:
 			request.emit("movil", {})
 		"folder":
 			request.emit("budget", {})
+		"leyes":
+			request.emit("leyes", {})
 		"mic":
 			if GS.campaign:
 				request.emit("campaign", {})
@@ -564,6 +573,21 @@ func _draw_newspaper(o: Control) -> void:
 func _draw_folder(o: Control) -> void:
 	o.draw_string(UI.f_serif_b, Vector2(0, 64), "PRESUPUESTOS", HORIZONTAL_ALIGNMENT_CENTER, o.size.x, 16, Color(0.9, 0.75, 0.42))
 	o.draw_string(UI.f_sans_b, Vector2(0, 84), "GENERALES DEL ESTADO", HORIZONTAL_ALIGNMENT_CENTER, o.size.x, 9, Color(0.9, 0.75, 0.42, 0.8))
+
+
+## Libro de Leyes de tapas verdes, tumbado en la esquina de la mesa
+func _draw_lawbook(o: Control) -> void:
+	var gold := Color(0.9, 0.75, 0.42)
+	o.draw_rect(Rect2(26, 30, 196, 82), Color(0, 0, 0, 0.3))
+	o.draw_rect(Rect2(22, 88, 192, 12), Color(0.9, 0.86, 0.76))
+	for k in 3:
+		o.draw_line(Vector2(24, 91 + k * 3), Vector2(212, 91 + k * 3), Color(0.6, 0.55, 0.45, 0.6), 1.0)
+	o.draw_rect(Rect2(16, 20, 200, 70), Color("123a2c"))
+	o.draw_rect(Rect2(16, 20, 14, 82), Color("0d2a20"))
+	o.draw_rect(Rect2(36, 26, 174, 58), Color(gold, 0.7), false, 1.5)
+	o.draw_string(UI.f_serif_b, Vector2(30, 58), "LIBRO DE LEYES", HORIZONTAL_ALIGNMENT_CENTER, 186, 18, gold)
+	o.draw_string(UI.f_sans_b, Vector2(30, 76), "REPÚBLICA DE VALDORIA", HORIZONTAL_ALIGNMENT_CENTER, 186, 9, Color(gold, 0.8))
+	o.draw_rect(Rect2(170, 96, 8, 16), Color("8e2a22"))
 
 
 func _draw_mic(o: Control) -> void:

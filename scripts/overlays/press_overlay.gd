@@ -150,28 +150,19 @@ func _intro() -> void:
 		if qi >= 0 or not is_instance_valid(intro_panel):
 			return
 		stage.pov(true)
-		stage.notice("Haga clic en una tarjeta")
+		stage.notice("Haga clic en la tarjeta cuando esté listo")
+		# (si comparecer o no se decidió antes, en el despacho)
 		stage.deal_cards([
 			{"tag": "Comparecencia", "title": "Empezar la rueda de prensa" if rueda else "Empezar la entrevista", "desc": "Contestar a las preguntas de los periodistas." if rueda else "Contestar en directo ante toda Valdoria.", "col": UI.GOLD, "icon": "microfono"},
-			{"tag": "Escurrir el bulto", "title": "Cancelar la comparecencia", "desc": "Clase media −2 · Estabilidad −2. La prensa lo contará.", "col": Color("6b7280"), "icon": "salir"},
 		], stage.top_center(), stage.top_normal(), 0.25, _on_intro_card, Vector2(0.22, 0.14), 0.4))
 
 
-func _on_intro_card(i: int) -> void:
-	if i == 0:
-		if is_instance_valid(intro_panel):
-			intro_panel.queue_free()
-		Sfx.loop_start("crowd", "crowd", -18.0)
-		Sfx.play("applause", -10.0)
-		_next()
-	else:
-		_cancel()
-
-
-func _cancel() -> void:
-	GS.apply_fx({"clase_media": -2, "estabilidad": -2}, "Rueda de prensa")
-	GS.push_news("El presidente cancela su comparecencia ante los medios", 2)
-	close()
+func _on_intro_card(_i: int) -> void:
+	if is_instance_valid(intro_panel):
+		intro_panel.queue_free()
+	Sfx.loop_start("crowd", "crowd", -18.0)
+	Sfx.play("applause", -10.0)
+	_next()
 
 
 func _next() -> void:
@@ -591,9 +582,6 @@ func _intro_2d() -> void:
 		Sfx.play("applause", -10.0)
 		_next())
 	h.add_child(go)
-	var no := UI.btn("Cancelar la comparecencia", "ghost", 18)
-	no.pressed.connect(_cancel)
-	h.add_child(no)
 	v.add_child(h)
 	ip.position = Vector2(560, 360)
 	root.add_child(ip)

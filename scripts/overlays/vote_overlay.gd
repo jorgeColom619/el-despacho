@@ -331,8 +331,19 @@ func _conclude() -> void:
 		"law":
 			good = passed
 			text = "APROBADA" if passed else "RECHAZADA"
+			# para el Libro de Leyes: el resultado y qué grupos votaron a favor o en contra
+			var vote := {"yes": yes, "no": no, "abst": abst, "needed": needed, "favor": [], "contra": []}
+			for p in W.PARTY_ORDER:
+				var si := 0
+				var nn := 0
+				for s in seats:
+					if s["party"] == p:
+						si += 1 if s["vote"] == 1 else 0
+						nn += 1 if s["vote"] == -1 else 0
+				if si + nn > 0:
+					vote["favor" if si >= nn else "contra"].append(p)
 			if passed:
-				GS.enact_law(law_id)
+				GS.enact_law(law_id, vote)
 				for p in GS.parties.keys():
 					var agree := 0
 					for s in seats:
@@ -341,7 +352,7 @@ func _conclude() -> void:
 					if agree * 2 < int(GS.parties[p]["seats"]):
 						GS.parties[p]["rel"] = clampf(GS.parties[p]["rel"] - 2.0, 0.0, 100.0)
 			else:
-				GS.law_rejected(law_id)
+				GS.law_rejected(law_id, vote)
 		"mocion":
 			good = not passed
 			text = "MOCIÓN RECHAZADA" if not passed else "MOCIÓN APROBADA"

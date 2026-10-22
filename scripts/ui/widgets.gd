@@ -74,7 +74,9 @@ static func effect_chips(items: Array, size: int = 17, max_items: int = 8) -> HF
 			"debate":
 				c = chip("mediador", "Debate en directo", UI.BLUE, size)
 			"press":
-				c = chip("prensa", "Entrevista", UI.BLUE, size)
+				c = chip("prensa", "Comparecencia ante la prensa", UI.BLUE, size)
+			"control":
+				c = chip("mazo", "Sesión de control", UI.BLUE, size)
 			"crisis":
 				c = chip("alerta", "Crisis", UI.RED, size)
 			_:
@@ -83,7 +85,7 @@ static func effect_chips(items: Array, size: int = 17, max_items: int = 8) -> HF
 				var good := v > 0
 				c = chip(GS.icon_of(k), "%s %s" % [GS.label_of(k), arrows(v)], UI.GREEN if good else UI.RED, size)
 		if c != null:
-			var exact := not (k in ["risk", "nego", "speech", "debate", "press", "crisis"])
+			var exact := not (k in ["risk", "nego", "speech", "debate", "press", "crisis", "control"])
 			if GS.difficulty >= 2 and not (k in ["money", "monthly", "pc"]):
 				c.tooltip_text = "%s: efecto aproximado (en difícil no se conoce la cifra exacta)" % GS.label_of(k) if exact else ""
 			else:

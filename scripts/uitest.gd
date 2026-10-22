@@ -105,6 +105,28 @@ func _suite() -> void:
 	await _wait(2.4)
 	print("OK asesor")
 	await _close_current()
+	# convocatorias: la Jefa de Gabinete pregunta antes de llevarle a la sala de prensa (y pasa delante de las visitas)
+	GS.spawn(DB.event("banco_quiebra"))
+	GS.convocatoria("rueda")
+	GS.convocatoria("rueda")
+	var conv: Dictionary = GS.visitors[0]
+	var dup := 0
+	for it in GS.visitors:
+		dup += 1 if it["ev"].get("id", "") == "conv_rueda" else 0
+	o = await _open("advisor", {"item": conv})
+	o.tw.skip()
+	await _wait(0.2)
+	o._decide(0, false)
+	await _wait(2.8)
+	var went: bool = main.current_overlay != null and main.current_overlay.get("mode") == "rueda"
+	print("OK convocatoria (", conv["ev"]["id"], ", en cola: ", dup, ") · al aceptar abre la rueda de prensa: ", went)
+	await _close_current()
+	GS.convocatoria("control")
+	GS.resolve_choice(GS.visitors[0], 1)
+	await _wait(0.5)
+	print("OK convocatoria rechazada · sin escenario: ", main.current_overlay == null, " · titular: ", GS.news_feed[0] if not GS.news_feed.is_empty() else "")
+	while GS.visitors.size() > 0:
+		GS.dismiss(GS.visitors[0])
 	# llamada
 	GS.spawn(DB.event("call_emir"))
 	o = await _open("call", {"item": GS.calls[0]})
@@ -264,21 +286,31 @@ func _suite() -> void:
 		o._finish()
 		print("OK prensa (", mode, ")")
 		await _close_current()
-	o = await _open("speech", {"occasion": "campana"})
-	for i in 4:
-		var cards: Array = o.choice_box.get_children()
-		if cards.size() > 0:
-			o._choose(cards[0].get_meta("phrase"), true)
-		await _wait(0.2)
-		for k in 30:
-			var ev := InputEventKey.new()
-			ev.keycode = KEY_SPACE
-			ev.pressed = true
-			o._unhandled_input(ev)
-			await _wait(0.1)
-		await _wait(3.0)
-	print("OK discurso")
-	await _close_current()
+	# discurso: se corrigen las erratas del teleprompter, salvo la última de la última frase (que se dice en directo),
+	# y en la tercera frase se pincha además una palabra que estaba bien
+	for occ in ["campana", "nacion"]:
+		o = await _open("speech", {"occasion": occ})
+		for i in o.sections.size():
+			var cards: Array = o.choice_box.get_children()
+			if cards.size() > 0:
+				o._choose(cards[0].get_meta("phrase"), true)
+			await _wait(0.2)
+			var bad := []
+			var good := -1
+			for k in o.tokens.size():
+				if o.tokens[k]["bad"] != "":
+					bad.append(k)
+				elif good < 0 and k > 2:
+					good = k
+			if i == 2 and good >= 0:
+				o.click_token(good)
+			for k in (bad.slice(0, bad.size() - 1) if i == o.sections.size() - 1 else bad):
+				o.click_token(k)
+			await _until(func(): return o.phase != "deliver", o, 25.0)
+			await _wait(1.2)
+		await _wait(0.5)
+		print("OK discurso (", occ, ") · erratas corregidas ", o.errors_fixed, "/", o.errors_total, " · lapsus ", o.gaffes, " · aprobación ", o.qualities)
+		await _close_current()
 	o = await _open("debate", {"electoral": false})
 	await _wait(1.5)
 	for r in 4:
@@ -294,6 +326,21 @@ func _suite() -> void:
 		o = await _open(k, {})
 		print("OK ", k)
 		await _close_current()
+	# Libro de Leyes: una gran ley votada, otra rechazada y una ley menor con anexo
+	GS.enact_law("vivienda", {"yes": 190, "no": 150, "abst": 10, "needed": 176, "favor": [GS.pres["party"], "CR"], "contra": ["PO"]})
+	GS.law_rejected("mili", {"yes": 120, "no": 221, "abst": 9, "needed": 176, "favor": [], "contra": [GS.pres["party"]]})
+	GS._record_bill(DB.event("doc_honor"), 0, false)
+	GS._record_bill(DB._gen_bill(), 0, true)
+	o = await _open("leyes", {})
+	for i in GS.law_log.size():
+		o._select(i)
+		await _wait(0.15)
+	for f in ["grandes", "menores", "fuera", "todas"]:
+		o.filter = f
+		o._fill_list()
+		await _wait(0.1)
+	print("OK libro de leyes (", GS.law_log.size(), " entradas, novedades sin ver: ", GS.law_book_new(), ")")
+	await _close_current()
 	o = await _open("election", {})
 	await _wait(12.0)
 	print("OK elecciones: ", GS.elections_result.get("won", false))

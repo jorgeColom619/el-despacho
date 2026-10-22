@@ -125,6 +125,10 @@ var memo_used := {}
 var social := {}
 ## Reto del día que se está jugando (número de día del calendario real) o -1 si es una partida normal
 var daily := -1
+## Libro de Leyes: cada ley votada o firmada [{type: "ley"|"menor", day, ok, ...}] (ver law_record)
+var law_log := []
+## Entradas del Libro de Leyes que el presidente ya ha visto (las demás salen como novedad en el despacho)
+var law_seen := 0
 
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
@@ -223,6 +227,8 @@ func new_game(opts: Dictionary) -> void:
 		countries[c] = {"rel": W.COUNTRIES[c]["rel"], "cd": {}}
 	treaties = []
 	policies = []
+	law_log = []
+	law_seen = 0
 	mods = []
 	_mod_sums = {}
 	flags = {}
@@ -269,7 +275,7 @@ func new_game(opts: Dictionary) -> void:
 	memo = []
 	memo_used = {}
 	var mult: float = [1.25, 1.0, 0.8][difficulty]
-	timers = {"doc": 2, "advisor": 9, "call": 6, "crisis": int(55 * mult), "press": int(50 * mult), "news": 3, "control": 35, "summit": 110}
+	timers = {"doc": 2, "advisor": 9, "call": 6, "crisis": int(55 * mult), "press": int(50 * mult), "news": 3, "control": 50, "summit": 110}
 	_recalc_mods()
 	_update_targets()
 	_update_approval()
@@ -595,8 +601,8 @@ func advance_day() -> void:
 	if timers.has("control") and not campaign and day > 30:
 		timers["control"] -= 1
 		if timers["control"] <= 0:
-			timers["control"] = rng.randi_range(40, 60)
-			open_request.emit("control", {})
+			timers["control"] = rng.randi_range(80, 110)
+			convocatoria("control")
 	if timers.has("summit") and day > 90:
 		timers["summit"] -= 1
 		if timers["summit"] <= 0:
@@ -1030,6 +1036,10 @@ func _run_scheduled() -> void:
 
 func _generate() -> void:
 	for kind in timers.keys():
+		# la sesión de control y las cumbres llevan su propia cuenta en advance_day (antes se descontaban dos veces
+		# al día y la sesión de control salía cada 20-30 días)
+		if kind in ["control", "summit"]:
+			continue
 		timers[kind] -= 1
 		if timers[kind] > 0:
 			continue
@@ -1144,7 +1154,7 @@ func _spawn_kind(kind: String) -> bool:
 			spawn(_pick(el4))
 			return true
 		"press":
-			open_request.emit("press", {"mode": "rueda"})
+			convocatoria("rueda")
 			return true
 		"news":
 			var el5 := _eligible("news")
@@ -1192,7 +1202,11 @@ func spawn(ev: Dictionary) -> void:
 			toast.emit("Nuevo documento: %s" % fmt(ev["title"]), "info", "documento")
 		"advisor":
 			item["deadline"] = day + int(DEADLINES["advisor"][di])
-			visitors.append(item)
+			# las convocatorias (Congreso, prensa, debate) pasan delante de las demás visitas
+			if ev.get("front", false):
+				visitors.insert(0, item)
+			else:
+				visitors.append(item)
 			Sfx.play("knock", -2.0)
 			var ch := DB.character(ev.get("who", "jefa"))
 			toast.emit("%s quiere verle: %s" % [ch.get("name", ""), fmt(ev["title"])], "info", "aprobacion")
@@ -1206,6 +1220,33 @@ func spawn(ev: Dictionary) -> void:
 			toast.emit("¡CRISIS! %s" % fmt(ev["title"]), "bad", "alerta")
 			push_news("ÚLTIMA HORA: %s" % fmt(ev["title"]), 3)
 	queue_changed.emit()
+
+
+## Antes de llevarle al Congreso, a la sala de prensa o al plató, la Jefa de Gabinete entra en el despacho y le
+## pregunta si va a asistir. Elegir ir abre el escenario; no ir (o no contestar a tiempo) tiene su precio.
+const CONVOCATORIAS := {
+	"control": {"title": "Sesión de control en el Congreso",
+		"text": "Presidente, el miércoles hay sesión de control. {opo} ya ha registrado sus preguntas y la bancada espera que dé la cara en el hemiciclo. Si no va, contestará la vicepresidenta... y la prensa lo notará.",
+		"choices": [{"t": "Voy al Congreso. Que pregunten lo que quieran.", "fx": {"control": true}, "rec": "jefa"},
+			{"t": "Que conteste la vicepresidenta.", "fx": {"estabilidad": -2, "clase_media": -1}, "news": "El presidente esquiva la sesión de control"}]},
+	"rueda": {"title": "Rueda de prensa",
+		"text": "Los periodistas acreditados le esperan en la sala de prensa de Palacio. Traen preguntas sobre la actualidad y alguna con mala intención. ¿Comparece o la cancelamos?",
+		"choices": [{"t": "Comparezco. Que pasen los periodistas.", "fx": {"press": "rueda"}, "rec": "jefa"},
+			{"t": "Cancelar la rueda de prensa.", "fx": {"clase_media": -2, "estabilidad": -2}, "news": "El presidente cancela su comparecencia ante los medios"}]},
+	"debate": {"title": "Debate electoral en Canal 7",
+		"text": "Canal 7 ha preparado el cara a cara con {opo} a dos semanas de las elecciones. Media Valdoria lo verá en directo. Si no va, el atril vacío será la foto de la campaña.",
+		"choices": [{"t": "Allí estaré.", "fx": {"debate": "electoral"}, "rec": "jefa"},
+			{"t": "No ir: que debata con un atril vacío.", "fx": {"approval": -3, "clase_media": -2, "jovenes": -2, "campana": -3.0}, "news": "Atril vacío: el presidente planta el debate electoral"}]},
+}
+
+
+func convocatoria(kind: String) -> void:
+	var id := "conv_" + kind
+	if _is_queued(id) or not CONVOCATORIAS.has(kind):
+		return
+	var c: Dictionary = CONVOCATORIAS[kind].duplicate(true)
+	c.merge({"id": id, "type": "advisor", "who": "jefa", "gen": true, "front": true, "default": 1})
+	spawn(c)
 
 
 func _remove_item(item: Dictionary) -> void:
@@ -1244,6 +1285,8 @@ func _expire(item: Dictionary) -> void:
 				apply_fx({"estabilidad": -1}, ev["title"])
 			else:
 				var ch: Dictionary = ev["choices"][int(ev.get("default", ev["choices"].size() - 1))]
+				if ev.get("kind", "") == "ley":
+					_record_bill(ev, int(ev.get("default", ev["choices"].size() - 1)), true)
 				toast.emit("Documento caducado: %s" % fmt(ev["title"]), "warn", "documento")
 				apply_fx(ch.get("fx", {}), ev["title"])
 				if ch.has("hidden"):
@@ -1267,7 +1310,7 @@ func _expire(item: Dictionary) -> void:
 
 func _strip_interactive(fx: Dictionary) -> Dictionary:
 	var out := fx.duplicate(true)
-	for k in ["nego", "speech", "debate", "press"]:
+	for k in ["nego", "speech", "debate", "press", "control"]:
 		out.erase(k)
 	return out
 
@@ -1304,6 +1347,8 @@ func resolve_choice(item: Dictionary, idx: int) -> Array:
 		if DB.SUMMITS.has(sid):
 			for c in DB.SUMMITS[sid]["leaders"]:
 				remember("cumbre_plantada", {"who": c, "summit": DB.SUMMITS[sid]["name"]})
+	if ev.get("kind", "") == "ley":
+		_record_bill(ev, idx, false)
 	var out := apply_fx(ch.get("fx", {}), title)
 	if ch.has("hidden"):
 		out.append_array(apply_fx(ch["hidden"], title, false))
@@ -1311,6 +1356,17 @@ func resolve_choice(item: Dictionary, idx: int) -> Array:
 		push_news(fmt(ch["news"]), 2)
 	log_history(title, fmt(ch.get("t", "")))
 	return out
+
+
+## Ley menor de la bandeja (aprobada o vetada) para el Libro de Leyes, con la letra pequeña de su anexo
+func _record_bill(ev: Dictionary, idx: int, auto: bool) -> void:
+	var chs: Array = ev.get("choices", [])
+	if chs.size() < 2 or str(chs[0].get("t", "")) != "Aprobar":
+		return
+	var small: Array = ev.get("small", [])
+	law_record({"type": "menor", "t": fmt(str(ev.get("title", ""))), "ok": idx == 0, "auto": auto, "desc": fmt(str(ev.get("text", ""))),
+		"fx": chs[idx].get("fx", {}).duplicate(true), "rider": str(small[0]) if small.size() > 0 else "",
+		"rfx": chs[0].get("hidden", {}).duplicate(true)})
 
 
 func resolve_option(item: Dictionary, opt: Dictionary) -> Array:
@@ -1530,9 +1586,14 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 			"speech":
 				open_request.emit("speech", {"occasion": v})
 			"debate":
-				open_request.emit("debate", {})
+				open_request.emit("debate", {"electoral": str(v) == "electoral"})
 			"press":
 				open_request.emit("press", {"mode": v})
+			"control":
+				open_request.emit("control", {})
+			"campana":
+				# intención de voto para las elecciones (p. ej., plantar el debate electoral)
+				campaign_bonus += float(v)
 			"skip":
 				for i in int(v):
 					advance_day()
@@ -1546,6 +1607,8 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 			"policy":
 				if not (v in policies):
 					policies.append(v)
+					if W.LAWS.has(v):
+						law_record({"type": "ley", "id": v, "ok": true, "via": source})
 			"promise":
 				Promesas.add(str(v))
 			"region":
@@ -1591,7 +1654,7 @@ func preview(fx: Dictionary) -> Array:
 			out.append({"k": k, "v": float(v)})
 		elif k == "risk":
 			out.append({"k": "risk", "v": float(v.get("p", 0.5))})
-		elif k in ["nego", "speech", "debate", "press", "crisis"]:
+		elif k in ["nego", "speech", "debate", "press", "crisis", "control"]:
 			out.append({"k": k, "v": 0.0})
 	return out
 
@@ -1688,8 +1751,56 @@ func vote_forecast(law: Dictionary, lobby: Dictionary) -> Dictionary:
 	return out
 
 
-func enact_law(id: String) -> Array:
+## Apunta una ley en el Libro de Leyes. Las grandes leyes: {type: "ley", id, ok, yes, no, abst, favor, contra, via};
+## las leyes menores de la bandeja: {type: "menor", t, ok, fx, rider, rfx, auto}
+func law_record(e: Dictionary) -> void:
+	e["day"] = day
+	e["term"] = term_index
+	law_log.append(e)
+	if law_log.size() == 1:
+		toast.emit("Queda escrita en el Libro de Leyes de su mesa: ábralo para ver la votación, los efectos y lo que cuesta.", "info", "libro")
+
+
+## El Libro de Leyes de partidas guardadas antes de que existiera: se rehace con el registro de decisiones
+func _rebuild_law_log() -> void:
+	var by_name := {}
+	for id in W.LAWS.keys():
+		by_name[W.LAWS[id]["name"]] = id
+	for i in range(history.size() - 1, -1, -1):
+		var h: Dictionary = history[i]
+		var t := str(h.get("title", ""))
+		var c := str(h.get("choice", ""))
+		if by_name.has(t) and c in ["Ley aprobada", "Ley rechazada"]:
+			law_log.append({"type": "ley", "id": by_name[t], "ok": c == "Ley aprobada", "day": int(h.get("day", 0)), "term": term_index})
+	for id in policies:
+		var found := false
+		for e in law_log:
+			if e.get("id", "") == id:
+				found = true
+		if not found and W.LAWS.has(id):
+			law_log.push_front({"type": "ley", "id": id, "ok": true, "day": -1, "term": term_index})
+
+
+## Entradas del Libro de Leyes que aún no ha visto (el libro de la mesa lo avisa)
+func law_book_new() -> int:
+	return maxi(0, law_log.size() - law_seen)
+
+
+func law_book_status() -> String:
+	var n := 0
+	for e in law_log:
+		if e.get("ok", false):
+			n += 1
+	var s := "Aún no ha aprobado ninguna ley" if n == 0 else "%d ley%s en vigor" % [n, "" if n == 1 else "es"]
+	var nw := law_book_new()
+	if nw > 0:
+		s += " · %d novedad%s" % [nw, "" if nw == 1 else "es"]
+	return s
+
+
+func enact_law(id: String, vote: Dictionary = {}) -> Array:
 	var law: Dictionary = W.LAWS[id]
+	law_record({"type": "ley", "id": id, "ok": true}.merged(vote))
 	policies.append(id)
 	last_law = id
 	laws_term += 1
@@ -1717,7 +1828,8 @@ func enact_law(id: String) -> Array:
 	return out
 
 
-func law_rejected(id: String) -> void:
+func law_rejected(id: String, vote: Dictionary = {}) -> void:
+	law_record({"type": "ley", "id": id, "ok": false}.merged(vote))
 	flags.erase("law_pending_" + id)
 	var law: Dictionary = W.LAWS[id]
 	apply_fx({"estabilidad": -4, "pc": -3}, law["name"])
@@ -1768,7 +1880,7 @@ func _check_end() -> void:
 		open_request.emit("campaign", {"intro": true})
 	if left == 14 and not debate_done:
 		debate_done = true
-		open_request.emit("debate", {"electoral": true})
+		convocatoria("debate")
 	if left <= 0:
 		active = false
 		open_request.emit("election", {})
@@ -1829,7 +1941,7 @@ func _new_term(res: Dictionary) -> void:
 	_draw_tramas()
 	schedule("nueva_legislatura", 2)
 	spawn(Promesas.new_term_event(rng))
-	timers["control"] = 45
+	timers["control"] = 60
 	speech_until = day
 	elections_result = res
 	game_ended = false
@@ -2080,7 +2192,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo", "cast", "memo_used", "social", "daily"]
+	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen"]
 
 
 func has_save() -> bool:
@@ -2149,6 +2261,8 @@ func load_game() -> bool:
 	memo_used = {}
 	social = {}
 	daily = -1
+	law_log = []
+	law_seen = 0
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])
@@ -2174,6 +2288,13 @@ func load_game() -> bool:
 	scandals = int(scandals)
 	daily = int(daily)
 	cycle = float(cycle)
+	law_seen = int(law_seen)
+	for e in law_log:
+		e["day"] = int(e.get("day", 0))
+		e["term"] = int(e.get("term", 1))
+	if not d.has("law_log"):
+		_rebuild_law_log()
+		law_seen = law_log.size()
 	if not timers.has("control"):
 		timers["control"] = 30
 	if not timers.has("summit"):

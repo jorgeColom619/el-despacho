@@ -654,6 +654,28 @@ func _desk_objects() -> void:
 	Kit.label(fold, "PRESUPUESTOS", UI.f_serif_b, 40, Color(0.92, 0.77, 0.43), Vector3(0, 0.0138, -0.012), Vector3(-PI / 2.0, 0, 0), 0.0006)
 	Kit.label(fold, "GENERALES DEL ESTADO", UI.f_sans_b, 18, Color(0.92, 0.77, 0.43, 0.85), Vector3(0, 0.0138, 0.025), Vector3(-PI / 2.0, 0, 0), 0.0006)
 	_obj("folder", fold, "Presupuestos Generales", null, 0.15)
+	# --- Libro de Leyes de tapas de cuero (físico), entre la lámpara y la bandeja
+	var book := _prop(Kit.rigid(world, Vector3(-0.84, top + 0.023, dz - 0.37), Kit.shape_box(Vector3(0.212, 0.045, 0.282)), 0.9, Vector3(0, 0.12, 0)))
+	var bkb := Batch.new()
+	var cover := Kit.leather(Color("123a2c"))
+	bkb.cube(Vector3(0.004, 0, 0), Vector3(0.2, 0.034, 0.268), Kit.plaster(Color(0.93, 0.89, 0.8)), Vector3.ZERO, 1.0, 0.002)
+	for cy in [-0.0195, 0.0195]:
+		bkb.cube(Vector3(0, cy, 0), Vector3(0.212, 0.006, 0.282), cover, Vector3.ZERO, 1.0, 0.002, 2)
+	bkb.cube(Vector3(-0.103, 0, 0), Vector3(0.01, 0.045, 0.282), cover, Vector3.ZERO, 1.0, 0.004, 2)
+	for bz in [-0.11, -0.095, 0.095, 0.11]:
+		bkb.cube(Vector3(-0.108, 0, bz), Vector3(0.002, 0.04, 0.004), gold)
+	for inset in [0.012, 0.018]:
+		bkb.cube(Vector3(0, 0.0226, -0.141 + inset), Vector3(0.212 - inset * 2.0, 0.0005, 0.0018), gold)
+		bkb.cube(Vector3(0, 0.0226, 0.141 - inset), Vector3(0.212 - inset * 2.0, 0.0005, 0.0018), gold)
+		bkb.cube(Vector3(-0.106 + inset, 0.0226, 0), Vector3(0.0018, 0.0005, 0.282 - inset * 2.0), gold)
+		bkb.cube(Vector3(0.106 - inset, 0.0226, 0), Vector3(0.0018, 0.0005, 0.282 - inset * 2.0), gold)
+	# cinta de lectura que asoma por abajo
+	bkb.cube(Vector3(0.04, -0.004, 0.149), Vector3(0.012, 0.002, 0.03), Kit.mat(Color("8e2a22"), 0.6))
+	bkb.commit(book)
+	Kit.label(book, "LIBRO DE", UI.f_serif_b, 26, Color(0.92, 0.77, 0.43), Vector3(0, 0.0229, -0.045), Vector3(-PI / 2.0, 0, 0), 0.0006)
+	Kit.label(book, "LEYES", UI.f_serif_b, 52, Color(0.92, 0.77, 0.43), Vector3(0, 0.0229, -0.005), Vector3(-PI / 2.0, 0, 0), 0.0006)
+	Kit.label(book, "REPÚBLICA DE VALDORIA", UI.f_sans_b, 14, Color(0.92, 0.77, 0.43, 0.85), Vector3(0, 0.0229, 0.05), Vector3(-PI / 2.0, 0, 0), 0.0006)
+	_obj("leyes", book, "Libro de Leyes", null, 0.15)
 	# --- micrófono de flexo (fijo)
 	var mic := _static(Vector3(0.42, top, dz - 0.3))
 	var mb := Batch.new()
@@ -1226,6 +1248,11 @@ func _refresh() -> void:
 	objs["globe"].status = "Relaciones internacionales y acuerdos"
 	objs["calendar"].status = "Próximos acontecimientos"
 	objs["folder"].status = "Gasto por partidas e impuestos"
+	var lb = objs["leyes"]
+	lb.status = GS.law_book_status()
+	lb.badge = str(GS.law_book_new()) if GS.law_book_new() > 0 else ""
+	lb.badge_color = UI.GOLD_D
+	lb.pulse = GS.law_book_new() > 0
 	objs["mug"].status = "Un café para el estrés"
 	objs["tv"].status = "Noticias y encuestas"
 	objs["clock"].status = "Tiempo en marcha" if GS.speed > 0 else "Tiempo detenido"
@@ -1306,6 +1333,8 @@ func _on_object(key: String) -> void:
 			request.emit("movil", {})
 		"folder":
 			request.emit("budget", {})
+		"leyes":
+			request.emit("leyes", {})
 		"mic":
 			if GS.campaign:
 				request.emit("campaign", {})

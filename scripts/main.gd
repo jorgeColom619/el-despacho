@@ -33,6 +33,7 @@ const OVERLAYS := {
 	"election": "res://scripts/overlays/election_overlay.gd",
 	"tutorial": "res://scripts/overlays/tutorial_overlay.gd",
 	"movil": "res://scripts/overlays/movil_overlay.gd",
+	"leyes": "res://scripts/overlays/laws_overlay.gd",
 }
 
 const TIPS := {
@@ -43,7 +44,8 @@ const TIPS := {
 	"crisis": "Arrastre las unidades del panel derecho a las regiones en rojo. Puede redistribuirlas arrastrándolas de nuevo o retirarlas con clic derecho. Algunas unidades tienen efectos secundarios en la opinión pública.",
 	"vote": "Antes de votar, negocie con los grupos: enmiendas, inversión regional o presión. Necesita 176 votos a favor.",
 	"press": "Elija el tono de cada respuesta. Los medios hostiles castigan la evasión; el humor es una apuesta arriesgada. Si se queda callado, lo pagará.",
-	"speech": "Primero elija la frase. Después pulse ESPACIO justo cuando cada palabra dorada cruce la línea para darle énfasis.",
+	"speech": "Primero elija la frase. Después vigile el teleprompter: el becario lo ha llenado de erratas. Haga clic en cada palabra cambiada o que sobre antes de que el presidente llegue a ella, o la dirá en directo.",
+	"leyes": "Aquí queda todo lo que ha legislado: haga clic en una ley para ver la votación, sus efectos permanentes y lo que cuesta cada mes. En las leyes menores se revela la letra pequeña de los anexos.",
 	"budget": "Mueva los deslizadores y vigile el saldo mensual y la reacción de cada grupo. Presentarlo al Congreso es gratis pero pueden tumbarlo.",
 	"world": "Haga clic en un país para ver sus acciones diplomáticas. Los tratados comerciales y de inversión impulsan la economía.",
 	"dashboard": "En «Agenda legislativa» puede presentar leyes: son la herramienta más poderosa para cambiar el país. En «Congreso» puede reunirse con los grupos para ganar socios.",
@@ -559,6 +561,40 @@ func _debug_start() -> void:
 			open_overlay("press", {"mode": "rueda"})
 		"speech":
 			open_overlay("speech", {"occasion": "nacion"})
+		"speechrun":
+			# el teleprompter con erratas a mitad de frase: una corregida y otra aún por corregir
+			open_overlay("speech", {"occasion": "nacion"})
+			var ovs = current_overlay
+			get_tree().create_timer(1.0).timeout.connect(func():
+				ovs._choose(ovs.choice_box.get_child(0).get_meta("phrase"), true)
+				ovs._preview = 0.0
+				for k in ovs.tokens.size():
+					if ovs.tokens[k]["bad"] != "":
+						ovs.click_token(k)
+						break)
+		"convocatoria":
+			# la Jefa de Gabinete pregunta si va a la sesión de control (con las opciones ya a la vista)
+			GS.convocatoria("control")
+			open_overlay("advisor", {"item": GS.visitors[0]})
+			var ovv = current_overlay
+			get_tree().create_timer(0.3).timeout.connect(func():
+				ovv.tw.skip()
+				ovv._show_choices())
+		"leyes", "leyes2":
+			var vote := {"yes": 191, "no": 148, "abst": 11, "needed": 176, "favor": ["MP", "CR", "VV"], "contra": ["CC", "AR", "PO"]}
+			GS.day = 40
+			GS.enact_law("transparencia", vote)
+			GS.day = 62
+			GS._record_bill(DB.event("doc_honor"), 0, false)
+			GS.day = 81
+			GS.law_rejected("mili", {"yes": 122, "no": 219, "abst": 9, "needed": 176, "favor": ["AR"], "contra": ["MP", "CC", "FS", "VV", "PO"]})
+			GS.day = 95
+			GS.enact_law("vivienda", vote)
+			GS._record_bill(DB._gen_bill(), 1, false)
+			open_overlay("leyes", {})
+			# leyes2: abierto por la ficha de la Ley de Vivienda
+			if debug_open == "leyes2":
+				current_overlay._select(3)
 		"debate":
 			open_overlay("debate", {"electoral": true})
 		"live":

@@ -14,6 +14,8 @@ const E_V3A := preload("res://scripts/data/events_v3a.gd")
 const E_V3B := preload("res://scripts/data/events_v3b.gd")
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
+## Días que tarda en volver a salir en el Congreso la misma promesa rota o el mismo recuerdo
+const SPECIAL_ATTACK_CD := 180
 
 var events_by_id := {}
 ## Todos los eventos del juego (base + tramas + extra)
@@ -358,6 +360,11 @@ func opposition_attacks(n: int) -> Array:
 	for a in special:
 		if out.size() >= mini(2, n - 1):
 			break
+		# la misma promesa rota o el mismo recuerdo no vuelven a salir hasta pasado medio año
+		var sk := "spatk_%s" % str(a.get("key", absi(hash(str(a.get("attack", ""))))))
+		if GS.used.has(sk) and GS.day - int(GS.used[sk]) < SPECIAL_ATTACK_CD:
+			continue
+		GS.used[sk] = GS.day
 		out.append(a)
 	var pool := []
 	for a in P.DEBATE + C.DEBATE:
@@ -427,6 +434,26 @@ func pick_fresh(list: Array, n: int, prefix: String, key: String) -> Array:
 		GS.used[pool[k][1]] = GS.day
 		pool.remove_at(k)
 	return out
+
+
+## Una frase de la lista que no haya salido aún en esta partida; si ya salieron todas, la que lleve más tiempo
+## sin salir. Así las réplicas y las reacciones no se repiten de una sesión de control a la siguiente.
+func fresh_line(list: Array, prefix: String) -> String:
+	if list.is_empty():
+		return "..."
+	var fresh := []
+	var oldest := str(list[0])
+	var oldest_day := 1 << 30
+	for l in list:
+		var id := "%s_%d" % [prefix, absi(hash(str(l)))]
+		if not GS.used.has(id):
+			fresh.append(str(l))
+		elif int(GS.used[id]) < oldest_day:
+			oldest_day = int(GS.used[id])
+			oldest = str(l)
+	var pick: String = str(fresh.pick_random()) if not fresh.is_empty() else oldest
+	GS.used["%s_%d" % [prefix, absi(hash(pick))]] = GS.day
+	return pick
 
 
 ## Réplicas del presidente y reacciones de la oposición en la sesión de control y el debate

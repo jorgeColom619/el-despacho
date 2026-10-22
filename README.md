@@ -204,21 +204,22 @@ Todo es interactivo, tanto en 3D como en 2D.
 | Objeto | Qué hace |
 |---|---|
 | Bandeja de entrada | Leyes, decretos, indultos, contratos y cartas. Arrastra el **sello** para decidir. Usa la **lupa (L)** para leer la letra pequeña: esconde trampas y corrupción. |
-| Puerta | Tus ministros llaman con dilemas urgentes (algunos con cuenta atrás); en 3D **entran por la puerta** y caminan hasta tu mesa. Sin visitas, convocas al Consejo de Ministros: informe, rasgos de cada ministro y **ceses y fichajes**. |
+| Puerta | Tus ministros llaman con dilemas urgentes (algunos con cuenta atrás); en 3D **entran por la puerta** y caminan hasta tu mesa. Antes de la sesión de control, de la rueda de prensa o del debate electoral, la **Jefa de Gabinete entra a preguntarte si vas**: no ir (o no contestar a tiempo) tiene su precio. Sin visitas, convocas al Consejo de Ministros: informe, rasgos de cada ministro y **ceses y fichajes**. |
 | Teléfono | Llamadas de líderes mundiales y sindicatos. Sin llamada entrante, abre tu agenda para **negociar**. |
 | Teléfono rojo | Crisis: abre el **Gabinete de Crisis** (despliegue de unidades en tiempo real sobre el mapa). |
 | Ordenador (SIGEP) | Datos, grupos sociales, **agenda legislativa** (presentar leyes), Congreso (reunirse con los partidos), agenda, **promesas** y gabinete. |
 | Globo | Mapa diplomático: tratados, visitas de Estado, ayudas, sanciones. |
-| Micrófono | Discurso a la nación (minijuego de ritmo con el teleprompter). En campaña abre el **mapa de campaña por regiones**. |
+| Micrófono | Discurso a la nación: eliges las frases y corriges a clic las **erratas del teleprompter** antes de leerlas en directo. En campaña abre el **mapa de campaña por regiones**. |
 | Móvil | La red social **Pío** y los mensajes privados. |
 | Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. |
+| Libro de Leyes | Todo lo que has legislado, con su número oficial: la **votación** de cada gran ley y qué grupos la apoyaron, sus efectos inmediatos y permanentes, **lo que cuesta cada mes**, si la oposición tiene munición contra ella y, en las leyes menores de la bandeja, **la letra pequeña del anexo** con lo que de verdad hacía. Avisa con un número cuando hay leyes nuevas. |
 | Periódico, TV, calendario, reloj, café | Noticias, encuestas, agenda... y un café para el estrés. |
 | Mascota | Si has comprado una en la tienda (gato, perro, loro, pez o tortuga), haz clic para bajar el estrés. |
 | Ventana | Refleja el estado del país: manifestaciones, disturbios, fuegos artificiales, clima. |
 
 En el **despacho 3D** empiezas sentado en el sillón presidencial y puedes levantarte para andar por toda la sala
 (chimenea, librerías, sofá, ventana con vistas a la ciudad, banderas, mapa del mundo, reloj de pie...). El periódico,
-los teléfonos, la carpeta, la taza, el calendario, las plumas, el sello, los libros o los cojines se pueden coger,
+los teléfonos, la carpeta, el Libro de Leyes, la taza, el calendario, las plumas, el sello, los libros o los cojines se pueden coger,
 lanzar y tirar al suelo; hay una papelera donde encestar bolas de papel, los teléfonos dan saltitos cuando suenan y
 el retrato oficial que cuelga sobre la chimenea es el tuyo.
 
@@ -230,13 +231,20 @@ el retrato oficial que cuelga sobre la chimenea es el tuyo.
   cambio). Si no quieres arriesgar, acepta su propuesta.
 - **Cumbres internacionales**: la misma negociación con tres líderes a la vez (clima, fronteras, energía y libre
   comercio). El acuerdo solo se firma si convence a todos.
-- **Sesión de control**: cada mes o dos, cara a cara con el líder de la oposición. Cinco preguntas, réplica
-  contrarreloj y combos de aciertos.
+- **Sesión de control**: cada tres meses o así (unas 7 en una legislatura de 2 años), cara a cara con el líder de la
+  oposición. Cuatro preguntas, réplica contrarreloj y combos de aciertos. Las réplicas, las reacciones y los
+  reproches por promesas rotas no se repiten de una sesión a la siguiente.
 - **Gabinete de Crisis**: incendios, pateras, huelgas, pandemia, terrorismo, apagones, sequía, terremoto,
   ciberataques, golpe de Estado, guerra...
 - **Congreso**: hemiciclo de 350 escaños, negociación de apoyos (enmiendas, inversión regional o presión) y votación
   escaño a escaño.
-- **Rueda de prensa y entrevista**, **discurso** con teleprompter y **debate electoral** cara a cara.
+- **Rueda de prensa y entrevista** y **debate electoral** cara a cara.
+- **Discurso a la nación**: eliges una frase para cada parte (apertura, economía, sociedad, promesa y cierre) y la
+  lees en el teleprompter... que el becario ha llenado de erratas: palabras cambiadas («Nuestra sanidad pública es un
+  *chollo* que *venderé* con uñas y dientes») y coletillas que sobran («[CHISTE AQUÍ]», «(toser)»). Mientras el
+  presidente lee, con la palabra en curso subrayada, haz clic en cada errata antes de que llegue a ella; si no, la
+  dice en directo, el público se escandaliza y sale en el periódico. Cada parte se lee más deprisa y tiene más
+  erratas; corregir una palabra que estaba bien también resta.
 - **Campaña por regiones**: en los últimos 60 días repartes actos (mitin, visita, anuncio de inversión, spot de TV)
   por las 8 regiones del mapa. Cada región suma a su resultado electoral.
 - **Noche electoral** con escrutinio región a región.
@@ -253,7 +261,7 @@ resume el resultado. Al mover el ratón, la cámara mira un poco hacia él.
   neutral) y **das la palabra con un clic**: los hostiles castigan las evasivas y aplauden ir al ataque, los afines
   te lo ponen fácil. Las respuestas son **tarjetas sobre el atril**, cada una con su tono (sincero, evasivo, firme,
   con humor, al ataque); la sala asiente, se ríe o murmura, y la reacción de la opinión pública sale en el monitor
-  de la tarima. El discurso a la nación se ve por televisión desde el fondo de la sala.
+  de la tarima. El discurso a la nación se ve por televisión desde el fondo de la sala, con el teleprompter abajo.
 - **Entrevista**: en el plató de Canal 7, frente a la entrevistadora, con cámaras, focos, el cartel de «En el aire» y
   la pantalla gigante. Las respuestas son tarjetas sobre la mesa; ella asiente, se ríe o se cruza de brazos, y la
   audiencia en directo sale en el monitor del plató.
@@ -484,7 +492,7 @@ godot --path . -- --shot=office --open=controlrun --stageframes=200,400,600 --st
 | Opción | Qué hace |
 |---|---|
 | `--shot=office` | Partida de prueba en el despacho. También `menu`, `reto`, `opciones`, `shop`, `start`, `newgame` y `promesas` |
-| `--open=panel` | Abre un panel nada más empezar: `doc`, `contract`, `advisor`, `call`, `nego`, `summit`, `campaign`, `control`, `controlrun`, `controlreply`, `controlzasca`, `hire`, `crisis`, `crisisrun`, `vote`, `press`, `pressrun`, `interview`, `interviewrun`, `speech`, `debate`, `diary`, `movil`, `movilpub`, `movilchat`, `moviltrend`, `memocall`, `memovisit`, `preface`, `custom`, `custom2`, `promesas`, `night`, `live`, `election`, `ending`... |
+| `--open=panel` | Abre un panel nada más empezar: `doc`, `contract`, `advisor`, `call`, `nego`, `summit`, `campaign`, `control`, `controlrun`, `controlreply`, `controlzasca`, `hire`, `crisis`, `crisisrun`, `vote`, `press`, `pressrun`, `interview`, `interviewrun`, `speech`, `speechrun`, `convocatoria`, `leyes`, `leyes2`, `debate`, `diary`, `movil`, `movilpub`, `movilchat`, `moviltrend`, `memocall`, `memovisit`, `preface`, `custom`, `custom2`, `promesas`, `night`, `live`, `election`, `ending`... |
 | `--pngshot=archivo.png` | Guarda una captura del despacho 3D y cierra el juego |
 | `--cam=x,y,z,giro,inclinación` | Pone al presidente de pie en ese punto del despacho 3D |
 | `--stageshot=archivo.png` | Guarda una captura del escenario 3D abierto y cierra el juego (`--stagewait=n`: tras n fotogramas; 90 por defecto) |
@@ -526,6 +534,11 @@ de gestos. Después, vuelve a importar el proyecto (`godot --headless --path . -
 
 ## Historial de versiones
 
+- **Cambios recientes**: antes de llevarte al Congreso, a la sala de prensa o al plató del debate electoral, la Jefa
+  de Gabinete entra en el despacho y te pregunta si vas. La sesión de control salía cada 20-30 días por un contador
+  que se descontaba dos veces al día: ahora sale cada 80-110 días, con cuatro preguntas y sin repetir réplicas,
+  reacciones ni reproches. El discurso a la nación cambia el ritmo con la barra espaciadora por un teleprompter con
+  erratas que hay que corregir a clic. Nuevo **Libro de Leyes** sobre la mesa del despacho.
 - **Despacho 3D**: el despacho en primera persona con objetos con físicas y los cuatro minijuegos de hablar y
   negociar como escenas 3D sin ventanas de opciones. Opciones separadas para el despacho y los minijuegos 3D, calidad
   gráfica de Baja a Ultra y cambio automático de motor gráfico en equipos sin aceleración.

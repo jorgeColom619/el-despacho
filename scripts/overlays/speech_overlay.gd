@@ -1,5 +1,7 @@
 extends "res://scripts/ui/overlay.gd"
-## Discurso a la nación / mitin: elegir frases y darles énfasis con el teleprompter (minijuego de ritmo).
+## Discurso a la nación / mitin: elegir frases y leerlas en el teleprompter... que el becario de comunicación ha
+## llenado de erratas. Mientras el presidente lee (la palabra en curso va subrayada), hay que hacer clic en las
+## palabras cambiadas o en las coletillas que sobran antes de que lleguen a su boca: si no, las dice en directo.
 
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const TimerBar := preload("res://scripts/ui/timer_bar.gd")
@@ -9,9 +11,12 @@ const P := preload("res://scripts/data/press_data.gd")
 const W := preload("res://scripts/data/world_data.gd")
 const PressRoom := preload("res://scripts/stages3d/press_room_3d.gd")
 
-const TARGET_X := 700.0
-const PROMPT_Y := 900.0
-const SPEED := 250.0
+const PROMPT_Y := 822.0
+const PROMPT_H := 176.0
+## Segundos por palabra en cada parte del discurso (se lee cada vez más deprisa)
+const READ_BASE := [0.42, 0.38, 0.35, 0.32, 0.3]
+## Erratas por frase en cada parte
+const ERRORS := [1, 2, 2, 3, 3]
 
 var occasion := "nacion"
 var sections := []
@@ -23,14 +28,28 @@ var choice_box: HBoxContainer
 var timer: Control
 var prompt: Control
 var phase := "idle"
-var words := []
-var offset := 0.0
+## Palabras de la frase en el teleprompter: {t, orig, bad ("", "swap", "insert"), fixed, said, rect, flash, wrong}
+var tokens := []
+## Siguiente palabra que va a leer el presidente
+var cursor := 0
+var _word_t := 0.0
+var _preview := 0.0
+var _fsize := 40
 var cur_fx := {}
 var totals := {}
 var qualities := []
-var hits := 0
-var keys_total := 0
-var perfects := 0
+var _stumble := false
+## Recuento de la frase en curso: erratas, corregidas, clics en palabras buenas
+var _e := 0
+var _c := 0
+var _f := 0
+## Recuento de todo el discurso
+var errors_total := 0
+var errors_fixed := 0
+var false_clicks := 0
+var clean_phrases := 0
+## Lo que llegó a decir en directo («... un chollo que venderé ...»)
+var gaffes := []
 var worm := [50.0]
 var worm_ctrl: Control
 var judge_lbl: Label
@@ -108,13 +127,14 @@ func build() -> void:
 			if opts.size() > 0:
 				_choose(opts[0].get_meta("phrase"), false))
 	prompt = Control.new()
-	prompt.position = Vector2(0, PROMPT_Y - 70)
-	prompt.size = Vector2(1920, 150)
-	prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prompt.position = Vector2(0, PROMPT_Y)
+	prompt.size = Vector2(1920, PROMPT_H)
+	prompt.mouse_filter = Control.MOUSE_FILTER_STOP
 	prompt.draw.connect(_draw_prompt)
+	prompt.gui_input.connect(_on_prompt_input)
 	root.add_child(prompt)
 	judge_lbl = UI.lbl("", UI.f_cond_b, 44, UI.GOLD_L, HORIZONTAL_ALIGNMENT_CENTER)
-	judge_lbl.position = Vector2(TARGET_X - 200, PROMPT_Y - 150)
+	judge_lbl.position = Vector2(760, PROMPT_Y - 64)
 	judge_lbl.size = Vector2(400, 60)
 	root.add_child(judge_lbl)
 	worm_ctrl = Control.new()
@@ -123,7 +143,7 @@ func build() -> void:
 	worm_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	worm_ctrl.draw.connect(_draw_worm)
 	root.add_child(worm_ctrl)
-	var help := UI.lbl("Pulse ESPACIO (o clic) cuando una palabra dorada cruce la línea para darle énfasis.", UI.f_sans, 17, UI.DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	var help := UI.lbl("El becario ha llenado el teleprompter de erratas: haga clic en las palabras que estén mal o sobren antes de que las lea en voz alta.", UI.f_sans, 17, UI.DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	help.position = Vector2(0, 1030)
 	help.size = Vector2(1920, 30)
 	root.add_child(help)
@@ -136,6 +156,7 @@ func _next_section() -> void:
 	si += 1
 	for c in choice_box.get_children():
 		c.queue_free()
+	tokens.clear()
 	if si >= sections.size():
 		_finish()
 		return
@@ -187,108 +208,228 @@ func _choose(ph: Dictionary, manual: bool) -> void:
 	timer.visible = false
 	for c in choice_box.get_children():
 		c.queue_free()
+	_stumble = not manual
 	if not manual:
-		judge_lbl.text = "¡Titubeo!"
-		judge_lbl.add_theme_color_override("font_color", UI.RED)
+		_judge("¡Titubeo!", UI.RED, -3.0)
 	cur_fx = ph["fx"]
 	DB.mark_speech(ph)
-	_prepare_words(ph["t"])
+	_prepare_tokens(str(ph["t"]))
 	phase = "deliver"
-	pres.talking = true
+	# un momento para echar un vistazo a la frase antes de empezar a leer
+	_preview = 1.4 if si == 0 else 1.0
+	_word_t = 0.0
+	cursor = 0
 	Sfx.play("paper2", -8.0)
 
 
-func _prepare_words(text: String) -> void:
-	words.clear()
+## Palabra limpia y en minúsculas (sin «¡», comas ni puntos) para buscarla en las erratas
+func _clean(w: String) -> String:
+	var s := w.strip_edges()
+	while s.length() > 0 and s[0] in "¡¿«\"(":
+		s = s.substr(1)
+	while s.length() > 0 and s[s.length() - 1] in ",.:;!?»\")":
+		s = s.substr(0, s.length() - 1)
+	return s.to_lower()
+
+
+## Cambia la palabra por la errata respetando mayúscula inicial y signos («¡Valdoria,» -> «¡Norland,»)
+func _swap_word(w: String, rep: String) -> String:
+	var core := _clean(w)
+	var start := w.to_lower().find(core)
+	if start < 0:
+		return rep
+	var orig_core := w.substr(start, core.length())
+	if orig_core.length() > 0 and orig_core[0] != orig_core[0].to_lower():
+		rep = rep[0].to_upper() + rep.substr(1)
+	return w.substr(0, start) + rep + w.substr(start + core.length())
+
+
+func _prepare_tokens(text: String) -> void:
+	tokens.clear()
 	var parts := text.split(" ", false)
-	var x := 0.0
+	for w in parts:
+		tokens.append({"t": w, "orig": w, "bad": "", "fixed": false, "said": false, "rect": Rect2(), "flash": 0.0, "wrong": 0.0})
+	var n_err: int = ERRORS[mini(si, ERRORS.size() - 1)]
+	if GS.difficulty == 0:
+		n_err = maxi(1, n_err - 1)
+	n_err = mini(n_err, maxi(1, parts.size() / 4))
+	# primero cambia palabras que tengan una errata graciosa; lo que falte, coletillas que sobran
 	var cands := []
 	for i in parts.size():
-		var w: String = parts[i]
-		var clean := w.strip_edges().trim_suffix(",").trim_suffix(".").trim_suffix("!").trim_suffix(":").trim_prefix("¡")
-		var wd := UI.f_serif_b.get_string_size(w + " ", HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x
-		words.append({"t": w, "x": x, "w": wd, "key": false, "judged": false, "res": ""})
-		if clean.length() >= 5:
+		if DB.C.TELEPROMPTER_SWAPS.has(_clean(parts[i])):
 			cands.append(i)
-		x += wd
-	cands.sort_custom(func(a, b): return parts[a].length() > parts[b].length())
-	var chosen := []
-	for c in cands:
-		var ok := true
-		for ch in chosen:
-			if absi(ch - c) < 2:
-				ok = false
-		if ok:
-			chosen.append(c)
-		if chosen.size() >= 3:
+	cands.shuffle()
+	var swaps := mini(cands.size(), n_err - (1 if n_err >= 2 and randf() < 0.4 else 0))
+	var taken := {}
+	for i in cands:
+		if taken.size() >= swaps:
 			break
-	for c in chosen:
-		words[c]["key"] = true
-	keys_total += chosen.size()
-	offset = 1920.0 - TARGET_X + 80.0
-	offset = TARGET_X + 300.0
+		if taken.has(i - 1) or taken.has(i + 1):
+			continue
+		taken[i] = true
+		var opts: Array = DB.C.TELEPROMPTER_SWAPS[_clean(parts[i])]
+		tokens[i]["t"] = _swap_word(parts[i], str(opts.pick_random()))
+		tokens[i]["bad"] = "swap"
+	var inserts := n_err - taken.size()
+	var pool: Array = DB.C.TELEPROMPTER_INSERTS.duplicate()
+	pool.shuffle()
+	var tries := 0
+	while inserts > 0 and tries < 30:
+		tries += 1
+		var at := randi_range(1, tokens.size())
+		# ni pegada a otra errata ni al principio
+		if (at - 1 >= 0 and tokens[at - 1]["bad"] != "") or (at < tokens.size() and tokens[at]["bad"] != ""):
+			continue
+		tokens.insert(at, {"t": str(pool.pop_back()), "orig": "", "bad": "insert", "fixed": false, "said": false, "rect": Rect2(), "flash": 0.0, "wrong": 0.0})
+		inserts -= 1
+	_e = 0
+	_c = 0
+	_f = 0
+	for tk in tokens:
+		if tk["bad"] != "":
+			_e += 1
+	errors_total += _e
+	_layout()
+
+
+## Coloca las palabras en el teleprompter (hasta tres líneas, centradas) y guarda dónde está cada una
+func _layout() -> void:
+	_fsize = 40
+	var lines := _wrap(_fsize)
+	if lines.size() > 2:
+		_fsize = 33
+		lines = _wrap(_fsize)
+	var lh := _fsize * 1.45
+	var top := 26.0 + (PROMPT_H - 26.0 - lh * lines.size()) * 0.5
+	var sp := UI.f_serif_b.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, _fsize).x
+	for li in lines.size():
+		var row: Array = lines[li]
+		var total := -sp
+		for i in row:
+			total += _slot_w(tokens[i], _fsize) + sp
+		var x := (1920.0 - total) * 0.5
+		for i in row:
+			var w := _slot_w(tokens[i], _fsize)
+			tokens[i]["rect"] = Rect2(x - 6, top + li * lh, w + 12, lh)
+			x += w + sp
+
+
+func _word_w(t: String, fs: int) -> float:
+	return UI.f_serif_b.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+
+
+## Hueco de la palabra: en las cambiadas, el de la más larga de las dos, para que al corregirla no se mueva nada
+func _slot_w(tk: Dictionary, fs: int) -> float:
+	var w := _word_w(tk["t"], fs)
+	if tk["bad"] == "swap":
+		w = maxf(w, _word_w(tk["orig"], fs))
+	return w
+
+
+func _wrap(fs: int) -> Array:
+	var sp := UI.f_serif_b.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var lines := [[]]
+	var x := 0.0
+	for i in tokens.size():
+		var w := _slot_w(tokens[i], fs)
+		if x > 0.0 and x + w > 1720.0:
+			lines.append([])
+			x = 0.0
+		lines.back().append(i)
+		x += w + sp
+	return lines
+
+
+func _on_prompt_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton) or not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	for i in tokens.size():
+		if (tokens[i]["rect"] as Rect2).grow(4).has_point(event.position):
+			click_token(i)
+			prompt.accept_event()
+			return
+
+
+## Clic en una palabra del teleprompter (también lo usan las pruebas)
+func click_token(i: int) -> void:
+	if phase != "deliver" or i < 0 or i >= tokens.size():
+		return
+	var tk: Dictionary = tokens[i]
+	# lo ya dicho, dicho está
+	if tk["said"] or tk["fixed"] or i < cursor:
+		return
+	if tk["bad"] != "":
+		tk["fixed"] = true
+		tk["flash"] = 1.0
+		_c += 1
+		errors_fixed += 1
+		if tk["bad"] == "swap":
+			tk["t"] = tk["orig"]
+			_judge("¡Corregido!", UI.GREEN, 3.0)
+		else:
+			_judge("¡Fuera!", UI.GREEN, 3.0)
+		Sfx.play("click", -2.0, 1.25)
+	else:
+		tk["wrong"] = 0.5
+		_f += 1
+		false_clicks += 1
+		_judge("¡Esa estaba bien!", UI.AMBER, -2.0)
+		Sfx.play("click", -4.0, 0.6)
 
 
 func _process(delta: float) -> void:
 	_t += delta
 	if phase == "deliver":
-		offset -= SPEED * delta
-		var all_past := true
-		for w in words:
-			var cx: float = offset + w["x"] + w["w"] * 0.5
-			if w["key"] and not w["judged"] and cx < TARGET_X - 110.0:
-				w["judged"] = true
-				w["res"] = "miss"
-				_judge("Fallo", UI.RED, -4.0)
-			if offset + w["x"] + w["w"] > TARGET_X - 260.0:
-				all_past = false
-		if all_past and words.size() > 0:
-			_end_phrase()
+		if _preview > 0.0:
+			_preview -= delta
+		else:
+			pres.talking = true
+			_word_t += delta
+			while cursor < tokens.size() and _word_t >= _word_dur(tokens[cursor]):
+				_word_t -= _word_dur(tokens[cursor])
+				_say_token(cursor)
+				cursor += 1
+			if cursor >= tokens.size():
+				_end_phrase()
+	for tk in tokens:
+		tk["flash"] = maxf(0.0, float(tk["flash"]) - delta * 1.6)
+		tk["wrong"] = maxf(0.0, float(tk["wrong"]) - delta)
 	prompt.queue_redraw()
 	if scene != null:
 		scene.queue_redraw()
 	worm_ctrl.queue_redraw()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	var pressed := false
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SPACE:
-		pressed = true
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		pressed = true
-	if not pressed or phase != "deliver":
-		return
-	get_viewport().set_input_as_handled()
-	var best = null
-	var bd := 9999.0
-	for w in words:
-		if not w["key"] or w["judged"]:
-			continue
-		var cx: float = offset + w["x"] + w["w"] * 0.5
-		var d := absf(cx - TARGET_X)
-		if d < bd:
-			bd = d
-			best = w
-	if best == null or bd > 130.0:
-		_judge("¡A destiempo!", UI.RED, -3.0)
-		return
-	best["judged"] = true
-	if bd < 32.0:
-		best["res"] = "perfect"
-		hits += 1
-		perfects += 1
-		_judge("¡PERFECTO!", UI.GOLD_L, 7.0)
-		Sfx.play("applause", -12.0 if occasion != "campana" else -6.0)
-		if stage != null:
-			stage.burst(3)
-	elif bd < 80.0:
-		best["res"] = "good"
-		hits += 1
-		_judge("Bien", UI.GREEN, 4.0)
-		Sfx.play("click", -2.0, 1.2)
-	else:
-		best["res"] = "miss"
-		_judge("Flojo", UI.AMBER, -1.0)
+## Lo que tarda en leer una palabra (las coletillas quitadas se saltan)
+func _word_dur(tk: Dictionary) -> float:
+	if tk["bad"] == "insert" and tk["fixed"]:
+		return 0.0
+	var base: float = READ_BASE[mini(si, READ_BASE.size() - 1)] * [1.2, 1.0, 0.88][GS.difficulty]
+	if GS.has_trait("orador"):
+		base *= 1.15
+	if GS.stress > 75:
+		base *= 0.9
+	return base * (0.55 + 0.05 * String(tk["t"]).length())
+
+
+## El presidente lee la palabra: si era una errata sin corregir, la dice en directo
+func _say_token(i: int) -> void:
+	var tk: Dictionary = tokens[i]
+	tk["said"] = true
+	if tk["bad"] != "" and not tk["fixed"]:
+		var a := maxi(0, i - 3)
+		var b := mini(tokens.size(), i + 3)
+		var bits := PackedStringArray()
+		for k in range(a, b):
+			if not (tokens[k]["bad"] == "insert" and tokens[k]["fixed"]):
+				bits.append(str(tokens[k]["t"]))
+		gaffes.append(("..." if a > 0 else "") + " ".join(bits) + ("..." if b < tokens.size() else ""))
+		_judge("¡LAPSUS!", UI.RED, -14.0 if occasion == "tragedia" else -9.0)
+		Sfx.play("crowd", -6.0, 1.15)
+		pres.mood = -0.5
+		get_tree().create_timer(1.2).timeout.connect(func():
+			if is_instance_valid(pres) and phase != "done":
+				pres.mood = 0.2 if occasion != "tragedia" else -0.4)
 
 
 func _judge(text: String, col: Color, delta_worm: float) -> void:
@@ -306,25 +447,29 @@ func _judge(text: String, col: Color, delta_worm: float) -> void:
 func _end_phrase() -> void:
 	phase = "idle"
 	pres.talking = false
-	var k := 0
-	var h := 0
-	var p := 0
-	for w in words:
-		if w["key"]:
-			k += 1
-			if w["res"] in ["perfect", "good"]:
-				h += 1
-			if w["res"] == "perfect":
-				p += 1
-	var q := 0.5 + 0.5 * (float(h) / maxf(1.0, k)) + 0.15 * p
+	var aired := _e - _c
+	var q := 0.45 + 0.6 * (float(_c) / maxf(1.0, _e)) - 0.08 * _f
+	if aired == 0 and _f == 0:
+		q += 0.15
+		clean_phrases += 1
+		_judge("¡IMPECABLE!", UI.GOLD_L, 6.0)
+		Sfx.play("applause", -12.0 if occasion != "campana" else -6.0)
+		if stage != null:
+			stage.burst(3)
+	if occasion == "tragedia":
+		q -= 0.1 * aired
+	if _stumble:
+		q -= 0.1
+	q = clampf(q, 0.3, 1.25)
 	qualities.append(q)
 	var sum := 0.0
 	for key in cur_fx.keys():
 		totals[key] = totals.get(key, 0.0) + float(cur_fx[key]) * q
 		sum += float(cur_fx[key])
 	worm.append(clampf(worm.back() + sum * q * 2.0, 0.0, 100.0))
-	await get_tree().create_timer(0.6).timeout
-	_next_section()
+	await get_tree().create_timer(0.9).timeout
+	if not closing:
+		_next_section()
 
 
 func _finish() -> void:
@@ -352,14 +497,23 @@ func _finish() -> void:
 	var out := GS.apply_fx(fx, "Discurso")
 	var verdict := "Discurso memorable" if avg >= 1.05 else ("Discurso correcto" if avg >= 0.8 else "Discurso para olvidar")
 	GS.push_news("%s del presidente %s" % [{"nacion": "Mensaje a la nación", "tragedia": "Declaración institucional", "campana": "Mitin"}.get(occasion, "Discurso"), GS.pres["name"]] + (": «%s»" % verdict.to_lower()), 2)
+	if not gaffes.is_empty():
+		GS.push_news("Lapsus en directo: el presidente dice «%s»" % str(gaffes.pick_random()).strip_edges(), 2)
 	GS.log_history("Discurso", verdict)
 	var pnl := UI.panel(Color(0.03, 0.05, 0.09, 0.97), 12, Color(UI.GOLD, 0.6), 30)
-	pnl.position = Vector2(560, 380)
+	pnl.position = Vector2(560, 300)
 	pnl.custom_minimum_size = Vector2(800, 0)
 	var v := UI.vbox(14)
 	pnl.add_child(v)
 	v.add_child(UI.lbl(verdict.to_upper(), UI.f_cond_b, 48, UI.GREEN if avg >= 1.05 else (UI.AMBER if avg >= 0.8 else UI.RED)))
-	v.add_child(UI.lbl("Énfasis acertados: %d de %d · Perfectos: %d" % [hits, keys_total, perfects], UI.f_sans_m, 19, UI.TEXT))
+	v.add_child(UI.lbl("Erratas corregidas: %d de %d · Frases impecables: %d de %d · Lapsus en directo: %d" % [errors_fixed, errors_total, clean_phrases, qualities.size(), gaffes.size()], UI.f_sans_m, 19, UI.TEXT))
+	if false_clicks > 0:
+		v.add_child(UI.lbl("Corrigió %d palabra%s que estaba%s bien: el público notó los titubeos." % [false_clicks, "" if false_clicks == 1 else "s", "" if false_clicks == 1 else "n"], UI.f_sans, 16, UI.DIM))
+	for g in gaffes.slice(0, 2):
+		var gl := UI.lbl("En directo: «%s»" % str(g).strip_edges(), UI.f_serif, 19, UI.RED.lightened(0.25))
+		gl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		gl.custom_minimum_size = Vector2(740, 0)
+		v.add_child(gl)
 	var chips := Widgets.effect_chips(out, 16, 10)
 	chips.custom_minimum_size = Vector2(740, 0)
 	v.add_child(chips)
@@ -399,31 +553,48 @@ func _draw_scene() -> void:
 
 
 func _draw_prompt() -> void:
-	var y := 70.0
-	prompt.draw_rect(Rect2(0, 0, 1920, 140), Color(0.02, 0.03, 0.05, 0.92))
+	prompt.draw_rect(Rect2(0, 0, 1920, PROMPT_H), Color(0.02, 0.03, 0.05, 0.93))
 	prompt.draw_rect(Rect2(0, 0, 1920, 2), Color(UI.GOLD, 0.5))
-	prompt.draw_rect(Rect2(0, 138, 1920, 2), Color(UI.GOLD, 0.5))
-	prompt.draw_rect(Rect2(TARGET_X - 32, 6, 64, 128), Color(UI.GOLD, 0.08))
-	prompt.draw_line(Vector2(TARGET_X, 4), Vector2(TARGET_X, 136), UI.GOLD, 3.0)
-	if phase != "deliver":
-		prompt.draw_string(UI.f_sans_m, Vector2(0, y + 10), "TELEPROMPTER", HORIZONTAL_ALIGNMENT_CENTER, 1920, 18, Color(1, 1, 1, 0.2))
+	prompt.draw_rect(Rect2(0, PROMPT_H - 2, 1920, 2), Color(UI.GOLD, 0.5))
+	prompt.draw_string(UI.f_sans_b, Vector2(24, 22), "TELEPROMPTER", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.3))
+	if phase != "deliver" and phase != "idle":
+		var msg := "Elija la frase de esta parte del discurso" if phase == "choose" else ""
+		prompt.draw_string(UI.f_sans_m, Vector2(0, PROMPT_H * 0.5 + 8), msg, HORIZONTAL_ALIGNMENT_CENTER, 1920, 20, Color(1, 1, 1, 0.25))
 		return
-	for w in words:
-		var x: float = offset + w["x"]
-		if x > 1920 or x + w["w"] < 0:
+	if phase == "deliver" and _preview > 0.0:
+		prompt.draw_string(UI.f_sans_b, Vector2(0, 22), "REVÍSELO ANTES DE EMPEZAR A LEER...", HORIZONTAL_ALIGNMENT_CENTER, 1920, 14, UI.GOLD)
+	var asc := UI.f_serif_b.get_ascent(_fsize)
+	for i in tokens.size():
+		var tk: Dictionary = tokens[i]
+		var r: Rect2 = tk["rect"]
+		var col := Color(1, 1, 1, 0.92)
+		var off := Vector2.ZERO
+		if tk["said"]:
+			col = Color(1, 1, 1, 0.3)
+		if tk["fixed"]:
+			col = Color(UI.GREEN, 0.95 if not tk["said"] else 0.45)
+		if tk["said"] and tk["bad"] != "" and not tk["fixed"]:
+			# lo dijo en directo
+			col = UI.RED.lightened(0.15)
+			prompt.draw_rect(Rect2(r.position + Vector2(4, r.size.y - 10), Vector2(r.size.x - 8, 4)), Color(UI.RED, 0.8))
+		if float(tk["wrong"]) > 0.0:
+			col = UI.AMBER
+			off.x = sin(_t * 60.0) * 4.0 * float(tk["wrong"]) * 2.0
+		if float(tk["flash"]) > 0.0:
+			prompt.draw_rect(r, Color(UI.GREEN, 0.25 * float(tk["flash"])))
+		# centrada en su hueco
+		var pos := r.position + Vector2(6 + (r.size.x - 12 - _word_w(tk["t"], _fsize)) * 0.5, (r.size.y - _fsize * 1.1) * 0.5 + asc) + off
+		if tk["bad"] == "insert" and tk["fixed"]:
+			# coletilla tachada que ya no se lee
+			var a := 0.5 * (1.0 - clampf(1.0 - float(tk["flash"]), 0.0, 1.0)) + 0.18
+			prompt.draw_string(UI.f_serif_b, pos, tk["t"], HORIZONTAL_ALIGNMENT_LEFT, -1, _fsize, Color(0.6, 0.62, 0.66, a))
+			prompt.draw_line(Vector2(r.position.x + 4, r.get_center().y), Vector2(r.end.x - 4, r.get_center().y), Color(UI.GREEN, 0.7), 3.0)
 			continue
-		var col := Color(1, 1, 1, 0.85)
-		if w["key"]:
-			col = UI.GOLD_L
-			match w["res"]:
-				"perfect":
-					col = Color(1, 0.95, 0.5)
-				"good":
-					col = UI.GREEN
-				"miss":
-					col = UI.RED
-			prompt.draw_rect(Rect2(x - 4, y - 42, w["w"] - 6, 58), Color(col, 0.1))
-		prompt.draw_string(UI.f_serif_b, Vector2(x, y + 12), w["t"], HORIZONTAL_ALIGNMENT_LEFT, -1, 46, col)
+		# la palabra que está leyendo ahora, subrayada en dorado
+		if phase == "deliver" and _preview <= 0.0 and i == cursor:
+			prompt.draw_rect(Rect2(r.position + Vector2(4, r.size.y - 8), Vector2(r.size.x - 8, 5)), UI.GOLD)
+			col = UI.GOLD_L if not tk["fixed"] else col
+		prompt.draw_string(UI.f_serif_b, pos, tk["t"], HORIZONTAL_ALIGNMENT_LEFT, -1, _fsize, col)
 
 
 func _draw_worm() -> void:

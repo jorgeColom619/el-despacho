@@ -92,26 +92,77 @@ const DEBATE := [
 const DEBATE_LINES := {
 	"datos": ["Le leo los datos de este mes, que usted no se ha leído: mejores que cuando ustedes gobernaban.", "Las cifras no son de mi partido; son del instituto de estadística. Y le desmienten.",
 		"Usted habla de sensaciones; yo le traigo hechos. Y los hechos están de nuestro lado.", "Tome nota del dato, señoría: es la mejor cifra de la década. La segunda mejor también es nuestra.",
-		"Si quiere le paso el informe. Tiene dibujos, para que no se pierda."],
+		"Si quiere le paso el informe. Tiene dibujos, para que no se pierda.",
+		"Su pregunta trae un dato de hace tres años. Le traigo el de esta mañana, que es el que cuenta.", "Los números no votan, señoría, pero tampoco mienten. Y hoy dicen que vamos mejor.",
+		"Ha confundido usted el porcentaje con el total. Le pasa a menudo, pero en esta Cámara se nota.", "Me pide resultados; aquí los tiene, con fecha, firma y fuente."],
 	"empatia": ["Detrás de esa pregunta hay personas, y a ellas les digo: no estáis solas.", "Yo también tengo familia y sé lo que es preocuparse. Por eso no vamos a parar.",
-		"Esa historia me duele tanto como a usted. La diferencia es que yo puedo cambiarla y la estoy cambiando.", "Ni un valdoriano se quedará atrás. Lo digo mirando a los ojos de quienes lo están pasando mal."],
+		"Esa historia me duele tanto como a usted. La diferencia es que yo puedo cambiarla y la estoy cambiando.", "Ni un valdoriano se quedará atrás. Lo digo mirando a los ojos de quienes lo están pasando mal.",
+		"Esta semana he estado con esas familias. Usted ha estado con un micrófono.", "Tiene razón en una cosa: hay gente sufriendo. Por eso no voy a usarla para hacer política.",
+		"Si alguna de esas personas quiere, la recibo mañana en Palacio. ¿Usted le ha ofrecido algo más que un discurso?", "No le voy a discutir el dolor. Le voy a contar lo que hacemos para aliviarlo."],
 	"elegancia": ["No voy a contestar a una ofensa con otra. Los ciudadanos merecen algo mejor de esta Cámara.", "Usted elige el insulto; yo elijo trabajar. Que juzguen los ciudadanos.",
-		"Le deseo suerte, señoría. La va a necesitar más que yo.", "Respeto su función, aunque usted no respete la mía. Esa es la diferencia entre nosotros."],
+		"Le deseo suerte, señoría. La va a necesitar más que yo.", "Respeto su función, aunque usted no respete la mía. Esa es la diferencia entre nosotros.",
+		"Cuando se le acaben los adjetivos, hablamos de propuestas. Le espero.", "Le agradezco el tono. Bueno, no; pero le agradezco la pregunta.",
+		"Su señoría grita mucho para tener tan poco que decir. Yo prefiero hablar bajo y con datos.", "Los ataques personales dicen más de quien los hace que de quien los recibe."],
 	"realismo": ["¿Y de dónde sale el dinero, señoría? Porque las promesas gratis las pagan siempre los mismos.", "Ese programa electoral cuesta tres presupuestos del Estado. ¿Lo pagamos con ilusión?",
-		"Prometer la luna es fácil. Lo difícil es gobernar la Tierra.", "Si su propuesta fuera tan buena, la habrían hecho cuando gobernaban. No la hicieron. Me pregunto por qué."],
+		"Prometer la luna es fácil. Lo difícil es gobernar la Tierra.", "Si su propuesta fuera tan buena, la habrían hecho cuando gobernaban. No la hicieron. Me pregunto por qué.",
+		"Bajar impuestos y subir el gasto a la vez: eso no es un programa, es un truco de magia.", "Le invito a presentar su propuesta con la memoria económica. Le dejo la calculadora.",
+		"Lo gratis siempre lo paga alguien, señoría. Normalmente, los de siempre.", "Su plan cabe en un tuit. Las cuentas del Estado, no."],
 	"contraataque": ["Me sorprende que me dé lecciones el partido que dejó el país en quiebra.", "Cuando ustedes gobernaban, esa cifra era el doble. Tiene muy mala memoria, señoría.",
-		"Hable de lo que quiera, pero no de corrupción: su partido tiene más imputados que diputados.", "Señoría, su jefe de campaña está en un juzgado. Empiece por ahí."],
+		"Hable de lo que quiera, pero no de corrupción: su partido tiene más imputados que diputados.", "Señoría, su jefe de campaña está en un juzgado. Empiece por ahí.",
+		"Usted votó en contra de todo lo que hoy reclama. Está en el diario de sesiones.", "Para dar lecciones primero hay que aprobar, señoría. Y ustedes suspendieron.",
+		"Me habla de herencia; la que recibimos de ustedes aún la estamos pagando.", "Le recuerdo que su última propuesta la retiró usted mismo a los tres días."],
 }
 
 const OPP_REACTIONS := {
 	"good": ["Eso no es lo que le he preguntado.", "Muy bonito el discurso. Pero los problemas siguen ahí.", "Ya veremos qué opinan los ciudadanos.",
-		"Siempre con los mismos datos de siempre.", "Le salva el reloj, presidente.", "Otra respuesta de manual.", "Qué bien se le dan las frases hechas."],
+		"Siempre con los mismos datos de siempre.", "Le salva el reloj, presidente.", "Otra respuesta de manual.", "Qué bien se le dan las frases hechas.",
+		"Aplauden los suyos, que para eso cobran.", "Se nota que le han preparado bien la chuleta.", "Hoy ha tenido suerte. El próximo miércoles, ya veremos.",
+		"Mucho aplomo para tan pocos resultados.", "Eso se lo explica usted a la gente de la calle, no a mí."],
 	"bad": ["¿Lo ven? Se ha quedado en blanco.", "Ni sus propios diputados aplauden.", "Señorías, el presidente no tiene respuestas.", "Eso es lo único que sabe decir.",
-		"Tomo nota, presidente. Y los ciudadanos también.", "Ha tardado mucho en no decir nada.", "Su silencio lo dice todo."],
+		"Tomo nota, presidente. Y los ciudadanos también.", "Ha tardado mucho en no decir nada.", "Su silencio lo dice todo.",
+		"Mírese la bancada, presidente: hasta los suyos miran el móvil.", "Le ha temblado la voz. Lo hemos oído todos.", "Esa respuesta no la firma ni su jefe de gabinete.",
+		"Gracias por confirmarlo, presidente.", "Ni un argumento. Ni uno."],
 }
 
 const ORDER_LINES := ["¡Señorías, por favor, guarden silencio!", "Les recuerdo que están en el Congreso, no en un mercado.", "Quien vuelva a interrumpir abandonará el hemiciclo.",
-	"Señorías, los micrófonos están abiertos. Todo el país les escucha.", "¡Silencio! El presidente tiene la palabra.", "Por favor, señorías, dejen terminar al orador."]
+	"Señorías, los micrófonos están abiertos. Todo el país les escucha.", "¡Silencio! El presidente tiene la palabra.", "Por favor, señorías, dejen terminar al orador.",
+	"Señorías, el que quiera aplaudir que lo haga al final.", "Les ruego un poco de decoro: hay colegios viendo la sesión.", "Llamo al orden por primera vez. No me hagan llamarles por segunda.",
+	"Señorías, esto es una pregunta, no un partido de tenis."]
+
+## Erratas del teleprompter en los discursos: el becario de comunicación cambia palabras (clave en minúsculas, sin
+## signos) por otras que no deberían decirse en directo, o mete coletillas que sobran. Hay que hacer clic en ellas
+## antes de que el presidente las lea.
+const TELEPROMPTER_SWAPS := {
+	"valdoria": ["Norland", "Qadar", "Kharovia"], "valdorianos": ["norlandeses", "contribuyentes"], "valdorianas": ["contribuyentes"],
+	"valdoriano": ["norlandés"], "compatriotas": ["contribuyentes", "votantes indecisos"], "queridos": ["pobres", "sufridos"],
+	"prometo": ["prometí", "olvido"], "noches": ["tardes", "madrugadas"], "noche": ["madrugada", "resaca"], "gracias": ["perdón", "lo siento"],
+	"viva": ["abajo"], "todos": ["algunos", "los míos"], "mejor": ["peor"], "peor": ["mejor"], "país": ["cortijo", "chiringuito"],
+	"pública": ["privada"], "públicas": ["privadas"], "público": ["privado"], "familia": ["suegra"], "familias": ["herencias"],
+	"justicia": ["venganza"], "futuro": ["pasado"], "pasado": ["futuro"], "casa": ["yate"], "mañana": ["jamás", "el lunes"],
+	"quiero": ["finjo"], "gobierno": ["club de amigos"], "nunca": ["siempre"], "siempre": ["nunca"], "menos": ["más"],
+	"juntos": ["por separado"], "mano": ["cartera"], "impuestos": ["sobornos", "comisiones"], "empleo": ["paro"],
+	"corazón": ["bolsillo"], "sanidad": ["lotería"], "palabra": ["palabrería"], "dolor": ["alegría"], "verdad": ["mentira"],
+	"cuentas": ["cuentos"], "deuda": ["fiesta"], "seguridad": ["inseguridad"], "seguro": ["dudoso"], "libertad": ["siesta"],
+	"dignidad": ["propina"], "gente": ["clientela"], "trabajar": ["veranear"], "trabajaremos": ["descansaremos"],
+	"defenderé": ["venderé"], "tesoro": ["chollo"], "hechos": ["excusas"], "resultados": ["excusas"], "crece": ["encoge"],
+	"bajaremos": ["subiremos"], "bajará": ["subirá"], "subiré": ["bajaré"], "construir": ["demoler"], "construye": ["derriba"],
+	"ayudar": ["multar"], "cuidaremos": ["venderemos"], "cuidarlos": ["olvidarlos"], "escucharles": ["ignorarles"],
+	"escucharme": ["aguantarme"], "confianza": ["paciencia"], "corrupción": ["honradez"], "oportunidad": ["multa"],
+	"médico": ["curandero"], "escuela": ["casa de apuestas"], "educación": ["televisión"], "vivienda": ["mansión"],
+	"víctimas": ["votantes"], "llora": ["celebra"], "luto": ["fiesta"], "banderas": ["sábanas"], "humildad": ["chulería"],
+	"determinación": ["resaca"], "pueblos": ["campos de golf"], "bosques": ["solares"], "planeta": ["casino"], "verde": ["gris"],
+	"energía": ["siesta"], "libertades": ["vacaciones"], "orgullo": ["vergüenza"], "progreso": ["regreso"], "historia": ["histeria"],
+	"acuerdos": ["gritos"], "industria": ["nostalgia"], "fabricar": ["importar"], "voto": ["sobre"], "ganar": ["perder"],
+	"fallaré": ["pagaré"], "tranquila": ["preocupada"], "despierto": ["dormido"], "breve": ["eterno"], "sonreír": ["llorar"],
+	"fuerte": ["débil"], "claro": ["confuso"], "rápida": ["lenta"], "seguras": ["peligrosas"], "limpio": ["sucio"], "justo": ["injusto"],
+	"unido": ["dividido"], "psicólogos": ["astrólogos"], "mandato": ["veraneo"], "dirijo": ["despido"], "empresas": ["empresas de mi cuñado"],
+	"jóvenes": ["influencers"], "joven": ["influencer"], "pensiones": ["dietas"], "trabajador": ["becario"], "mayores": ["suegros"],
+	"amigos": ["socios"], "presupuesto": ["presupuesto B"], "hijos": ["sobrinos"], "campo": ["campo de golf"], "costas": ["urbanizaciones"],
+}
+
+const TELEPROMPTER_INSERTS := ["(toser)", "patata", "[CHISTE AQUÍ]", "(guiño a cámara)", "ejem", "jajaja", "(no leer esto)", "[NOMBRE DEL PAÍS]",
+	"(pausa dramática)", "bla, bla, bla", "(sonreír)", "xD", "(aplausos)", "[INSERTAR CIFRA]", "zzz", "y tal", "o sea", "en plan", "¿vale?",
+	"(acordarse de respirar)", "(mirar a la cámara 2)", "#TeLoExplico", "(lágrima)", "(SUBIR EL TONO)"]
 
 ## Frases para los discursos (se suman a las de press_data por sección)
 const SPEECH := {

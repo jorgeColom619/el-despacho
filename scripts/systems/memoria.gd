@@ -295,6 +295,7 @@ static func attacks() -> Array:
 		a.erase("kind")
 		a["kind"] = spec.get("akind", "personal")
 		a["memo"] = true
+		a["key"] = "memo_%s_%d" % [str(spec["kind"]), int(m["day"])]
 		out.append(a)
 	out.shuffle()
 	return out.slice(0, 2)
