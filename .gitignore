@@ -2,7 +2,8 @@
 .godot/
 *.translation
 export/
-export_presets.cfg
+# los ejecutables que se exportan en local (en GitHub los publica .github/workflows/publicar-version.yml)
+build/
 # Las capturas del README no son recursos del juego
 docs/**/*.import
 

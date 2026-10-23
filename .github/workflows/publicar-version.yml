@@ -1,0 +1,123 @@
+# Publica una versión del juego en «Releases» con los ejecutables de Windows, Linux y Mac.
+#
+# Para publicar: escribe en .github/NOTAS_DE_VERSION.md lo que cambia y sube una etiqueta con el número de versión:
+#   git tag v4.1 && git push origin v4.1
+# El número de la etiqueta (sin la «v») pasa al juego, al .exe y a la app de Mac.
+# También se puede lanzar a mano desde la pestaña Actions: entonces solo compila y deja los ejecutables para probar.
+
+name: Publicar versión
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar-${{ github.ref }}
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Número de versión
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Versión: $VERSION"
+          # el número llega al menú del juego, a los datos del .exe y a la app de Mac
+          sed -i "s/^config\/version=.*/config\/version=\"$VERSION\"/" project.godot
+          IFS=. read -r V1 V2 V3 <<< "$VERSION"
+          WINVER="${V1:-0}.${V2:-0}.${V3:-0}.0"
+          sed -i "s/^application\/file_version=.*/application\/file_version=\"$WINVER\"/; s/^application\/product_version=.*/application\/product_version=\"$WINVER\"/" export_presets.cfg
+          sed -i "s/^application\/short_version=.*/application\/short_version=\"$VERSION\"/; s/^application\/version=.*/application\/version=\"$VERSION\"/" export_presets.cfg
+
+      - name: Descargar Godot y las plantillas de exportación
+        run: |
+          BASE="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          wget -q "$BASE/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          wget -q "$BASE/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          T="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$T"
+          unzip -q -j "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" templates/version.txt templates/windows_release_x86_64.exe templates/windows_release_x86_64_console.exe templates/linux_release.x86_64 templates/macos.zip -d "$T"
+          rm -f ./*.tpz ./*.zip
+
+      - name: Importar el proyecto
+        # la primera importación a veces se cae al importar las fuentes: se reintenta
+        run: |
+          for i in 1 2 3; do
+            ./godot --headless --path . --import && break
+            echo "Reintentando la importación ($i)"
+            rm -f .godot/imported/*.tmp
+          done
+
+      - name: Exportar
+        run: |
+          mkdir -p build/windows build/linux build/mac
+          ./godot --headless --path . --export-release "Windows" build/windows/ElDespacho.exe
+          ./godot --headless --path . --export-release "Linux" build/linux/ElDespacho.x86_64
+          ./godot --headless --path . --export-release "macOS" build/mac/ElDespacho-mac.zip
+          test -s build/windows/ElDespacho.exe
+          test -s build/linux/ElDespacho.x86_64
+          test -s build/mac/ElDespacho-mac.zip
+
+      - name: Empaquetar
+        run: |
+          mkdir dist
+          cp build/windows/ElDespacho.exe dist/
+          chmod +x build/linux/ElDespacho.x86_64
+          # en .tar.gz para que no se pierda el permiso de ejecución
+          tar -czf dist/ElDespacho-linux.tar.gz -C build/linux ElDespacho.x86_64
+          cp build/mac/ElDespacho-mac.zip dist/
+          ls -la dist
+
+      - name: Notas de la versión
+        run: |
+          FECHA="$(TZ=Europe/Madrid date +%d/%m/%Y)"
+          {
+            echo "**El Despacho, versión ${VERSION}** (${FECHA})."
+            echo
+            echo "**Para jugar** no hace falta instalar nada ni tener Godot:"
+            echo
+            echo "- **Windows:** descarga \`ElDespacho.exe\` y ábrelo. Puede avisar de que es de un editor desconocido, porque no está firmado: *Más información → Ejecutar de todas formas*."
+            echo "- **Linux:** descarga \`ElDespacho-linux.tar.gz\`, extráelo (clic derecho → *Extraer aquí*) y abre \`ElDespacho.x86_64\` con doble clic."
+            echo "- **Mac:** descarga \`ElDespacho-mac.zip\`, ábrelo y abre \`El Despacho.app\` (si quieres, arrástrala antes a *Aplicaciones*). La primera vez macOS avisa de que no puede comprobar si es segura, porque no está verificada por Apple: ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. Solo hace falta una vez."
+            echo
+            echo "Las partidas, el perfil y las opciones se guardan en tu equipo y se conservan al cambiar de versión."
+            echo
+            cat .github/NOTAS_DE_VERSION.md
+          } > notas.md
+          cat notas.md
+
+      - name: Publicar en Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+            gh release edit "$TAG" --title "Versión ${VERSION}" --notes-file notas.md
+          else
+            gh release create "$TAG" dist/* --title "Versión ${VERSION}" --notes-file notas.md --latest
+          fi
+
+      - name: Guardar los ejecutables (lanzado a mano)
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElDespacho-${{ env.VERSION }}
+          path: dist/

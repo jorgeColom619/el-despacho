@@ -62,6 +62,18 @@ cargo en el Congreso.
 
 ## Cómo jugar
 
+### Descargar el juego
+
+En **[Releases](../../releases/latest)** está la última versión lista para jugar, sin instalar nada ni tener Godot:
+
+| Sistema | Descarga | Cómo se abre |
+|---|---|---|
+| Windows | `ElDespacho.exe` | Doble clic. Si Windows avisa de un editor desconocido (no está firmado): *Más información → Ejecutar de todas formas*. |
+| Linux | `ElDespacho-linux.tar.gz` | Extráelo (clic derecho → *Extraer aquí*) y abre `ElDespacho.x86_64`. |
+| Mac | `ElDespacho-mac.zip` | Ábrelo y abre `El Despacho.app`. La primera vez: *Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente*. |
+
+Para jugar desde el código, sigue leyendo.
+
 ### Requisitos
 
 - **[Godot 4.7](https://godotengine.org/download)**, versión estándar (no la de .NET). No hace falta nada más: ni
@@ -90,8 +102,28 @@ godot --path .
 
 ### Crear un ejecutable
 
-En Godot: *Proyecto → Exportar → Añadir… → Windows Desktop* (o Linux, o macOS). La primera vez pedirá descargar
-las plantillas de exportación. Las exportaciones (`export/`, `export_presets.cfg`) no se suben al repositorio.
+El proyecto trae la configuración de exportación (`export_presets.cfg`) para **Windows**, **Linux** y **macOS**: en
+Godot, *Proyecto → Exportar*, elige una y pulsa *Exportar proyecto* (la primera vez pedirá descargar las plantillas de
+exportación). Los ejecutables se guardan en `build/`, que no se sube al repositorio. Desde una terminal:
+
+```sh
+godot --headless --path . --export-release "Windows" build/windows/ElDespacho.exe
+godot --headless --path . --export-release "Linux" build/linux/ElDespacho.x86_64
+godot --headless --path . --export-release "macOS" build/mac/ElDespacho-mac.zip
+```
+
+### Publicar una versión
+
+Las versiones de [Releases](../../releases) las compila y publica GitHub Actions
+(`.github/workflows/publicar-version.yml`) al subir una etiqueta:
+
+1. Escribe en `.github/NOTAS_DE_VERSION.md` lo que cambia (sale en la página de la versión, después de las
+   instrucciones para jugar).
+2. Sube los cambios y una etiqueta con el número: `git tag v4.1` y `git push origin v4.1`.
+
+En unos minutos aparece la versión con `ElDespacho.exe`, `ElDespacho-linux.tar.gz` y `ElDespacho-mac.zip`. El número
+de la etiqueta pasa al menú del juego, a los datos del `.exe` y a la app de Mac. Desde la pestaña *Actions* también se
+puede lanzar a mano: entonces solo compila y deja los ejecutables para descargarlos y probarlos.
 
 ## Controles
 
@@ -534,14 +566,15 @@ de gestos. Después, vuelve a importar el proyecto (`godot --headless --path . -
 
 ## Historial de versiones
 
-- **Cambios recientes**: antes de llevarte al Congreso, a la sala de prensa o al plató del debate electoral, la Jefa
-  de Gabinete entra en el despacho y te pregunta si vas. La sesión de control salía cada 20-30 días por un contador
-  que se descontaba dos veces al día: ahora sale cada 80-110 días, con cuatro preguntas y sin repetir réplicas,
-  reacciones ni reproches. El discurso a la nación cambia el ritmo con la barra espaciadora por un teleprompter con
-  erratas que hay que corregir a clic. Nuevo **Libro de Leyes** sobre la mesa del despacho.
-- **Despacho 3D**: el despacho en primera persona con objetos con físicas y los cuatro minijuegos de hablar y
-  negociar como escenas 3D sin ventanas de opciones. Opciones separadas para el despacho y los minijuegos 3D, calidad
-  gráfica de Baja a Ultra y cambio automático de motor gráfico en equipos sin aceleración.
+- **4.0** (primera versión con ejecutables en [Releases](../../releases)):
+  - **Despacho 3D**: el despacho en primera persona con objetos con físicas y los cuatro minijuegos de hablar y
+    negociar como escenas 3D sin ventanas de opciones. Opciones separadas para el despacho y los minijuegos 3D,
+    calidad gráfica de Baja a Ultra y cambio automático de motor gráfico en equipos sin aceleración.
+  - Antes de llevarte al Congreso, a la sala de prensa o al plató del debate electoral, la Jefa de Gabinete entra en
+    el despacho y te pregunta si vas. La sesión de control salía cada 20-30 días por un contador que se descontaba
+    dos veces al día: ahora sale cada 80-110 días, con cuatro preguntas y sin repetir réplicas, reacciones ni
+    reproches. El discurso a la nación cambia el ritmo con la barra espaciadora por un teleprompter con erratas que
+    hay que corregir a clic. Nuevo **Libro de Leyes** sobre la mesa del despacho.
 - **3.0**: promesas electorales, personajes con memoria, el móvil del presidente (Pío y mensajes), reto del día,
   respuestas escritas con tus propias palabras y mucha más variedad: memoria de diez partidas, situaciones generadas
   por piezas, unos 80 ataques de la oposición (antes, 8), seis crisis nuevas (sequía, terremoto, marea negra,
