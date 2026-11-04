@@ -122,6 +122,9 @@ const ACHIEVEMENTS := {
 	"dinastia": {"name": "Dinastía", "desc": "Gana 4 elecciones en una misma partida.", "reward": 300},
 	"plasma": {"name": "Presidente del plasma", "desc": "Modo meme: comparece ante la prensa a través de una pantalla.", "reward": 40},
 	"michi": {"name": "Gatocracia", "desc": "Modo meme: nombra ministro a un gato.", "reward": 40},
+	"casino_banca": {"name": "Saltar la banca", "desc": "Sal del casino con 500 M€ o más de beneficio.", "reward": 40},
+	"casino_limpio": {"name": "Manos limpias", "desc": "Rechaza la jugada arreglada del anfitrión.", "reward": 30},
+	"casino_pleno": {"name": "Pleno al número", "desc": "Acierta un pleno en la ruleta.", "reward": 25},
 	"siesta": {"name": "Patrimonio nacional", "desc": "Modo meme: aprueba la Ley de la Siesta Nacional.", "reward": 40},
 }
 

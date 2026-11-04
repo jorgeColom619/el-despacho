@@ -135,6 +135,9 @@ const Memoria := preload("res://scripts/systems/memoria.gd")
 const Redes := preload("res://scripts/systems/redes.gd")
 const Reto := preload("res://scripts/systems/reto.gd")
 const Plantillas := preload("res://scripts/systems/plantillas.gd")
+const Casino := preload("res://scripts/systems/casino.gd")
+## El Gran Casino: invitaciones, el dinero público perdido o escondido y lo que vuelve (ver casino.gd)
+var casino := {}
 
 ## Los efectos de las decisiones se olvidan poco a poco (vida media en días)
 const MEMORY_HALF_LIFE := 150.0
@@ -288,6 +291,7 @@ func new_game(opts: Dictionary) -> void:
 	if opts.has("rules"):
 		Reto.apply(opts["rules"])
 	_draw_tramas()
+	Casino.start(rng)
 	_update_targets()
 	_update_approval()
 	_sample_stats()
@@ -577,6 +581,7 @@ func advance_day() -> void:
 	_run_scheduled()
 	Promesas.tick()
 	Redes.tick()
+	Casino.tick()
 	if day == term_start + (term_days - term_start) / 2 and not campaign:
 		var mt := Promesas.midterm_event()
 		if not mt.is_empty():
@@ -872,6 +877,8 @@ func _monthly(dd: Dictionary) -> void:
 	Perfil.note_game(used.keys(), tramas)
 	# Lo que hizo hace meses vuelve: exministros, indultados, cartas, contratos, líderes que no olvidan...
 	Memoria.monthly()
+	# Las noches en el casino: el dinero escondido pesa y alguien puede tirar del hilo
+	Casino.monthly()
 	# Periódico mensual
 	open_request.emit("newspaper", {"month_day": day - 1})
 	month_log = []
@@ -1310,7 +1317,7 @@ func _expire(item: Dictionary) -> void:
 
 func _strip_interactive(fx: Dictionary) -> Dictionary:
 	var out := fx.duplicate(true)
-	for k in ["nego", "speech", "debate", "press", "control"]:
+	for k in ["nego", "speech", "debate", "press", "control", "casino"]:
 		out.erase(k)
 	return out
 
@@ -1591,6 +1598,10 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				open_request.emit("press", {"mode": v})
 			"control":
 				open_request.emit("control", {})
+			"casino":
+				open_request.emit("casino", {"host": str(v)})
+			"casino_leak", "casino_face", "casino_dimision":
+				Casino.special(k, v)
 			"campana":
 				# intención de voto para las elecciones (p. ej., plantar el debate electoral)
 				campaign_bonus += float(v)
@@ -2150,6 +2161,8 @@ func legacy_title() -> String:
 		var mt := "El Presidente del Plasma"
 		if flags.has("gato"):
 			mt = "El Amigo de los Gatos"
+		elif float(casino.get("stash", 0.0)) > 0.0 or bool(casino.get("discovered", false)):
+			mt = "El Rey de la Timba"
 		elif corruption > 20.0:
 			mt = "El Señor de los Sobres"
 		elif approval > 60.0:
@@ -2160,7 +2173,11 @@ func legacy_title() -> String:
 			mt = "El de la Champions League de la Economía"
 		return mt
 	var t := "El Superviviente"
-	if corruption > 25.0:
+	if float(casino.get("stash", 0.0)) > 0.0:
+		t = "El de la Cuenta en Qadar"
+	elif bool(casino.get("discovered", false)):
+		t = "El Presidente de la Ruleta"
+	elif corruption > 25.0:
 		t = "El Presidente de los Sobres"
 	elif flags.has("ley_medios") and "ampliar_mandato" in policies:
 		t = "El Autócrata"
@@ -2192,7 +2209,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen"]
+	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino"]
 
 
 func has_save() -> bool:
@@ -2263,6 +2280,7 @@ func load_game() -> bool:
 	daily = -1
 	law_log = []
 	law_seen = 0
+	casino = {}
 	for k in SAVE_KEYS:
 		if d.has(k):
 			set(k, d[k])

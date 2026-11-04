@@ -63,9 +63,12 @@ class Biquad:
 func _init() -> void:
 	rng.seed = 20270101
 	var t0 := Time.get_ticks_msec()
-	gen_sfx()
-	print("SFX listos: %d ms" % (Time.get_ticks_msec() - t0))
-	gen_music()
+	# (--solo-casino: solo los sonidos y la música del casino, que van al final para no cambiar el resto)
+	if not ("--solo-casino" in OS.get_cmdline_user_args()):
+		gen_sfx()
+		print("SFX listos: %d ms" % (Time.get_ticks_msec() - t0))
+		gen_music()
+	gen_casino()
 	print("Audio generado en %d ms" % (Time.get_ticks_msec() - t0))
 	quit()
 
@@ -870,3 +873,190 @@ func music_campaign() -> void:
 				add_fm(l, i * bar + s * beat, midi(tones[s]), beat * 0.8, 0.07, 1.0, MSR)
 				add_fm(r, i * bar + s * beat + 0.01, midi(tones[s]), beat * 0.8, 0.07, 1.0, MSR)
 	finish_track("music_campaign", l, r, loop_len, 0.3)
+
+
+# ------------------------------------------------------------------ casino
+
+## Sonidos y música del Gran Casino (con su propio generador: así no cambia nada de lo de arriba)
+func gen_casino() -> void:
+	rng.seed = 777001
+	var b: PackedFloat32Array
+
+	# fichas: un puñado que choca (cerámica)
+	b = mkbuf(0.35)
+	for k in 6:
+		var tt := rng.randf_range(0.0, 0.16)
+		add_noise(b, tt, 0.025, rng.randf_range(0.4, 1.0), 0.0003, 0.004, "bp", rng.randf_range(3200.0, 5200.0), 3.0)
+		add_sine(b, tt, 0.06, rng.randf_range(2600.0, 3900.0), rng.randf_range(2500.0, 3800.0), 0.25, 0.0005, 0.012)
+	normalize(b, 0.5)
+	save_mono("chips", b)
+
+	# bola rodando por la pista (bucle 2 s): rumor de madera con golpecitos
+	b = mkbuf(2.0)
+	var bq := Biquad.new()
+	bq.setup("bp", 900.0, 1.5, SR)
+	for i in b.size():
+		var t := float(i) / SR
+		b[i] = bq.process(rng.randf_range(-1.0, 1.0)) * (0.55 + 0.45 * sin(TAU * 7.0 * t))
+	for k in 40:
+		add_noise(b, k * 0.05 + rng.randf_range(0.0, 0.01), 0.012, 0.35, 0.0003, 0.003, "bp", 2400.0, 3.0)
+	fade_edges(b, 0.02, 0.02)
+	normalize(b, 0.4)
+	save_mono("ball_roll", b)
+
+	# la bola salta en las casillas
+	b = mkbuf(0.12)
+	add_noise(b, 0.0, 0.02, 1.0, 0.0002, 0.003, "bp", 2800.0, 2.5)
+	add_sine(b, 0.0, 0.08, 1850.0, 1700.0, 0.4, 0.0003, 0.015)
+	add_sine(b, 0.0, 0.08, 3100.0, 3000.0, 0.15, 0.0003, 0.01)
+	normalize(b, 0.5)
+	save_mono("ball_drop", b)
+
+	# carta que se reparte (desliza y golpea el paño)
+	b = mkbuf(0.16)
+	bq = Biquad.new()
+	bq.setup("bp", 3600.0, 0.9, SR)
+	for i in int(0.1 * SR):
+		var t := float(i) / SR
+		b[i] += bq.process(rng.randf_range(-1.0, 1.0)) * sin(PI * t / 0.1) * 0.7
+	add_noise(b, 0.09, 0.03, 0.8, 0.0003, 0.006, "lp", 1800.0, 0.7)
+	normalize(b, 0.45)
+	save_mono("card", b)
+
+	# rodillos girando (bucle 1 s)
+	b = mkbuf(1.0)
+	bq = Biquad.new()
+	bq.setup("bp", 650.0, 1.2, SR)
+	for i in b.size():
+		var t := float(i) / SR
+		b[i] = bq.process(rng.randf_range(-1.0, 1.0)) * (0.6 + 0.4 * sin(TAU * 24.0 * t))
+	for k in 24:
+		add_noise(b, k / 24.0, 0.01, 0.4, 0.0003, 0.002, "bp", 3000.0, 3.0)
+	fade_edges(b, 0.01, 0.01)
+	normalize(b, 0.35)
+	save_mono("reels", b)
+
+	# rodillo que se para
+	b = mkbuf(0.25)
+	add_sine(b, 0.0, 0.2, 150.0, 85.0, 1.0, 0.001, 0.05)
+	add_noise(b, 0.0, 0.04, 0.8, 0.0003, 0.008, "bp", 1400.0, 1.5)
+	soft_clip(b, 1.4)
+	normalize(b, 0.6)
+	save_mono("reel_stop", b)
+
+	# palanca: trinquete que se acelera y un golpe al final
+	b = mkbuf(0.5)
+	var tt2 := 0.0
+	for k in 9:
+		add_noise(b, tt2, 0.012, 0.7, 0.0002, 0.003, "bp", 2600.0, 3.0)
+		add_sine(b, tt2, 0.02, 1500.0, 1400.0, 0.15, 0.0002, 0.004)
+		tt2 += 0.035 - k * 0.0025
+	add_sine(b, 0.3, 0.18, 120.0, 70.0, 0.9, 0.001, 0.05)
+	add_noise(b, 0.3, 0.05, 0.5, 0.0003, 0.01, "lp", 1500.0, 0.7)
+	normalize(b, 0.6)
+	save_mono("lever", b)
+
+	# premio de la tragaperras: campanitas
+	b = mkbuf(1.6)
+	var arp := [72, 76, 79, 84, 79, 84, 88]
+	for k in arp.size():
+		add_bell(b, k * 0.09, midi(arp[k]), 0.4, 0.25)
+	normalize(b, 0.5)
+	save_mono("slot_win", b)
+
+	# gran premio: campanas y cascada de monedas
+	b = mkbuf(3.5)
+	for k in 24:
+		add_bell(b, k * 0.07, midi([72, 76, 79, 84][k % 4] + (12 if k >= 12 else 0)), 0.35, 0.3)
+	for k in 160:
+		var tc := rng.randf_range(0.3, 3.2)
+		add_bell(b, tc, rng.randf_range(2200.0, 3600.0), rng.randf_range(0.05, 0.15), 0.05)
+	var rb := reverb(b, SR, 0.3, 0.7, 0)
+	normalize(rb, 0.6)
+	save_mono("jackpot", rb)
+
+	# ambiente del casino (bucle 8 s): murmullo, fichas lejanas y alguna tragaperras
+	b = mkbuf(8.0)
+	for v in 10:
+		var bqv := Biquad.new()
+		bqv.setup("bp", rng.randf_range(300.0, 1200.0), 3.0, SR)
+		var rate := rng.randf_range(1.5, 4.0)
+		var off := rng.randf() * TAU
+		for i in b.size():
+			var t := float(i) / SR
+			var am := maxf(0.0, sin(t * rate + off) * 0.5 + sin(t * rate * 2.1 + off * 2.0) * 0.3)
+			b[i] += bqv.process(rng.randf_range(-1.0, 1.0)) * am * 0.5
+	for k in 18:
+		var tc := rng.randf_range(0.2, 7.6)
+		for j in 3:
+			add_noise(b, tc + j * rng.randf_range(0.02, 0.05), 0.02, 0.25, 0.0003, 0.004, "bp", rng.randf_range(3200.0, 5000.0), 3.0)
+	for k in 3:
+		var tc2 := rng.randf_range(0.5, 6.0)
+		for j in 5:
+			add_bell(b, tc2 + j * 0.08, midi([79, 83, 86, 91, 86][j]), 0.06, 0.2)
+	var amb := reverb(b, SR, 0.5, 0.8, 1)
+	fade_edges(amb, 0.4, 0.4)
+	normalize(amb, 0.32)
+	save_mono("casino_amb", amb)
+
+	music_casino()
+	print(" - casino")
+
+
+## Jazz de salón: contrabajo andando, piano con acordes, escobillas y un vibráfono
+func music_casino() -> void:
+	var bpm := 112.0
+	var beat := 60.0 / bpm
+	var bar := beat * 4.0
+	var bars := 16
+	var loop_len := int(bar * bars * MSR)
+	var l := mkbuf(bar * bars + 4.0, MSR)
+	var r := mkbuf(bar * bars + 4.0, MSR)
+	# [bajo, voces del piano] por compás (en fa mayor, con un ii-V-I y un rodeo por si bemol)
+	var prog := [
+		[43, [58, 62, 65, 69]], [36, [58, 62, 64, 69]], [41, [57, 60, 64, 67]], [38, [53, 57, 60, 64]],
+		[43, [58, 62, 65, 69]], [36, [58, 62, 64, 69]], [41, [57, 60, 64, 67]], [41, [51, 55, 57, 62]],
+		[46, [50, 53, 57, 60]], [46, [49, 53, 56, 60]], [45, [48, 52, 55, 59]], [38, [48, 52, 54, 59]],
+		[43, [58, 62, 65, 69]], [36, [58, 62, 64, 69]], [41, [57, 60, 64, 67]], [36, [58, 62, 64, 69]]]
+	var swing := beat * 2.0 / 3.0
+	for i in bars:
+		var root: int = prog[i][0]
+		var nxt: int = prog[(i + 1) % bars][0]
+		var voice: Array = prog[i][1]
+		# contrabajo: fundamental, tercera, quinta y una nota de paso hacia el siguiente acorde
+		var minor := false
+		for n0 in voice:
+			if int(n0) % 12 == (root + 3) % 12:
+				minor = true
+		var walk := [root, root + (3 if minor else 4), root + 7, nxt + (1 if nxt < root else -1)]
+		for k in 4:
+			var t := i * bar + k * beat
+			add_pluck(l, t, midi(walk[k]), beat * 0.95, 0.42, 0.996, 0.35, MSR)
+			add_pluck(r, t, midi(walk[k]), beat * 0.95, 0.42, 0.996, 0.35, MSR)
+		# piano: golpe en el uno y en el «y» del dos (charlestón)
+		for hit: float in [0.0, beat + swing]:
+			for n in voice:
+				var vel := 0.07 * rng.randf_range(0.8, 1.0)
+				add_fm(l, i * bar + hit, midi(n), beat * 0.6, vel, 0.9, MSR)
+				add_fm(r, i * bar + hit + 0.006, midi(n), beat * 0.6, vel * 0.85, 0.9, MSR)
+		# platillo con escobilla: 1, 2, 2a, 3, 4, 4a
+		for pos: float in [0.0, beat, beat + swing, beat * 2.0, beat * 3.0, beat * 3.0 + swing]:
+			var t2: float = i * bar + pos
+			var acc := 0.05 if fmod(pos, beat) > 0.01 else 0.07
+			add_noise(l, t2, 0.18, acc, 0.002, 0.07, "hp", 7500.0, 0.7, MSR)
+			add_noise(r, t2 + 0.004, 0.18, acc * 0.8, 0.002, 0.07, "hp", 7800.0, 0.7, MSR)
+		# escobilla en la caja (barrido)
+		add_noise(l, i * bar + beat, 0.25, 0.035, 0.05, 0.1, "bp", 3000.0, 0.8, MSR)
+		add_noise(r, i * bar + beat * 3.0, 0.25, 0.035, 0.05, 0.1, "bp", 3200.0, 0.8, MSR)
+	# vibráfono: una frase sencilla con notas de los acordes en la segunda mitad
+	var offs := [0.0, beat + swing, beat * 2.5]
+	for i in range(8, bars):
+		var voice2: Array = prog[i][1]
+		for k in 3:
+			if rng.randf() < 0.25:
+				continue
+			var n2: int = int(voice2[rng.randi() % voice2.size()]) + 12
+			var t3: float = i * bar + float(offs[k])
+			add_bell(l, t3, midi(n2), 0.05, 0.6, MSR)
+			add_bell(r, t3 + 0.01, midi(n2), 0.045, 0.6, MSR)
+	finish_track("music_casino", l, r, loop_len, 0.32)

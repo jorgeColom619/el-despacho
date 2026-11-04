@@ -15,6 +15,8 @@ cargo en el Congreso.
   2D clásico, si lo prefieres).
 - **Minijuegos dentro de la escena**: rueda de prensa, entrevista en el plató, negociaciones y cumbres, y la sesión
   de control en el hemiciclo, sin ventanas de opciones.
+- **El Gran Casino**: alguna vez te invitan a una noche de ruleta, blackjack y tragaperras... con dinero público. Si
+  sale mal, hay que tapar el agujero, y si alguien tira del hilo, la has liado.
 - **Cada partida es distinta**: escenarios, tramas, mundo aleatorio, memoria de tus diez últimas partidas y
   situaciones generadas por piezas.
 - **Decisiones que vuelven**: promesas electorales, personajes con memoria, la red social Pío y respuestas escritas
@@ -225,7 +227,8 @@ En diez partidas seguidas, de una a la siguiente se repite menos del 20 % de lo 
 | Recuerdos de los personajes (plantillas) | 50 |
 | Reglas del reto del día | 20 |
 | Piezas para generar leyes menores, cartas, indultos y obras | 115 · 60 · 53 · 66 |
-| Objetos de la tienda · logros | 45 · 24 |
+| Objetos de la tienda · logros | 45 · 27 |
+| Casino: anfitriones · juegos · formas de tapar el agujero | 4 · 3 · 4 |
 
 </details>
 
@@ -312,7 +315,35 @@ resume el resultado. Al mover el ratón, la cámara mira un poco hacia él.
   el **aplausómetro** y el combo.
 
 En **Opciones** puedes jugar los minijuegos en 3D o con los fondos 2D de siempre, por separado del despacho (despacho
-2D con minijuegos 3D, o al revés).
+2D con minijuegos 3D, o al revés). El casino es siempre en 3D.
+
+### El Gran Casino
+
+Una o dos veces por legislatura (más en el modo meme), la Jefa de Gabinete entra con una invitación: el magnate Byron
+Vance inaugura su casino, el Emir de Qadar lo alquila entero o Viktor Drogan quiere una partida «entre presidentes»;
+en el modo meme invita el expresidente Galbana. No ir tiene su precio con el anfitrión.
+
+- **Siempre se juega dinero público.** En la caja eliges de dónde sale (fondos reservados, Infraestructuras o
+  Defensa; en el modo meme, la hucha de las pensiones) y cuánto. Cuanto más grande la caja, más se nota si falta.
+- **Ruleta europea** con todas las apuestas: plenos, caballos, transversales, cuadros, seisenas, docenas, columnas y
+  sencillas, que se ponen haciendo clic en el paño (en la raya entre dos números es un caballo; en un cruce, un
+  cuadro). La rueda y la bola son de verdad: la bola corre por la pista, salta en las casillas y el crupier canta el
+  número. Se puede repetir la jugada o borrar las fichas desde el propio paño.
+- **Blackjack** con seis barajas: pedir, plantarse, doblar, dividir y seguro; la banca pide con 16 y se planta con 17,
+  y el blackjack paga 3 a 2.
+- **Tragaperras** de tres rodillos con su tabla de premios en la barriga de la máquina (tres sellos presidenciales
+  pagan 300 veces la apuesta; en el modo meme, tres Galbanas). Se juega con la palanca o con los botones del pupitre.
+- **La noche**: empieza a las 22:30 y cada jugada gasta minutos; a las 3:00 llama la Jefa de Gabinete y se acabó. Por
+  el camino el anfitrión puede ofrecer una **jugada arreglada** (gana seguro, pero luego se cobra el favor), un
+  **crédito** si te quedas sin fichas y puede colarse un **fotógrafo**.
+- **En la caja**: si ganas, el dinero público vuelve a su partida y decides qué hacer con el beneficio (al Tesoro, a
+  una ONG o a una cuenta en Qadar). Si pierdes, hay que **tapar el agujero**: contabilidad creativa (gratis... hasta
+  que alguien tira del hilo), un recorte sin avisar en esa partida, echarle la culpa a un ministro (que sabe la
+  verdad) o un préstamo discreto del anfitrión.
+- **Lo que vuelve**: los anfitriones se cobran los favores meses después y el ministro cesado puede hablar. Cada mes,
+  lo escondido pesa y la prensa puede publicarlo: entonces eliges entre dar la cara, negarlo todo, culpar al anfitrión
+  o dimitir. Con un escándalo grande llega la moción de censura, y existe un final propio: **«Dimisión por el
+  escándalo del casino»**.
 
 ### Tu Gobierno
 
@@ -366,7 +397,7 @@ adelante a través de un servidor propio (ver `scripts/systems/interprete.gd`).
 - El escaparate cambia **cada día**, con un artículo destacado rebajado un 30 %.
 - Personaliza la bandera nacional, el estilo del despacho, la madera del escritorio, el teléfono rojo, el globo, la
   lámpara, el traje, la corbata, los accesorios (pin, banda, medalla), la tinta de los sellos y la mascota.
-- **24 logros** con recompensa.
+- **27 logros** con recompensa.
 - **Lingotes** (moneda premium): funcionan en **modo de prueba**, sin cobros reales. `scripts/autoload/payments.gd`
   explica cómo conectar Steam o Stripe cuando se publique el juego (los cobros reales deben validarse siempre en un
   servidor, nunca solo en el cliente).
@@ -457,6 +488,7 @@ Python para Blender.
 │   └── interptest.gd         prueba de las respuestas escritas
 ├── shaders/                  2D (papel, tinta, mapa, grano...) y 3D (*3d.gdshader: cielo, fuego, banderas...)
 ├── art/characters/           personajes 3D (visitor.glb, crowd.glb), generados con Blender
+├── art/casino/               piezas del casino (casino.glb): ruleta, mesas, tragaperras, lámparas... (Blender)
 ├── art/maps/                 mapas del mundo y de Valdoria (PNG de identificadores + JSON)
 ├── audio/                    música y efectos, generados por código
 ├── fonts/                    tipografías y sus licencias
@@ -475,6 +507,13 @@ con `add_pick()`, tarjetas con `deal_cards()`, subtítulos con `say()`, cita con
 `screen()`); además `card_3d.gd` (las tarjetas), `press_room_3d.gd`, `studio_3d.gd`, `nego_room_3d.gd`,
 `congress_3d.gd` y `crowd_3d.gd` (el público lejano).
 
+**El casino**: `scripts/systems/casino.gd` (invitaciones, el dinero público, cómo se tapa el agujero, los favores y el
+escándalo; el estado vive en `GS.casino`), las reglas de cada juego sin interfaz (`ruleta.gd`, `blackjack.gd` y
+`tragaperras.gd`, en `scripts/systems/`), los datos en `scripts/data/casino_data.gd`, la noche en
+`scripts/overlays/casino_overlay.gd`, el salón 3D en `scripts/stages3d/casino_3d.gd` (con las piezas de
+`art/casino/casino.glb`), el paño de la ruleta en `scripts/ui/roulette_layout.gd` y los dibujos (cartas, símbolos,
+fichas, letreros) en `scripts/ui/casino_art.gd`.
+
 **Los datos de la 3.0** (`scripts/data/`): `promises_data.gd`, `memoria_data.gd`, `social_data.gd`, `reto_data.gd`,
 `interprete_reglas.gd`, `plantillas_data.gd`, `generadores_data.gd`, `conversaciones_data.gd`, `events_v3a.gd` y
 `events_v3b.gd`. Los eventos anteriores están en `events_data.gd`, `events_tramas.gd` (tramas), `events_extra.gd` y
@@ -492,6 +531,7 @@ godot --headless --path . -- --autotest=270 --variety=30    # cuánto se parecen
 godot --headless --path . -- --autotest=365 --runs=20 --daily --strategy=casual   # retos de los próximos días
 godot --headless --path . -- --interptest                   # prueba las respuestas escritas
 godot --headless --path . -- --uitest                       # abre y prueba cada pantalla (unos 10 min)
+godot --headless --path . -- --uitest --solo-casino         # solo la noche en el casino (un minuto)
 ```
 
 | Opción de `--autotest=días` | Valores |
@@ -538,6 +578,8 @@ godot --path . -- --shot=office --open=controlrun --stageframes=200,400,600 --st
 | `--dmode=` · `--ddiff=` · `--dscen=` | Modo, dificultad y escenario de la partida de prueba |
 | `--fps` · `--nograin` · `--nolight` | Muestra los FPS en la consola · quita el grano · apaga la luz del despacho |
 | `DOC=id` · `CRISIS=id` | Variables de entorno: el documento o la crisis que abren `--open=doc` y `--open=crisis` |
+| `--open=casino` | La noche en el casino desde la caja. También `casinosalon`, `casinoruleta`, `casinobj`, `casinoslot` y `casinocaja` (empiezan ya con fichas en ese sitio) y `casinoinv` (la invitación) |
+| `HOST=id` · `DEMO=1` | Variables de entorno del casino: el anfitrión (`magnate`, `emir`, `drogan` o `galbana`) y que la mesa juegue sola (para las capturas) |
 
 </details>
 
@@ -550,7 +592,14 @@ La música, los efectos, los mapas y los personajes no se dibujan ni se graban: 
 godot --headless --path . --script res://tools/gen_audio.gd    # música y efectos  → audio/
 godot --headless --path . --script res://tools/gen_maps.gd     # mapas             → art/maps/
 blender -b --factory-startup -P tools/blender/gen_characters.py -- [salida.glb] [carpeta_de_vistas_previas]
+blender -b --factory-startup -P tools/blender/gen_casino.py -- [salida.glb] [vista_previa.png]   # → art/casino/
+godot --headless --path . --script res://tools/gen_audio.gd -- --solo-casino   # solo el audio del casino
 ```
+
+> [!NOTE]
+> En un equipo sin tarjeta gráfica el juego se reinicia una vez para cambiar al motor *Compatible*, y al reiniciarse
+> pierde las opciones de captura. Para hacer capturas en esos equipos, indica el motor desde el principio:
+> `godot --path . --rendering-method gl_compatibility -- --shot=office ...`
 
 `gen_characters.py` (Blender 5.2) crea `art/characters/visitor.glb`, con todas las piezas de los visitantes y sus
 animaciones (andar, hablar, sentarse y los gestos de los escenarios: señalar, reírse, celebrar, abuchear, el atril,
@@ -566,6 +615,10 @@ de gestos. Después, vuelve a importar el proyecto (`godot --headless --path . -
 
 ## Historial de versiones
 
+- **Próxima versión** (en desarrollo): **el Gran Casino**. Invitaciones de cuatro anfitriones, una noche de ruleta,
+  blackjack y tragaperras en un salón 3D con dinero público, la jugada arreglada, el crédito, el fotógrafo, las cuentas
+  en la caja (y cómo tapar el agujero), los favores que vuelven, el escándalo, un final nuevo y tres logros. Música de
+  jazz de salón y sonidos propios generados por código; las piezas 3D, con un script de Blender.
 - **4.0** (primera versión con ejecutables en [Releases](../../releases)):
   - **Despacho 3D**: el despacho en primera persona con objetos con físicas y los cuatro minijuegos de hablar y
     negociar como escenas 3D sin ventanas de opciones. Opciones separadas para el despacho y los minijuegos 3D,

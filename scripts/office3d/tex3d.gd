@@ -109,6 +109,8 @@ static func _generate(kind: String, p: Dictionary) -> Dictionary:
 			return _wallpaper(Color(p["c0"]), Color(p["c1"]), Color(p["acc"]))
 		"carpet":
 			return _carpet(Color(p["c0"]), Color(p["c1"]))
+		"casino_carpet":
+			return _casino_carpet(Color(p["c0"]), Color(p["c1"]), Color(p["acc"]))
 		"leather":
 			return _leather()
 		"tufted":
@@ -386,6 +388,60 @@ static func _carpet(c0: Color, c1: Color) -> Dictionary:
 			_put(a, i * 3, c)
 			_hput(h, i * 3, 0.5 + (pv - 0.5) * 0.5 - edge * 0.08)
 	return {"a": _img(W, H, a), "h": _img(W, H, h), "bump": 2.5}
+
+
+## Moqueta de casino (se repite): celosía de rombos dorados con rosetas en los cruces y flores en el centro de
+## cada rombo, sobre un fondo granate con aguas
+static func _casino_carpet(c0: Color, c1: Color, acc: Color) -> Dictionary:
+	var W := 512
+	var pile := _noise(81, 0.35, W, W, 1)
+	var abrash := _noise(82, 0.012, W, W, 2)
+	var a := PackedByteArray()
+	a.resize(W * W * 3)
+	var h := PackedByteArray()
+	h.resize(W * W * 3)
+	var dark := c0.darkened(0.35)
+	for y in W:
+		for x in W:
+			var i := y * W + x
+			var c := c0.lerp(dark, abrash[i] / 255.0 * 0.5)
+			var edge := 0.0
+			# celosía: rombos de 256 px (dos por textura en cada sentido)
+			var u := fposmod(float(x + y), 256.0) - 128.0
+			var v := fposmod(float(x - y), 256.0) - 128.0
+			var d := minf(absf(u), absf(v))
+			if d < 3.0:
+				c = acc
+				edge = 1.0
+			elif d < 6.0:
+				c = dark
+			# roseta en cada cruce de la celosía
+			var cx := fposmod(float(x), 128.0) - 64.0
+			var cy := fposmod(float(y), 128.0) - 64.0
+			var on_node := (int(floor(x / 128.0)) + int(floor(y / 128.0))) % 2 == 0
+			var r := sqrt(cx * cx + cy * cy)
+			var th := atan2(cy, cx)
+			if on_node:
+				var petal := 30.0 * (0.62 + 0.38 * cos(8.0 * th))
+				if r < petal:
+					c = c1 if r > 12.0 else acc
+					if absf(r - petal) < 2.2:
+						c = acc
+						edge = 1.0
+			else:
+				# flor de cuatro pétalos en el centro del rombo
+				var fl := 26.0 * absf(cos(2.0 * th))
+				if r < fl and r > 5.0:
+					c = c1.lightened(0.08)
+				if r < 6.0:
+					c = acc
+				if absf(r - 40.0) < 1.6 and absf(sin(4.0 * th)) > 0.4:
+					c = acc.darkened(0.2)
+			var pv := pile[i] / 255.0
+			c = c.darkened((pv - 0.5) * 0.14)
+			_put(a, i * 3, c)
+			_hput(h, i * 3, 0.5 + (pv - 0.5) * 0.5 - edge * 0.1)
+	return {"a": _img(W, W, a), "h": _img(W, W, h), "bump": 2.5}
 
 
 ## Cuero con grano (gris claro: se tiñe con el color del material)

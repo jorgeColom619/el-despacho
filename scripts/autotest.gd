@@ -125,8 +125,10 @@ func _play(days: int) -> Dictionary:
 	_result["prom_ok"] = ps[0]
 	_result["prom_n"] = ps[1]
 	_result["memo"] = int(_result.get("memo", 0))
-	for ck in ["conv_control", "control", "conv_rueda"]:
+	for ck in ["conv_control", "control", "conv_rueda", "casino"]:
 		_result[ck] = int(_result.get(ck, 0))
+	_result["casino_net"] = float(_result.get("casino_net", 0.0))
+	_result["casino_found"] = 1.0 if bool(GS.casino.get("discovered", false)) else 0.0
 	_result["fac"] = GS.fac.duplicate()
 	return _result
 
@@ -197,7 +199,8 @@ func _print_summary(rs: Array) -> void:
 	var n := float(rs.size())
 	var won := 0
 	var ends := {}
-	var sums := {"approval": 0.0, "approval_min": 0.0, "debt": 0.0, "laws": 0.0, "terms": 0.0, "corr": 0.0, "events": 0.0, "prom_ok": 0.0, "prom_n": 0.0, "memo": 0.0, "conv_control": 0.0, "control": 0.0, "conv_rueda": 0.0}
+	var sums := {"approval": 0.0, "approval_min": 0.0, "debt": 0.0, "laws": 0.0, "terms": 0.0, "corr": 0.0, "events": 0.0, "prom_ok": 0.0, "prom_n": 0.0, "memo": 0.0, "conv_control": 0.0, "control": 0.0, "conv_rueda": 0.0,
+		"casino": 0.0, "casino_net": 0.0, "casino_found": 0.0}
 	var fac := {}
 	for r in rs:
 		if r["won"]:
@@ -216,6 +219,7 @@ func _print_summary(rs: Array) -> void:
 	print("   Finales: ", ends)
 	print("   Recuerdos con decisión por partida: %.1f" % (sums["memo"] / n))
 	print("   Sesiones de control por partida: %.1f convocadas · %.1f celebradas · ruedas de prensa convocadas: %.1f" % [sums["conv_control"] / n, sums["control"] / n, sums["conv_rueda"] / n])
+	print("   Casino: %.1f noches por partida · saldo medio %s por partida · se descubrió en el %d%% de las partidas" % [sums["casino"] / n, UI.money(sums["casino_net"] / n), int(sums["casino_found"] * 100.0 / n)])
 	for r in rs:
 		if r.has("rules"):
 			print("   Reto %s: %s · aprob %.0f" % [str(r["rules"]), r["end"], float(r["approval"])])
@@ -252,6 +256,8 @@ func _score_fx(fx: Dictionary) -> float:
 				s -= float(v) * 0.5
 			elif k == "approval":
 				s += float(v) * 1.5
+		elif k == "casino_dimision":
+			s -= 100.0
 		elif k == "risk" and v is Dictionary:
 			s += _score_fx(v.get("fx", {})) * float(v.get("p", 0.5))
 	if fx.has("else") and fx["else"] is Dictionary and fx.has("risk"):
@@ -416,6 +422,15 @@ func _try_law() -> void:
 
 func _on_req(kind: String, data: Dictionary) -> void:
 	match kind:
+		"casino":
+			# la noche entera sin interfaz: los buenos jugadores sacan poco y lo devuelven todo
+			var rng := RandomNumberGenerator.new()
+			rng.randomize()
+			var r := GS.Casino.simulate(str(data.get("host", "magnate")), rng, strategy in ["player", "smart"])
+			_result["casino"] = int(_result.get("casino", 0)) + 1
+			_result["casino_net"] = float(_result.get("casino_net", 0.0)) + float(r["net"])
+			if not quiet:
+				print(">>> CASINO (día %d, %s): sacó %s, salió con %s" % [GS.day, data.get("host", ""), UI.money(float(r["taken"])), UI.money(float(r["chips"]))])
 		"nego", "summit":
 			var t := DB.topic(data.get("who", ""), data.get("topic", ""))
 			if not t.is_empty():

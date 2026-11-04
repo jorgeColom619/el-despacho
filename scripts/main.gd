@@ -34,6 +34,7 @@ const OVERLAYS := {
 	"tutorial": "res://scripts/overlays/tutorial_overlay.gd",
 	"movil": "res://scripts/overlays/movil_overlay.gd",
 	"leyes": "res://scripts/overlays/laws_overlay.gd",
+	"casino": "res://scripts/overlays/casino_overlay.gd",
 }
 
 const TIPS := {
@@ -654,6 +655,14 @@ func _debug_start() -> void:
 		"ending":
 			GS.policies = ["vivienda", "transparencia"]
 			_on_game_over({"reason": "reelegido"})
+		"casinoinv":
+			# la Jefa de Gabinete trae la invitación al casino
+			GS.Casino.invite(OS.get_environment("HOST"))
+			open_overlay("advisor", {"item": GS.visitors.back()})
+		"casino", "casinoruleta", "casinobj", "casinoslot", "casinocaja", "casinosalon":
+			# CASINO: el anfitrión (magnate, emir, drogan, galbana); --open=casinoruleta empieza ya sentado en la ruleta
+			var skip: String = {"casino": "","casinoruleta": "ruleta", "casinobj": "blackjack", "casinoslot": "slot", "casinocaja": "caja", "casinosalon": "salon"}[debug_open]
+			open_overlay("casino", {"host": OS.get_environment("HOST"), "skip": skip, "demo": OS.get_environment("DEMO") != ""})
 		"election":
 			GS.day = GS.term_days
 			open_overlay("election", {})

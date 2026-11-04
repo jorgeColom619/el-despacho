@@ -18,6 +18,7 @@ const HEADS := {
 	"censura": ["CAE EL GOBIERNO DE %s", "El Congreso aprueba la moción de censura. La oposición toma el poder."],
 	"golpe": ["GOLPE DE ESTADO: DETENIDO %s", "Una junta militar toma el control del país y suspende la Constitución."],
 	"bancarrota": ["VALDORIA, EN QUIEBRA: DIMITE %s", "El país suspende pagos. El Fondo Monetario Global toma el control de las cuentas."],
+	"casino": ["%s DIMITE POR EL ESCÁNDALO DEL CASINO", "El presidente abandona el Palacio tras confirmarse que se jugó dinero público en el Gran Casino de Santa Aurora."],
 }
 
 

@@ -2,6 +2,9 @@ extends Node
 ## Prueba de humo de la interfaz: abre cada pantalla, simula interacciones y la cierra.
 ## Uso: godot --headless --path . -- --uitest
 
+const RuletaS := preload("res://scripts/systems/ruleta.gd")
+const SlotS := preload("res://scripts/systems/tragaperras.gd")
+
 var main: Node
 
 
@@ -33,6 +36,21 @@ func _until(cond: Callable, o, limit := 15.0) -> void:
 
 func run(m: Node) -> void:
 	main = m
+	# --solo-casino: solo la noche en el casino (mucho más rápido que la prueba entera)
+	if "--solo-casino" in OS.get_cmdline_user_args():
+		GS.new_game({"name": "Prueba", "party": "MP", "difficulty": 1, "years": 1, "look": {}})
+		GS.no_save = true
+		main._show_office()
+		GS.set_speed(0)
+		await _wait(0.3)
+		await _casino()
+		print("UITEST COMPLETADO")
+		for p in Sfx.get_children():
+			if p is AudioStreamPlayer:
+				(p as AudioStreamPlayer).stop()
+		await _wait(0.3)
+		get_tree().quit()
+		return
 	for party in ["MP", "AR", "CC"]:
 		GS.new_game({"name": "Prueba", "party": party, "difficulty": 1, "years": 1, "look": {}})
 		GS.no_save = true
@@ -56,6 +74,76 @@ func run(m: Node) -> void:
 			(p as AudioStreamPlayer).stop()
 	await _wait(0.3)
 	get_tree().quit()
+
+
+## El casino: la invitación (aceptarla abre la noche), una jugada en cada juego y las cuentas en la caja
+func _casino() -> void:
+	GS.Casino.invite("magnate")
+	var inv = await _open("advisor", {"item": GS.visitors.back()})
+	inv.tw.skip()
+	await _wait(0.2)
+	inv._decide(0, false)
+	await _wait(2.8)
+	var c = main.current_overlay
+	var opened: bool = c != null and c.get("night") != null
+	print("OK invitación al casino · al aceptar abre el casino: ", opened)
+	if not opened:
+		await _close_current()
+		return
+	# sin sorpresas por el camino (el anfitrión y el fotógrafo se prueban aparte)
+	c.night["bribe_offered"] = true
+	c.night["photo_done"] = true
+	c._fund("reservados", 2)
+	c._go_lobby(false)
+	await _wait(0.3)
+	var start: float = c.night["chips"]
+	# ruleta: al rojo y un pleno
+	c._enter_roulette()
+	c.chip_sel = 25
+	c._on_place("rojo", RuletaS.outside_nums("rojo"), Vector2(500, 645))
+	c._on_place("pleno", [17], c.stage.layout.cell_center(17))
+	var staked: float = c.ruleta.total()
+	c._spin()
+	await _until(func(): return not c.busy, c, 25.0)
+	print("OK casino · ruleta: apostado %s, número %d, fichas %s" % [UI.money(staked), c.ruleta.history.back(), UI.money(c.night["chips"])])
+	# blackjack: apuesta, reparto y plantarse (o lo que toque)
+	c._leave_table()
+	c._enter_blackjack()
+	c._bj_add(25)
+	c._bj_deal()
+	var guard := 0
+	while (c._bj_dealt or c.busy) and guard < 60:
+		guard += 1
+		await _wait(0.4)
+		if not c.busy and c.bj.phase == "insurance":
+			c.bj.set_insurance(false)
+			c._bj_next()
+		elif not c.busy and c.bj.phase == "player":
+			c._bj_act("plantarse")
+	print("OK casino · blackjack: mano %s · banca %d · fichas %s" % [str(c.bj.hands[0]["res"]), int(c.bj.value(c.bj.dealer)[0]), UI.money(c.night["chips"])])
+	# tragaperras: una tirada
+	c._leave_table()
+	c._enter_slot(0)
+	c._slot_spin()
+	await _until(func(): return not c.busy, c, 20.0)
+	print("OK casino · tragaperras: %s · fichas %s · devuelve %.1f %%" % [str(c.slot.line()), UI.money(c.night["chips"]), SlotS.rtp() * 100.0])
+	# la caja: cuentas y el agujero (o el beneficio)
+	c._leave_table()
+	c._to_cashier(false)
+	await _wait(0.5)
+	var r: Dictionary = GS.Casino.cash_out(c.night)
+	c._settle("tesoro", "contabilidad")
+	await _wait(1.0)
+	print("OK casino · caja: sacó %s, salió con %s (beneficio %s, agujero %s) · escondido %s · exposición %.0f" % [UI.money(r["taken"]), UI.money(r["chips"]), UI.money(r["profit"]), UI.money(r["hole"]), UI.money(GS.casino["hidden"]), GS.casino["exposure"]])
+	print("   fichas al empezar %s" % UI.money(start))
+	await _close_current()
+	# el escándalo: sale a la luz y la Jefa de Gabinete entra con la portada
+	GS.casino["lost"] = 900.0
+	GS.Casino.discover("prensa")
+	var esc: Dictionary = GS.visitors[0]
+	print("OK casino · escándalo: ", esc["ev"]["title"], " · opciones: ", esc["ev"]["choices"].size())
+	while GS.visitors.size() > 0:
+		GS.dismiss(GS.visitors[0])
 
 
 func _suite() -> void:
@@ -322,6 +410,7 @@ func _suite() -> void:
 		await _wait(3.0)
 	print("OK debate")
 	await _close_current()
+	await _casino()
 	for k in ["cabinet", "phonebook", "tv", "pause", "newspaper"]:
 		o = await _open(k, {})
 		print("OK ", k)
