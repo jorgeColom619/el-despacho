@@ -662,7 +662,7 @@ func _debug_start() -> void:
 		"casino", "casinoruleta", "casinobj", "casinoslot", "casinocaja", "casinosalon":
 			# CASINO: el anfitrión (magnate, emir, drogan, galbana); --open=casinoruleta empieza ya sentado en la ruleta
 			var skip: String = {"casino": "","casinoruleta": "ruleta", "casinobj": "blackjack", "casinoslot": "slot", "casinocaja": "caja", "casinosalon": "salon"}[debug_open]
-			open_overlay("casino", {"host": OS.get_environment("HOST"), "skip": skip, "demo": OS.get_environment("DEMO") != ""})
+			open_overlay("casino", {"host": OS.get_environment("HOST"), "skip": skip, "demo": OS.get_environment("DEMO")})
 		"election":
 			GS.day = GS.term_days
 			open_overlay("election", {})

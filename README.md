@@ -51,6 +51,14 @@ cargo en el Congreso.
 | ![Sesión de control desde la tribuna del Congreso](docs/capturas/3d-congreso.jpg) | ![Negociación: la pluma sobre la regla del tratado](docs/capturas/3d-negociacion.jpg) |
 | ![Entrevista en el plató de Canal 7](docs/capturas/3d-entrevista.jpg) | ![El móvil del presidente: la red social Pío](docs/capturas/movil.jpg) |
 
+**El Gran Casino**
+
+| | |
+|---|---|
+| ![Ruleta: las fichas sobre el paño](docs/capturas/casino-ruleta.jpg) | ![La bola corre por la pista de la ruleta](docs/capturas/casino-rueda.jpg) |
+| ![Blackjack: pedir, plantarse, doblar o dividir](docs/capturas/casino-blackjack.jpg) | ![Tragaperras: tres sellos presidenciales, el gran premio](docs/capturas/casino-tragaperras.jpg) |
+| ![La caja: ¿de qué partida sale el dinero? (modo meme)](docs/capturas/casino-caja.jpg) | ![La invitación: una partida con Drogan](docs/capturas/casino-invitacion.jpg) |
+
 **Paneles y despacho 2D**
 
 | | |
@@ -319,6 +327,8 @@ En **Opciones** puedes jugar los minijuegos en 3D o con los fondos 2D de siempre
 
 ### El Gran Casino
 
+![El salón del Gran Casino de Santa Aurora, con el Emir de Qadar como anfitrión](docs/capturas/casino-salon.jpg)
+
 Una o dos veces por legislatura (más en el modo meme), la Jefa de Gabinete entra con una invitación: el magnate Byron
 Vance inaugura su casino, el Emir de Qadar lo alquila entero o Viktor Drogan quiere una partida «entre presidentes»;
 en el modo meme invita el expresidente Galbana. No ir tiene su precio con el anfitrión.
@@ -579,7 +589,7 @@ godot --path . -- --shot=office --open=controlrun --stageframes=200,400,600 --st
 | `--fps` · `--nograin` · `--nolight` | Muestra los FPS en la consola · quita el grano · apaga la luz del despacho |
 | `DOC=id` · `CRISIS=id` | Variables de entorno: el documento o la crisis que abren `--open=doc` y `--open=crisis` |
 | `--open=casino` | La noche en el casino desde la caja. También `casinosalon`, `casinoruleta`, `casinobj`, `casinoslot` y `casinocaja` (empiezan ya con fichas en ese sitio) y `casinoinv` (la invitación) |
-| `HOST=id` · `DEMO=1` | Variables de entorno del casino: el anfitrión (`magnate`, `emir`, `drogan` o `galbana`) y que la mesa juegue sola (para las capturas) |
+| `HOST=id` · `DEMO=1` | Variables de entorno del casino: el anfitrión (`magnate`, `emir`, `drogan` o `galbana`) y que la mesa juegue sola (para las capturas). `DEMO=apuestas`: la ruleta pone fichas y no lanza; `DEMO=premio`: la jugada sale arreglada (el gran premio de la tragaperras) |
 
 </details>
 

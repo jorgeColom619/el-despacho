@@ -88,26 +88,33 @@ func build() -> void:
 				_enter_slot(1)
 			"caja":
 				_to_cashier(false)
-		if data.get("demo", false):
-			_demo(skip)
+		if str(data.get("demo", "")) != "":
+			_demo(skip, str(data["demo"]))
 		return
 	_intro()
 
 
-## Capturas de prueba (--open=casinoruleta con DEMO=1): apuesta y juega sola, sin sorpresas por el camino
-func _demo(skip: String) -> void:
+## Capturas de prueba (--open=casinoruleta con DEMO=1): apuesta y juega sola, sin sorpresas por el camino.
+## DEMO=premio: la jugada sale arreglada (el gran premio de la tragaperras). DEMO=apuestas: la ruleta solo apuesta
+func _demo(skip: String, how: String) -> void:
 	night["bribe_offered"] = true
 	night["photo_done"] = true
+	rigged_next = how == "premio"
 	match skip:
 		"ruleta":
 			_after(0.6, func():
 				chip_sel = 100
-				_on_place("pleno", [17], stage.layout.cell_center(17))
+				_on_place("pleno", [17], Layout.cell_center(17))
 				chip_sel = 25
 				_on_place("rojo", Ruleta.outside_nums("rojo"), Vector2(500, 645))
 				_on_place("docena", Ruleta.outside_nums("docena", 1), Vector2(690, 555))
 				_on_place("cuadro", [17, 18, 20, 21], Vector2(Layout.GX + 6 * Layout.CW, Layout.GY + Layout.CH))
-				_after(1.5, _spin))
+				_on_place("caballo", [8, 11], Vector2(Layout.GX + 3 * Layout.CW, Layout.GY + 1.5 * Layout.CH))
+				_on_place("transversal", [31, 32, 33], Vector2(Layout.GX + 10.5 * Layout.CW, Layout.GY + 3 * Layout.CH))
+				_on_place("pleno", [0], Layout.cell_center(0))
+				# (unos segundos con las fichas en el paño antes de lanzar la bola; con DEMO=apuestas, no se lanza)
+				if how != "apuestas":
+					_after(5.5, _spin))
 		"blackjack":
 			_after(0.6, func():
 				_bj_add(100)
