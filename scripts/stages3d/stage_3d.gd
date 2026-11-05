@@ -74,6 +74,8 @@ var _sub_line: RichTextLabel
 var _cap: VBoxContainer
 var _cap_who: Label
 var _cap_line: Label
+## Altura de la cita fija (arriba por defecto); un escenario puede bajarla si arriba hay una cara que taparía
+var caption_y := 40.0
 var _notice: Label
 var _title: VBoxContainer
 var _tip: PanelContainer
@@ -586,6 +588,7 @@ func caption(who: String, text: String, col := UI.RED) -> void:
 	_cap_who.add_theme_color_override("font_color", col)
 	_cap_who.visible = who != ""
 	_cap_line.text = "«%s»" % text
+	_cap.position.y = caption_y
 	_cap.modulate.a = 0.0
 	_cap_tw = UI.fade(_cap, 1.0, 0.25)
 
@@ -829,14 +832,18 @@ func _press_key(n: int) -> bool:
 # ------------------------------------------------------------------ tarjetas
 
 ## Reparte tarjetas (specs: ver card_3d.gd) en fila sobre una superficie de centro `center` y normal `normal`, de cara a
-## los ojos del presidente. on_pick(i) se llama al elegir una (clic o teclas 1, 2, 3...)
-func deal_cards(specs: Array, center: Vector3, normal: Vector3, gap: float, on_pick: Callable, card_size := Vector2(0.2, 0.13), delay := 0.0) -> void:
+## los ojos del presidente. on_pick(i) se llama al elegir una (clic o teclas 1, 2, 3...). Con tilt_deg > 0 reposan con el
+## borde de arriba levantado esos grados hacia los ojos, para que se lean sin tener que señalarlas
+func deal_cards(specs: Array, center: Vector3, normal: Vector3, gap: float, on_pick: Callable, card_size := Vector2(0.2, 0.13), delay := 0.0, tilt_deg := 0.0) -> void:
 	clear_cards()
 	var n := normal.normalized()
 	var far := (center - eye) - n * (center - eye).dot(n)
 	far = far.normalized()
 	var right := far.cross(n)
 	var base := Basis(right, n, -far)
+	if tilt_deg > 0.0:
+		base = base.rotated(right, deg_to_rad(tilt_deg))
+		center += n * card_size.y * 0.5 * sin(deg_to_rad(tilt_deg))
 	for i in specs.size():
 		var spec: Dictionary = specs[i].duplicate()
 		# teclas 1, 2, 3... salvo que la tarjeta diga "key": 0

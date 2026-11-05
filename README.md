@@ -589,7 +589,7 @@ godot --path . -- --shot=office --open=controlrun --stageframes=200,400,600 --st
 | `--fps` · `--nograin` · `--nolight` | Muestra los FPS en la consola · quita el grano · apaga la luz del despacho |
 | `DOC=id` · `CRISIS=id` | Variables de entorno: el documento o la crisis que abren `--open=doc` y `--open=crisis` |
 | `--open=casino` | La noche en el casino desde la caja. También `casinosalon`, `casinoruleta`, `casinobj`, `casinoslot` y `casinocaja` (empiezan ya con fichas en ese sitio) y `casinoinv` (la invitación) |
-| `HOST=id` · `DEMO=1` | Variables de entorno del casino: el anfitrión (`magnate`, `emir`, `drogan` o `galbana`) y que la mesa juegue sola (para las capturas). `DEMO=apuestas`: la ruleta pone fichas y no lanza; `DEMO=premio`: la jugada sale arreglada (el gran premio de la tragaperras) |
+| `HOST=id` · `DEMO=1` | Variables de entorno del casino: el anfitrión (`magnate`, `emir`, `drogan` o `galbana`) y que la mesa juegue sola (para las capturas). `DEMO=apuestas`: la ruleta pone fichas y no lanza; `DEMO=premio`: la jugada sale arreglada (el gran premio de la tragaperras); con `--open=casinocaja`, `DEMO=agujero` o `DEMO=ganancia` llegan a la caja perdiendo o ganando |
 
 </details>
 

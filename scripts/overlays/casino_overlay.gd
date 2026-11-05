@@ -87,6 +87,12 @@ func build() -> void:
 			"slot":
 				_enter_slot(1)
 			"caja":
+				# capturas de la caja con cuentas: DEMO=agujero (se perdió más de la mitad) o DEMO=ganancia
+				match str(data.get("demo", "")):
+					"agujero":
+						night["chips"] = float(night["chips"]) * 0.4
+					"ganancia":
+						night["chips"] = float(night["chips"]) * 1.8
 				_to_cashier(false)
 		if str(data.get("demo", "")) != "":
 			_demo(skip, str(data["demo"]))
@@ -226,28 +232,36 @@ func _show_leave(on: bool) -> void:
 
 # ------------------------------------------------------------------ tarjetas de elección
 
-## Superficie donde se reparten las tarjetas de elección según dónde está el presidente: [centro, normal, hueco, tamaño]
-func _surface(small := false) -> Array:
+## Superficie donde se reparten las tarjetas de elección según dónde está el presidente y cuántas son:
+## [centro, normal, hueco, tamaño, inclinación hacia los ojos en grados]
+func _surface(small := false, n := 2) -> Array:
 	match where:
 		"caja":
-			return [Stage.CAJA + Vector3(0, 1.142, 0.24), Vector3.UP, 0.29, Vector2(0.26, 0.17)]
+			if n >= 5:
+				return [Stage.CAJA + Vector3(0, 1.142, 0.24), Vector3.UP, 0.25, Vector2(0.235, 0.155), 24.0]
+			return [Stage.CAJA + Vector3(0, 1.142, 0.24), Vector3.UP, 0.29, Vector2(0.26, 0.17), 24.0]
 		"vestibulo":
-			return [Stage.LOBBY_TABLE + Vector3(0, 1.072, 0.02), Vector3.UP, 0.23, Vector2(0.21, 0.135)]
+			return [Stage.LOBBY_TABLE + Vector3(0, 1.072, 0.02), Vector3.UP, 0.23, Vector2(0.21, 0.135), 18.0]
 		"ruleta":
-			return [Stage.RT + Vector3(0.38, Stage.TOP + 0.012, -0.02), Vector3.UP, 0.26, Vector2(0.23, 0.15)]
+			return [Stage.RT + Vector3(0.38, Stage.TOP + 0.012, -0.02), Vector3.UP, 0.26, Vector2(0.23, 0.15), 18.0]
 		"blackjack":
 			if small:
-				return [Stage.BJ + Stage.BJ_ACTIONS + Vector3(0.02, 0.002, 0.02), Vector3.UP, 0.165, Vector2(0.15, 0.1)]
-			return [Stage.BJ + Vector3(0, Stage.TOP + 0.004, 0.06), Vector3.UP, 0.24, Vector2(0.21, 0.135)]
+				# las jugadas, a la derecha de la mano; con más de dos (doblar, dividir) se estrechan y la fila crece
+				# hacia la izquierda para que la última no se meta bajo el borde acolchado de la mesa
+				var g := 0.165 if n <= 2 else (0.155 if n == 3 else 0.14)
+				var sz := Vector2(0.15, 0.1) if n <= 2 else (Vector2(0.145, 0.097) if n == 3 else Vector2(0.13, 0.087))
+				var dx := 0.0 if n <= 2 else 0.0825 - (n - 1) * 0.5 * g
+				return [Stage.BJ + Stage.BJ_ACTIONS + Vector3(0.02 + dx, 0.002, 0.02), Vector3.UP, g, sz, 28.0]
+			return [Stage.BJ + Vector3(0, Stage.TOP + 0.004, 0.06), Vector3.UP, 0.24, Vector2(0.21, 0.135), 18.0]
 		"slot":
 			var r: Node3D = stage.slots[slot_i]["root"]
-			return [r.global_position + Vector3(0, 0.962, 0.312), Vector3(0, 0.894, 0.447), 0.2, Vector2(0.18, 0.115)]
-	return [Stage.LOBBY_TABLE + Vector3(0, 1.072, 0.02), Vector3.UP, 0.23, Vector2(0.21, 0.135)]
+			return [r.global_position + Vector3(0, 0.962, 0.312), Vector3(0, 0.894, 0.447), 0.2, Vector2(0.18, 0.115), 0.0]
+	return [Stage.LOBBY_TABLE + Vector3(0, 1.072, 0.02), Vector3.UP, 0.23, Vector2(0.21, 0.135), 18.0]
 
 
 func _cards(specs: Array, on_pick: Callable, small := false) -> void:
-	var s := _surface(small)
-	stage.deal_cards(specs, s[0], s[1], s[2], on_pick, s[3])
+	var s := _surface(small, specs.size())
+	stage.deal_cards(specs, s[0], s[1], s[2], on_pick, s[3], 0.0, s[4])
 
 
 # ------------------------------------------------------------------ la caja: de dónde sale el dinero
@@ -1116,6 +1130,8 @@ func _to_cashier(forced: bool) -> void:
 	var line := "Sacó %s de %s. Vuelve con %s en fichas." % [UI.money(float(r["taken"])), String(src["name"]).to_lower(), UI.money(float(r["chips"]))]
 	if float(r["credit"]) > 0.0:
 		line += " Le debe %s a %s." % [UI.money(float(r["credit"])), hd["name"]]
+	# arriba queda la cara de la cajera: la cuenta va entre las tarjetas del mostrador y los subtítulos
+	stage.caption_y = 792.0
 	stage.caption("La cuenta de la noche", line, UI.GOLD)
 	var specs := []
 	var keys := []

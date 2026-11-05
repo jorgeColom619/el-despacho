@@ -21,6 +21,9 @@ var _delay := 0.0
 var _t := 0.0
 var _face_mat: StandardMaterial3D
 var _body_mat: StandardMaterial3D
+## La cara se pinta en un SubViewport y, a los pocos fotogramas, se copia a una textura con mipmaps (ver _bake)
+var _sv: SubViewport
+var _bake_in := 3
 
 
 ## spec: {"title", "desc", "tag", "col" (color de la franja), "icon" (opcional), "key" (tecla, 0 = ninguna)}
@@ -42,6 +45,7 @@ func _build(spec: Dictionary) -> void:
 	sv.disable_3d = true
 	sv.render_target_update_mode = SubViewport.UPDATE_ONCE
 	add_child(sv)
+	_sv = sv
 	var face := Control.new()
 	face.size = Vector2(px)
 	face.theme = UI.theme
@@ -200,8 +204,32 @@ func discard(delay := 0.0) -> void:
 	t.tween_callback(queue_free)
 
 
+## Copia la cara ya pintada a una textura con mipmaps y filtro anisótropo: vista de lado o de lejos (la tarjeta reposa
+## casi tumbada) la letra pequeña sale suave y legible en vez de dentada, también con la resolución 3D reducida
+func _bake() -> void:
+	if _sv == null or not is_instance_valid(_sv):
+		return
+	var img := _sv.get_texture().get_image()
+	if img == null or img.is_empty():
+		return
+	img.generate_mipmaps()
+	var tex := ImageTexture.create_from_image(img)
+	_face_mat.albedo_texture = tex
+	_face_mat.emission_texture = tex
+	_face_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	_sv.queue_free()
+	_sv = null
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	# a los pocos fotogramas (cuando los textos ya están colocados) se vuelve a pintar la cara y se copia (sin
+	# renderizador, en las pruebas sin pantalla, no hay imagen que copiar y se queda el SubViewport)
+	if _sv != null and _bake_in > 0:
+		_bake_in -= 1
+		if _bake_in == 0 and DisplayServer.get_name() != "headless":
+			_sv.render_target_update_mode = SubViewport.UPDATE_ONCE
+			RenderingServer.frame_post_draw.connect(_bake, CONNECT_ONE_SHOT)
 	match state:
 		"deal":
 			var k := clampf((_t - _delay) / 0.36, 0.0, 1.0)
