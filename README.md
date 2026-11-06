@@ -625,10 +625,11 @@ de gestos. Después, vuelve a importar el proyecto (`godot --headless --path . -
 
 ## Historial de versiones
 
-- **Próxima versión** (en desarrollo): **el Gran Casino**. Invitaciones de cuatro anfitriones, una noche de ruleta,
-  blackjack y tragaperras en un salón 3D con dinero público, la jugada arreglada, el crédito, el fotógrafo, las cuentas
-  en la caja (y cómo tapar el agujero), los favores que vuelven, el escándalo, un final nuevo y tres logros. Música de
-  jazz de salón y sonidos propios generados por código; las piezas 3D, con un script de Blender.
+- **4.1**: **el Gran Casino**. Invitaciones de cuatro anfitriones, una noche de ruleta, blackjack y tragaperras en un
+  salón 3D con dinero público, la jugada arreglada, el crédito, el fotógrafo, las cuentas en la caja (y cómo tapar el
+  agujero), los favores que vuelven, el escándalo, un final nuevo y tres logros. Música de jazz de salón y sonidos
+  propios generados por código; las piezas 3D, con un script de Blender. Las tarjetas de elección de todos los
+  escenarios 3D se leen más nítidas.
 - **4.0** (primera versión con ejecutables en [Releases](../../releases)):
   - **Despacho 3D**: el despacho en primera persona con objetos con físicas y los cuatro minijuegos de hablar y
     negociar como escenas 3D sin ventanas de opciones. Opciones separadas para el despacho y los minijuegos 3D,
