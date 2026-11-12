@@ -15,10 +15,13 @@ const FIXES := {
 
 
 const Widgets := preload("res://scripts/ui/widgets.gd")
+const Gobierno := preload("res://scripts/systems/gobierno.gd")
 const FIRE_CP := 6
 
 var grid: GridContainer
 var picker: Control
+## Cargo que hay que cubrir sí o sí (tras un escándalo o una dimisión): sin cancelar y sin el coste del cese
+var forced := ""
 
 
 func build() -> void:
@@ -26,11 +29,11 @@ func build() -> void:
 	var head := title_bar("Consejo de Ministros", "Informe del Gabinete · rasgos y fichajes", "empresarios")
 	head.position = Vector2(80, 112)
 	root.add_child(head)
-	var sub := UI.lbl("Cada ministro tiene rasgos que afectan al país. Puede cesar a uno (−%d CP, Estabilidad ▼) y fichar a un sustituto entre tres candidatos." % FIRE_CP, UI.f_sans, 17, UI.DIM)
+	var sub := UI.lbl("La competencia de cada cargo pesa en su área y en lo que usted le delega. Puede cesar a uno (−%d CP, Estabilidad ▼) y elegir sustituto entre tres perfiles." % FIRE_CP, UI.f_sans, 17, UI.DIM)
 	sub.position = Vector2(80, 190)
 	root.add_child(sub)
 	grid = GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4
 	grid.position = Vector2(80, 226)
 	grid.add_theme_constant_override("h_separation", 18)
 	grid.add_theme_constant_override("v_separation", 16)
@@ -39,12 +42,16 @@ func build() -> void:
 	var cb := close_button("Levantar la sesión")
 	cb.position = Vector2(1640, 1012)
 	root.add_child(cb)
+	var pk := str(data.get("pick", ""))
+	if GS.ministers.has(pk):
+		forced = pk
+		_open_picker(pk, GS.gen_candidates(pk))
 
 
 func _fill() -> void:
 	for c in grid.get_children():
 		c.queue_free()
-	for k in ["jefa", "economia", "interior", "exteriores", "defensa", "sanidad"]:
+	for k in W.CABINET:
 		var r := _report(k)
 		grid.add_child(_card(GS.ministers[k], r[0], r[1], k))
 
@@ -62,6 +69,22 @@ func _traits_box(traits: Array, width: float) -> HFlowContainer:
 		c.tooltip_text = td["desc"]
 		flow.add_child(c)
 	return flow
+
+
+## «Competencia 74 · Solvente · Del partido» con una barra
+static func skill_row(m: Dictionary, width: float) -> Control:
+	var s := float(m.get("skill", Gobierno.MID))
+	var lv: Array = Gobierno.level(s)
+	var v := UI.vbox(3)
+	v.add_child(UI.lbl("Competencia %d · %s · %s" % [int(s), lv[0], Gobierno.origin_label(m)], UI.f_sans_b, 14, lv[1]))
+	var bar := Control.new()
+	bar.custom_minimum_size = Vector2(width, 6)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.draw.connect(func():
+		bar.draw_rect(Rect2(0, 0, width, 6), Color(1, 1, 1, 0.1))
+		bar.draw_rect(Rect2(0, 0, width * s / 100.0, 6), lv[1]))
+	v.add_child(bar)
+	return v
 
 
 func _fire(k: String) -> void:
@@ -91,7 +114,7 @@ func _open_picker(k: String, cands: Array) -> void:
 		var cv := UI.vbox(10)
 		cv.custom_minimum_size = Vector2(540, 470)
 		var pf := Control.new()
-		pf.custom_minimum_size = Vector2(500, 300)
+		pf.custom_minimum_size = Vector2(500, 250)
 		pf.clip_contents = true
 		pf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var p := Portrait.new()
@@ -103,6 +126,19 @@ func _open_picker(k: String, cands: Array) -> void:
 		cv.add_child(pf)
 		cv.add_child(UI.lbl(cand["name"], UI.f_serif_b, 28, UI.CREAM))
 		cv.add_child(UI.lbl(cand["role"], UI.f_sans_m, 16, UI.GOLD))
+		cv.add_child(skill_row(cand, 500))
+		var why := ""
+		match str(cand.get("origin", "")):
+			"independiente":
+				why = "Independiente: muy capaz, pero el partido se queja de que no cuente con los suyos (+%d CP)." % Gobierno.INDEP_CP
+			"socio":
+				why = "Cuota de %s: menos experiencia, pero afianza la coalición (relación +%d)." % [W.PARTIES[cand["party"]]["name"], int(Gobierno.SOCIO_REL_VICE if k == "vice" else Gobierno.SOCIO_REL)]
+			_:
+				why = "Del partido: de confianza, sin sorpresas (Estabilidad +2)."
+		var wl := UI.lbl(why, UI.f_sans_m, 15, UI.TEXT)
+		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		wl.custom_minimum_size = Vector2(500, 0)
+		cv.add_child(wl)
 		cv.add_child(_traits_box(cand["traits"], 500))
 		for t in cand["traits"]:
 			var d := UI.lbl("· " + W.TRAITS[t]["desc"], UI.f_sans, 15, UI.DIM)
@@ -112,19 +148,26 @@ func _open_picker(k: String, cands: Array) -> void:
 		var c2: Dictionary = cand
 		var card := Widgets.click_card(cv, func(): _hire(k, c2), 18)
 		h.add_child(card)
-	var cancel := UI.btn("Cancelar", "ghost", 18)
-	cancel.pressed.connect(func():
-		picker.queue_free()
-		picker = null)
-	v.add_child(cancel)
+	if forced != k:
+		var cancel := UI.btn("Cancelar", "ghost", 18)
+		cancel.pressed.connect(func():
+			picker.queue_free()
+			picker = null)
+		v.add_child(cancel)
 	root.add_child(picker)
 	UI.pop_in(v)
 
 
 func _hire(k: String, cand: Dictionary) -> void:
-	GS.pc -= FIRE_CP
+	var cost := (0 if forced == k else FIRE_CP) + Gobierno.hire_cost(cand)
+	if GS.pc < cost:
+		GS.toast.emit("No tiene capital político suficiente (%d CP)" % cost, "warn", "capital")
+		return
+	GS.pc -= cost
 	GS.apply_fx({"estabilidad": -2}, "Crisis de Gobierno", false)
 	GS.hire_minister(k, cand)
+	if forced == k:
+		forced = ""
 	Sfx.play("stamp", -2.0)
 	GS.toast.emit("%s es el nuevo nombramiento del Gobierno" % cand["name"], "good", "empresarios")
 	if picker != null:
@@ -135,6 +178,14 @@ func _hire(k: String, cand: Dictionary) -> void:
 
 func _report(k: String) -> Array:
 	match k:
+		"vice":
+			var socio := Gobierno.partner_party()
+			var t0 := "Coordino al Gobierno y superviso lo que usted delega. "
+			if socio != "":
+				t0 += "Nuestro socio más cercano es %s (relación %d)." % [W.PARTIES[socio]["name"], int(GS.parties[socio]["rel"])]
+			else:
+				t0 += "No tenemos ningún socio fiable en el Congreso: cuidado con las votaciones."
+			return [t0, clampf((float(GS.supporting_seats()) - 160.0) / 30.0, -1.0, 1.0)]
 		"jefa":
 			var worst := "trabajadores"
 			for f in GS.FACTIONS:
@@ -194,7 +245,7 @@ func _report(k: String) -> Array:
 func _card(m: Dictionary, text: String, mood: float, key: String) -> Control:
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", UI.sb(Color(0.05, 0.08, 0.13, 0.96), 10, Color(1, 1, 1, 0.1), 1, 0, 14))
-	card.custom_minimum_size = Vector2(570, 380)
+	card.custom_minimum_size = Vector2(425, 378)
 	var v := UI.vbox(8)
 	card.add_child(v)
 	var h := UI.hbox(14)
@@ -212,16 +263,17 @@ func _card(m: Dictionary, text: String, mood: float, key: String) -> Control:
 	p.anger = clampf(-mood, 0.0, 1.0) * 0.4
 	h.add_child(pf)
 	var nv := UI.vbox(2)
-	nv.add_child(UI.lbl(m["name"], UI.f_serif_b, 24, UI.TEXT))
+	nv.add_child(UI.lbl(m["name"], UI.f_serif_b, 21, UI.TEXT))
 	nv.add_child(UI.lbl(m["role"], UI.f_sans_m, 15, UI.GOLD))
 	var status := "Situación favorable" if mood > 0.3 else ("Situación delicada" if mood < -0.3 else "Situación estable")
 	nv.add_child(UI.lbl(status, UI.f_sans_b, 15, UI.GREEN if mood > 0.3 else (UI.RED if mood < -0.3 else UI.AMBER)))
 	h.add_child(nv)
 	v.add_child(h)
-	v.add_child(_traits_box(m.get("traits", []), 530))
-	var t := UI.lbl("«" + text + "»", UI.f_serif, 18, UI.TEXT)
+	v.add_child(skill_row(m, 395))
+	v.add_child(_traits_box(m.get("traits", []), 395))
+	var t := UI.lbl("«" + text + "»", UI.f_serif, 15, UI.TEXT)
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	t.custom_minimum_size = Vector2(530, 0)
+	t.custom_minimum_size = Vector2(395, 0)
 	v.add_child(t)
 	var b := UI.btn("Cesar y fichar sustituto (%d CP)" % FIRE_CP, "ghost", 15)
 	b.size_flags_horizontal = Control.SIZE_SHRINK_END

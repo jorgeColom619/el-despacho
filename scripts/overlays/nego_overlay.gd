@@ -133,7 +133,8 @@ func _make_party(who: String) -> Dictionary:
 	var pthr := {"orgulloso": -3.0, "agresivo": -8.0, "pragmatico": 5.0, "paciente": 2.0, "volatil": 0.0}
 	var rel: float = cp["rel"]
 	var lim: float = 45.0 + rel * 0.25 + float(pthr.get(pid, 0.0)) + (GS.meters["prestigio"] - 50.0) * 0.25 - (GS.difficulty - 1) * 6.0 + randf_range(-8.0, 8.0)
-	var negociador := GS.has_trait("negociador")
+	# Exteriores negocia con otros países; Economía, con sindicatos y patronal; la Vicepresidencia, con todos
+	var negociador := GS.Gobierno.has("negociador", ["exteriores", "vice"] if ch.has("country") else ["economia", "vice"])
 	if negociador:
 		lim += 6.0
 	if summit != "":

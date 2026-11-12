@@ -47,7 +47,7 @@ const TIPS := {
 	"press": "Elija el tono de cada respuesta. Los medios hostiles castigan la evasión; el humor es una apuesta arriesgada. Si se queda callado, lo pagará.",
 	"speech": "Primero elija la frase. Después vigile el teleprompter: el becario lo ha llenado de erratas. Haga clic en cada palabra cambiada o que sobre antes de que el presidente llegue a ella, o la dirá en directo.",
 	"leyes": "Aquí queda todo lo que ha legislado: haga clic en una ley para ver la votación, sus efectos permanentes y lo que cuesta cada mes. En las leyes menores se revela la letra pequeña de los anexos.",
-	"budget": "Mueva los deslizadores y vigile el saldo mensual y la reacción de cada grupo. Presentarlo al Congreso es gratis pero pueden tumbarlo.",
+	"budget": "Mueva los deslizadores y vigile el saldo mensual y la reacción de cada grupo. Cada año puede presentar unos Presupuestos al Congreso (gratis, pero pueden tumbarlos); para retoques pequeños, un decreto ley que luego hay que convalidar.",
 	"world": "Haga clic en un país para ver sus acciones diplomáticas. Los tratados comerciales y de inversión impulsan la economía.",
 	"dashboard": "En «Agenda legislativa» puede presentar leyes: son la herramienta más poderosa para cambiar el país. En «Congreso» puede reunirse con los grupos para ganar socios.",
 	"debate": "Elija la réplica adecuada: datos contra cifras, empatía contra emoción, elegancia contra ataques personales y realismo contra promesas imposibles.",

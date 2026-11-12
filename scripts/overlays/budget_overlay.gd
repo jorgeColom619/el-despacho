@@ -3,6 +3,7 @@ extends "res://scripts/ui/overlay.gd"
 
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Gobierno := preload("res://scripts/systems/gobierno.gd")
 
 var budget := {}
 var taxes := {}
@@ -12,6 +13,9 @@ var proj: Control
 var faces: Control
 var preview_f := {}
 var preview_m := {}
+var dec_btn: Button
+var cong_btn: Button
+var rule_lbl: Label
 
 
 func build() -> void:
@@ -45,12 +49,24 @@ func build() -> void:
 	lv.size = Vector2(800, 700)
 	root.add_child(lv)
 	lv.add_child(UI.lbl("GASTO PÚBLICO MENSUAL POR PARTIDAS", UI.f_sans_b, 14, Color(ink, 0.7)))
+	# cada ejercicio solo se puede mover un poco respecto a lo vigente (ver Gobierno.LAW_TAX / LAW_BUDGET)
 	for k in W.BUDGET.keys():
-		lv.add_child(_row(k, W.BUDGET[k]["name"], W.BUDGET[k]["icon"], 0.6, 1.5, budget[k], true))
+		var cur: float = budget[k]
+		var lo := minf(cur, maxf(0.6, cur - Gobierno.LAW_BUDGET))
+		var hi := maxf(cur, minf(1.5, cur + Gobierno.LAW_BUDGET))
+		lv.add_child(_row(k, W.BUDGET[k]["name"], W.BUDGET[k]["icon"], lo, hi, cur, true))
 	lv.add_child(UI.spacer(0, 8))
 	lv.add_child(UI.lbl("IMPUESTOS", UI.f_sans_b, 14, Color(ink, 0.7)))
 	for t in W.TAXES.keys():
-		lv.add_child(_row(t, W.TAXES[t]["name"], "dinero", W.TAXES[t]["min"], W.TAXES[t]["max"], taxes[t], false))
+		var cur2: float = taxes[t]
+		var lo2 := minf(cur2, maxf(W.TAXES[t]["min"], cur2 - Gobierno.LAW_TAX))
+		var hi2 := maxf(cur2, minf(W.TAXES[t]["max"], cur2 + Gobierno.LAW_TAX))
+		lv.add_child(_row(t, W.TAXES[t]["name"], "dinero", lo2, hi2, cur2, false))
+	lv.add_child(UI.spacer(0, 6))
+	var note := UI.lbl("Cada año, la ley de Presupuestos puede mover cada impuesto ±%d puntos y cada partida ±%d %%. Un decreto ley solo permite ajustes de ±%d punto y ±%d %%, y el Congreso tiene que convalidarlo en %d días." % [int(Gobierno.LAW_TAX), int(Gobierno.LAW_BUDGET * 100.0), int(Gobierno.DECREE_TAX), int(Gobierno.DECREE_BUDGET * 100.0), Gobierno.DECREE_CONVALIDATE], UI.f_sans, 14, Color(ink, 0.75))
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size = Vector2(790, 0)
+	lv.add_child(note)
 	var rv := UI.vbox(12)
 	rv.position = Vector2(994, 254)
 	rv.size = Vector2(800, 700)
@@ -67,6 +83,10 @@ func build() -> void:
 	faces.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	faces.draw.connect(_draw_faces)
 	rv.add_child(faces)
+	rule_lbl = UI.lbl("", UI.f_sans_m, 15, Color("8e2a22"))
+	rule_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rule_lbl.custom_minimum_size = Vector2(790, 0)
+	rv.add_child(rule_lbl)
 	var bh := UI.hbox(12)
 	rv.add_child(bh)
 	var cancel := UI.btn("Cerrar sin cambios", "ghost", 17)
@@ -74,14 +94,12 @@ func build() -> void:
 	cancel.pressed.connect(func(): close())
 	bh.add_child(cancel)
 	bh.add_child(UI.spacer(0, 0, true))
-	var dec := UI.btn("Aprobar por decreto (25 CP)", "normal", 17)
-	dec.tooltip_text = "Evita el Congreso, pero cuesta capital político y estabilidad."
-	dec.disabled = GS.pc < 25
-	dec.pressed.connect(_decree)
-	bh.add_child(dec)
-	var cong := UI.btn("Presentar al Congreso", "gold", 18)
-	cong.pressed.connect(_to_congress)
-	bh.add_child(cong)
+	dec_btn = UI.btn("Decreto ley de ajuste", "normal", 17)
+	dec_btn.pressed.connect(_decree)
+	bh.add_child(dec_btn)
+	cong_btn = UI.btn("Presentar al Congreso", "gold", 18)
+	cong_btn.pressed.connect(_to_congress)
+	bh.add_child(cong_btn)
 	_recalc()
 
 
@@ -139,6 +157,40 @@ func _recalc() -> void:
 	proj.set_meta("bal", bal)
 	proj.queue_redraw()
 	faces.queue_redraw()
+	_update_buttons()
+
+
+## Qué se puede hacer con estos cambios: ley de Presupuestos (una al año) o decreto ley (ajustes pequeños)
+func _update_buttons() -> void:
+	if dec_btn == null:
+		return
+	var changed := Gobierno.changed(budget, taxes)
+	var cblock := Gobierno.congress_block()
+	cong_btn.disabled = cblock != "" or not changed
+	cong_btn.tooltip_text = cblock if cblock != "" else ("Mueva algún deslizador para presentar unos Presupuestos." if not changed else "El Congreso vota las cuentas. Si las tumba, siguen las anteriores.")
+	var cost := Gobierno.decree_cost(budget, taxes)
+	dec_btn.text = "Decreto ley de ajuste (%d CP)" % cost
+	var dblock := Gobierno.decree_block()
+	var small := Gobierno.within(budget, taxes, Gobierno.DECREE_TAX, Gobierno.DECREE_BUDGET)
+	var why := ""
+	if not changed:
+		why = ""
+	elif dblock != "":
+		why = dblock
+	elif not small:
+		why = "Demasiado cambio para un decreto ley: como mucho ±%d punto por impuesto y ±%d %% por partida. Para más, presente unos Presupuestos." % [int(Gobierno.DECREE_TAX), int(Gobierno.DECREE_BUDGET * 100.0)]
+	elif GS.pc < cost:
+		why = "No tiene capital político suficiente para este decreto (%d CP)." % cost
+	dec_btn.disabled = not changed or why != ""
+	dec_btn.tooltip_text = why if why != "" else "Entra en vigor ya. El Congreso debe convalidarlo en %d días: si no lo hace, se deroga (−8 CP, Estabilidad ▼)." % Gobierno.DECREE_CONVALIDATE
+	if cblock != "" and changed and why != "":
+		rule_lbl.text = cblock + " " + why
+	elif changed and why != "" and small:
+		rule_lbl.text = why
+	elif cblock != "":
+		rule_lbl.text = cblock
+	else:
+		rule_lbl.text = ""
 
 
 func _draw_proj() -> void:
@@ -200,34 +252,21 @@ func _draw_faces() -> void:
 
 
 func _ideology() -> float:
-	var social: float = (budget["sanidad"] + budget["educacion"] + budget["social"] + budget["pensiones"] + budget["ambiente"]) / 5.0 - 1.0
-	var hard: float = (budget["defensa"] + budget["seguridad"]) / 2.0 - 1.0
-	var tax: float = (taxes["renta"] - 22.0) + (taxes["sociedades"] - 25.0)
-	return clampf(-social * 180.0 + hard * 120.0 - tax * 3.0, -80.0, 80.0)
-
-
-func _apply() -> void:
-	for k in budget.keys():
-		GS.budget[k] = budget[k]
-	for t in taxes.keys():
-		GS.taxes[t] = taxes[t]
-	GS.flags.erase("presupuesto_pendiente")
-	GS._update_targets()
-	GS.stats_changed.emit()
+	return Gobierno.ideology(budget, taxes)
 
 
 func _decree() -> void:
-	if GS.pc < 25:
+	var cost := Gobierno.decree_cost(budget, taxes)
+	if GS.pc < cost or Gobierno.decree_block() != "" or not Gobierno.within(budget, taxes, Gobierno.DECREE_TAX, Gobierno.DECREE_BUDGET) or not Gobierno.changed(budget, taxes):
 		return
-	GS.pc -= 25
-	_apply()
-	GS.apply_fx({"estabilidad": -5}, "Presupuestos por decreto")
-	GS.push_news("El Gobierno aprueba los presupuestos por decreto ley", 2)
+	Gobierno.decree(budget, taxes)
 	Sfx.play("stamp", -2.0)
 	close()
 
 
 func _to_congress() -> void:
+	if Gobierno.congress_block() != "" or not Gobierno.changed(budget, taxes):
+		return
 	var desc := "Saldo mensual previsto: %s. " % UI.money(float(proj.get_meta("bal", 0.0)), true)
 	var ideo := _ideology()
 	desc += "Orientación: %s." % ("expansiva y social" if ideo < -15 else ("de ajuste y orden" if ideo > 15 else "continuista"))

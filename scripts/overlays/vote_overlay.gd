@@ -366,18 +366,14 @@ func _conclude() -> void:
 			good = passed
 			text = "PRESUPUESTOS APROBADOS" if passed else "PRESUPUESTOS RECHAZADOS"
 			if passed:
-				var b: Dictionary = data.get("budget", {})
-				for k in b.keys():
-					GS.budget[k] = b[k]
-				var t: Dictionary = data.get("taxes", {})
-				for k in t.keys():
-					GS.taxes[k] = t[k]
-				GS.flags.erase("presupuesto_pendiente")
+				GS.Gobierno.apply_budget(data.get("budget", {}), data.get("taxes", {}))
+				GS.budget_passed_year = GS.Gobierno.year()
 				GS.push_news("El Congreso aprueba los Presupuestos Generales", 3)
 				GS.apply_fx({"estabilidad": 3}, "Presupuestos")
 			else:
 				GS.flags.erase("presupuesto_pendiente")
-				GS.push_news("Revés: el Congreso tumba los Presupuestos del Gobierno", 3)
+				GS.budget_retry_day = GS.day + GS.Gobierno.BUDGET_RETRY
+				GS.push_news("Revés: el Congreso tumba los Presupuestos del Gobierno. Seguirán los prorrogados", 3)
 				GS.apply_fx({"estabilidad": -6, "pc": -5}, "Presupuestos")
 	result_lbl.text = text
 	result_lbl.add_theme_color_override("font_color", UI.GREEN if good else UI.RED)

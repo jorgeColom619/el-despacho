@@ -84,6 +84,12 @@ var tutorial := {}
 var game_ended := false
 var ringing_time := 0.0
 var budget_year_done := -1
+## Ejercicio cuyos Presupuestos ya aprobó el Congreso, y desde qué día se pueden volver a presentar si los tumbó
+var budget_passed_year := -1
+var budget_retry_day := 0
+## Decreto ley pendiente de convalidar {day, db, dt, ideo} y día a partir del cual se puede aprobar otro
+var decree_pending := {}
+var decree_next_day := 0
 var elections_result := {}
 var wear := 0.0
 var _trait_sums := {}
@@ -136,6 +142,7 @@ const Redes := preload("res://scripts/systems/redes.gd")
 const Reto := preload("res://scripts/systems/reto.gd")
 const Plantillas := preload("res://scripts/systems/plantillas.gd")
 const Casino := preload("res://scripts/systems/casino.gd")
+const Gobierno := preload("res://scripts/systems/gobierno.gd")
 ## El Gran Casino: invitaciones, el dinero público perdido o escondido y lo que vuelve (ver casino.gd)
 var casino := {}
 
@@ -158,6 +165,8 @@ const UNLOCK_INFO := {
 	"presupuestos": {"name": "Presupuestos Generales", "event": "intro_presupuestos"},
 }
 ## Plazos para decidir según la dificultad (días)
+## Ventaja (o desventaja) del Gobierno en las urnas según la dificultad
+const ELECTION_BIAS := [-1.0, -6.0, -8.5]
 const DEADLINES := {"doc": [21, 14, 10], "advisor": [10, 7, 5], "crisis": [7, 5, 4]}
 
 
@@ -246,9 +255,11 @@ func new_game(opts: Dictionary) -> void:
 	cooldowns = {}
 	used = {}
 	ministers = {}
-	for k in ["jefa", "economia", "interior", "exteriores", "defensa", "sanidad"]:
+	for k in W.CABINET:
 		ministers[k] = W.CHARACTERS[k].duplicate(true)
 		ministers[k]["traits"] = W.INITIAL_TRAITS.get(k, []).duplicate()
+		ministers[k]["skill"] = float(W.INITIAL_SKILL.get(k, 60))
+		ministers[k]["origin"] = "partido"
 	_recalc_traits()
 	region_bonus = {}
 	campaign_acts = 0
@@ -268,6 +279,10 @@ func new_game(opts: Dictionary) -> void:
 	debate_done = false
 	last_law = ""
 	budget_year_done = 2027
+	budget_passed_year = -1
+	budget_retry_day = 0
+	decree_pending = {}
+	decree_next_day = 0
 	elections_result = {}
 	wear = 0.0
 	laws_term = 0
@@ -349,6 +364,7 @@ func _randomize_world() -> void:
 		elif r < 0.7:
 			tr.append(bad[rng.randi() % bad.size()])
 		m["traits"] = tr
+		m["skill"] = Gobierno.fit_traits(float(W.INITIAL_SKILL.get(k, 60)) + rng.randf_range(-22.0, 18.0), tr)
 	_recalc_traits()
 	var pers_keys: Array = W.PERSONALITIES.keys()
 	for c in countries.keys():
@@ -579,6 +595,7 @@ func advance_day() -> void:
 	_weather_tick(dd)
 	_check_deadlines()
 	_run_scheduled()
+	Gobierno.tick()
 	Promesas.tick()
 	Redes.tick()
 	Casino.tick()
@@ -591,7 +608,7 @@ func advance_day() -> void:
 	if dd["day"] == 1:
 		_monthly(dd)
 	# Desgaste del poder: tras la luna de miel, cada dos meses el Gobierno pierde algo de apoyo
-	var wear_cap: float = [7.0, 11.0, 14.0][difficulty] + 1.5 * float(term_index - 1)
+	var wear_cap: float = [7.0, 12.0, 15.0][difficulty] + 1.5 * float(term_index - 1)
 	if day % 60 == 0 and day - term_start >= 120 and wear > -wear_cap:
 		var step: float = [0.8, 1.2, 1.5][difficulty]
 		wear -= step
@@ -615,7 +632,7 @@ func advance_day() -> void:
 			var sid: String = DB.SUMMITS.keys().pick_random()
 			spawn({"id": "cumbre_" + sid, "type": "advisor", "who": "exteriores", "gen": true, "title": "Invitación a una cumbre",
 				"text": DB.SUMMITS[sid]["invite"],
-				"choices": [{"t": "Asistiré personalmente.", "fx": {"summit": sid}, "rec": "exteriores"}, {"t": "Enviar al ministro de Exteriores.", "fx": {"prestigio": -2}}], "default": 1})
+				"choices": [{"t": "Asistiré personalmente.", "fx": {"summit": sid}, "rec": "exteriores"}, {"t": "Enviar a {min_ext}.", "fx": Gobierno.summit_send_fx()}], "default": 1})
 	day_passed.emit()
 	stats_changed.emit()
 	_check_end()
@@ -638,16 +655,27 @@ func unemployment() -> float:
 
 func interest_rate() -> float:
 	var sens: float = [0.8, 1.0, 1.4][difficulty]
-	var r := 2.8 + maxf(0.0, debt_ratio() - 90.0) * 0.06 * sens + maxf(0.0, 50.0 - meters["estabilidad"]) * 0.02
+	var r := 2.8 + maxf(0.0, debt_ratio() - 85.0) * 0.05 * sens + maxf(0.0, debt_ratio() - 105.0) * 0.10 * sens + maxf(0.0, 50.0 - meters["estabilidad"]) * 0.02
 	if flags.has("prima"):
 		r += 1.0
-	return r
+	# el ministro de Economía da (o quita) confianza a los mercados
+	r += Gobierno.rate_adjust()
+	return maxf(0.5, r)
 
 
 func revenue() -> float:
 	var gm := gdp / 12.0
 	var ef: float = 0.85 + meters["economia"] / 100.0 * 0.3
-	return gm * (taxes["renta"] / 100.0 * 0.70 + taxes["sociedades"] / 100.0 * 0.18 + taxes["iva"] / 100.0 * 0.55 + 0.094) * ef
+	var r := tax_yield("renta") / 100.0 * 0.70 + tax_yield("sociedades") / 100.0 * 0.18 + tax_yield("iva") / 100.0 * 0.55 + 0.094
+	return gm * r * ef * Gobierno.revenue_factor()
+
+
+## Tipo que se recauda de verdad: por encima del tipo habitual cada punto rinde menos (fraude, economía sumergida,
+## empresas y patrimonios que se van). Cerca del máximo, subir más ya casi no recauda nada.
+func tax_yield(k: String) -> float:
+	var t: float = taxes[k]
+	var base: float = W.TAXES[k]["base"]
+	return t - float(W.TAXES[k].get("laffer", 0.0)) * pow(maxf(0.0, t - base), 2.0)
 
 
 func spending() -> float:
@@ -655,7 +683,7 @@ func spending() -> float:
 	for b in W.BUDGET.keys():
 		s += W.BUDGET[b]["base"] * budget[b]
 	# El gasto crece con la economía (salarios públicos, pensiones e inflación)
-	return s * gdp / 1200000.0
+	return s * gdp / 1200000.0 * (1.0 + float(_trait_sums.get("_spend", 0.0)))
 
 
 func interest() -> float:
@@ -699,10 +727,16 @@ func _update_targets() -> void:
 	var diff: float = [4.0, 0.0, -4.0][difficulty]
 	var tb := tax_burden()
 	var econ_treaties := 0
+	var spend_base := 0.0
+	var spend_now := 0.0
+	for bk in W.BUDGET.keys():
+		spend_base += W.BUDGET[bk]["base"]
+		spend_now += W.BUDGET[bk]["base"] * b[bk]
+	var multiplier := (spend_now / spend_base - 1.0) * 8.0
 	for t in treaties:
 		if t["type"] in ["comercio", "inversion", "energia"]:
 			econ_treaties += 1
-	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + cycle * 9.0 + (fac["empresarios"] - 50.0) * 0.12 + soft_mod("economia") + diff * 0.5
+	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + multiplier + cycle * 9.0 + (fac["empresarios"] - 50.0) * 0.12 - maxf(0.0, 35.0 - fac["empresarios"]) * 0.15 + soft_mod("economia") + diff * 0.5
 	mtarget["bienestar"] = 48.0 + (b["sanidad"] - 1.0) * 28.0 + (b["educacion"] - 1.0) * 14.0 + (b["social"] - 1.0) * 16.0 + (b["pensiones"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.15 + soft_mod("bienestar") + diff * 0.5
 	mtarget["seguridad"] = 52.0 + (b["seguridad"] - 1.0) * 32.0 + (b["defensa"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.1 + (m["bienestar"] - 50.0) * 0.1 + soft_mod("seguridad") + diff * 0.5
 	var support := (supporting_seats() - 175.0) / 350.0 * 40.0
@@ -718,7 +752,7 @@ func _update_targets() -> void:
 	var t := taxes
 	var bonus: Dictionary = W.PLAYER_PARTIES[pres["party"]]["bonus"]
 	ftarget["trabajadores"] = 50.0 + (m["economia"] - 50.0) * 0.3 + (b["social"] - 1.0) * 25.0 + (b["sanidad"] - 1.0) * 10.0 + (b["infraestructura"] - 1.0) * 10.0 - (t["iva"] - 21.0) * 1.2 - (t["renta"] - 22.0) * 0.4
-	ftarget["empresarios"] = 50.0 + (m["economia"] - 50.0) * 0.5 - (t["sociedades"] - 25.0) * 2.0 - (t["renta"] - 22.0) * 0.5 + (b["infraestructura"] - 1.0) * 10.0 + (m["estabilidad"] - 50.0) * 0.2
+	ftarget["empresarios"] = 50.0 + (m["economia"] - 50.0) * 0.6 - (t["sociedades"] - 25.0) * 2.0 - (t["renta"] - 22.0) * 0.5 + (b["infraestructura"] - 1.0) * 10.0 + (m["estabilidad"] - 50.0) * 0.3 + (100.0 - debt_ratio()) * 0.08
 	ftarget["clase_media"] = 50.0 + (m["economia"] - 50.0) * 0.35 + (m["seguridad"] - 50.0) * 0.25 - (t["renta"] - 22.0) * 1.3 - (t["iva"] - 21.0) * 0.6 + (b["sanidad"] - 1.0) * 10.0 + (b["educacion"] - 1.0) * 10.0 - corruption * 0.15
 	ftarget["jovenes"] = 50.0 + (b["educacion"] - 1.0) * 25.0 + (m["ambiente"] - 50.0) * 0.3 + (m["economia"] - 50.0) * 0.25 + (b["social"] - 1.0) * 12.0
 	ftarget["jubilados"] = 50.0 + (b["pensiones"] - 1.0) * 40.0 + (b["sanidad"] - 1.0) * 20.0 + (m["seguridad"] - 50.0) * 0.25 - (t["iva"] - 21.0) * 0.8
@@ -771,11 +805,17 @@ func _recalc_traits() -> void:
 				_trait_sums[mk] = float(_trait_sums.get(mk, 0.0)) + float(td["mods"][mk])
 			if td.has("monthly"):
 				_trait_sums["_monthly"] = float(_trait_sums.get("_monthly", 0.0)) + float(td["monthly"])
+			if td.has("spend"):
+				_trait_sums["_spend"] = float(_trait_sums.get("_spend", 0.0)) + float(td["spend"])
 			if td.has("approval"):
 				_trait_sums["_approval"] = float(_trait_sums.get("_approval", 0.0)) + float(td["approval"])
 			if td.has("area") and W.MINISTRY_AREA.has(k):
 				var area: String = W.MINISTRY_AREA[k]
 				_trait_sums[area] = float(_trait_sums.get(area, 0.0)) + float(td["area"])
+		# la competencia del ministro pesa en su área
+		if W.MINISTRY_AREA.has(k):
+			var ar: String = W.MINISTRY_AREA[k]
+			_trait_sums[ar] = float(_trait_sums.get(ar, 0.0)) + Gobierno.area_bonus(k)
 
 
 func has_trait(t: String) -> bool:
@@ -786,37 +826,16 @@ func has_trait(t: String) -> bool:
 
 
 func gen_candidates(key: String) -> Array:
-	var out := []
-	var good := []
-	var bad := []
-	for t in W.TRAITS.keys():
-		if W.TRAITS[t].get("good", true):
-			good.append(t)
-		else:
-			bad.append(t)
-	for i in 3:
-		var g := "m" if rng.randf() < 0.5 else "f"
-		var tr := [good.pick_random()]
-		var r := rng.randf()
-		if r < 0.45:
-			var t2: String = good.pick_random()
-			if not (t2 in tr):
-				tr.append(t2)
-		elif r < 0.8:
-			tr.append(bad.pick_random())
-		var role: String = ministers[key]["role"]
-		role = role.replace("Ministro", "Ministra") if g == "f" else role.replace("Ministra", "Ministro")
-		if key == "jefa":
-			role = "Jefa de Gabinete" if g == "f" else "Jefe de Gabinete"
-		out.append({"name": DB.rand_name(g), "role": role, "look": DB.rand_look(g), "traits": tr})
-	return out
+	return Gobierno.candidates(key)
 
 
 func hire_minister(key: String, cand: Dictionary) -> void:
 	var old: String = ministers[key]["name"]
 	counters["ceses"] = int(counters.get("ceses", 0)) + 1
 	remember("cese", {"name": old, "role": str(ministers[key]["role"]), "key": key, "look": ministers[key].get("look", {})})
+	var prev: Dictionary = ministers[key]
 	ministers[key] = cand.duplicate(true)
+	Gobierno.on_change(key, prev, cand)
 	_recalc_traits()
 	_update_targets()
 	push_news("%s sustituye a %s como %s" % [cand["name"], old, String(cand["role"]).to_lower()], 2)
@@ -862,7 +881,8 @@ func _expire_mods() -> void:
 
 func _monthly(dd: Dictionary) -> void:
 	last_balance = monthly_balance()
-	pc = clampf(pc + 4.0 + approval * 0.07 + meters["estabilidad"] * 0.04 + [1.5, 0.0, -1.0][difficulty], 0.0, 100.0)
+	pc = clampf(pc + 4.0 + approval * 0.07 + meters["estabilidad"] * 0.04 + [1.5, 0.0, -1.0][difficulty] + Gobierno.monthly_pc(), 0.0, 100.0)
+	Gobierno.monthly()
 	# La corrupción se diluye con el tiempo... salvo que alguien tire del hilo (ver escándalos)
 	corruption = maxf(0.0, corruption * (0.93 if flags.has("transparencia") else 0.95) - 0.4)
 	# Ciclo económico: paseo aleatorio que tiende a volver a la normalidad
@@ -1203,12 +1223,12 @@ func spawn(ev: Dictionary) -> void:
 		remember("escandalo", {"title": fmt(str(ev.get("title", "")))})
 	match ev["type"]:
 		"doc":
-			item["deadline"] = day + int(DEADLINES["doc"][di])
+			item["deadline"] = day + maxi(3, int(DEADLINES["doc"][di]) + Gobierno.extra_days())
 			inbox.append(item)
 			Sfx.play("paper2", -4.0)
 			toast.emit("Nuevo documento: %s" % fmt(ev["title"]), "info", "documento")
 		"advisor":
-			item["deadline"] = day + int(DEADLINES["advisor"][di])
+			item["deadline"] = day + maxi(2, int(DEADLINES["advisor"][di]) + Gobierno.extra_days())
 			# las convocatorias (Congreso, prensa, debate) pasan delante de las demás visitas
 			if ev.get("front", false):
 				visitors.insert(0, item)
@@ -1233,9 +1253,9 @@ func spawn(ev: Dictionary) -> void:
 ## pregunta si va a asistir. Elegir ir abre el escenario; no ir (o no contestar a tiempo) tiene su precio.
 const CONVOCATORIAS := {
 	"control": {"title": "Sesión de control en el Congreso",
-		"text": "Presidente, el miércoles hay sesión de control. {opo} ya ha registrado sus preguntas y la bancada espera que dé la cara en el hemiciclo. Si no va, contestará la vicepresidenta... y la prensa lo notará.",
+		"text": "Presidente, el miércoles hay sesión de control. {opo} ya ha registrado sus preguntas y la bancada espera que dé la cara en el hemiciclo. Si no va, contestará {vice_rol}, {vice}... y la prensa lo notará.",
 		"choices": [{"t": "Voy al Congreso. Que pregunten lo que quieran.", "fx": {"control": true}, "rec": "jefa"},
-			{"t": "Que conteste la vicepresidenta.", "fx": {"estabilidad": -2, "clase_media": -1}, "news": "El presidente esquiva la sesión de control"}]},
+			{"t": "Que conteste {vice_rol}.", "fx": {"estabilidad": -2, "clase_media": -1}, "news": "El presidente esquiva la sesión de control"}]},
 	"rueda": {"title": "Rueda de prensa",
 		"text": "Los periodistas acreditados le esperan en la sala de prensa de Palacio. Traen preguntas sobre la actualidad y alguna con mala intención. ¿Comparece o la cancelamos?",
 		"choices": [{"t": "Comparezco. Que pasen los periodistas.", "fx": {"press": "rueda"}, "rec": "jefa"},
@@ -1253,6 +1273,8 @@ func convocatoria(kind: String) -> void:
 		return
 	var c: Dictionary = CONVOCATORIAS[kind].duplicate(true)
 	c.merge({"id": id, "type": "advisor", "who": "jefa", "gen": true, "front": true, "default": 1})
+	if kind == "control":
+		c["choices"][1]["fx"] = Gobierno.control_skip_fx()
 	spawn(c)
 
 
@@ -1299,7 +1321,7 @@ func _expire(item: Dictionary) -> void:
 				if ch.has("hidden"):
 					apply_fx(ch["hidden"], ev["title"], false)
 		"advisor":
-			var ch2: Dictionary = ev["choices"][int(ev.get("default", ev["choices"].size() - 1))]
+			var ch2: Dictionary = ev["choices"][Gobierno.auto_choice(ev)]
 			toast.emit("Sin respuesta presidencial: %s decidió por usted" % DB.character(ev.get("who", "jefa")).get("name", "el Gabinete"), "warn", "reloj")
 			apply_fx(_strip_interactive(ch2.get("fx", {})), ev["title"])
 			stress += 3.0
@@ -1317,7 +1339,7 @@ func _expire(item: Dictionary) -> void:
 
 func _strip_interactive(fx: Dictionary) -> Dictionary:
 	var out := fx.duplicate(true)
-	for k in ["nego", "speech", "debate", "press", "control", "casino"]:
+	for k in ["nego", "speech", "debate", "press", "control", "casino", "pick"]:
 		out.erase(k)
 	return out
 
@@ -1577,9 +1599,12 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				pass
 			"fire":
 				_fire_minister(str(v))
+			"pick":
+				open_request.emit("cabinet", {"pick": str(v)})
 			"reshuffle":
 				var keys := ministers.keys()
 				keys.erase("jefa")
+				keys.erase("vice")
 				keys.shuffle()
 				for i in mini(int(v), keys.size()):
 					_fire_minister(keys[i])
@@ -1676,19 +1701,15 @@ func _fire_minister(key: String) -> void:
 	var old: String = ministers[key]["name"]
 	counters["ceses"] = int(counters.get("ceses", 0)) + 1
 	remember("cese", {"name": old, "role": str(ministers[key]["role"]), "key": key, "look": ministers[key].get("look", {})})
-	var g := "m" if randf() < 0.5 else "f"
-	var nm := DB.rand_name(g)
-	var role: String = ministers[key]["role"]
-	if g == "f":
-		role = role.replace("Ministro", "Ministra")
-	else:
-		role = role.replace("Ministra", "Ministro")
-	var traits := [W.TRAITS.keys().pick_random()]
-	if key == "jefa":
-		role = "Jefa de Gabinete" if g == "f" else "Jefe de Gabinete"
-	ministers[key] = {"name": nm, "role": role, "look": DB.rand_look(g), "traits": traits}
+	var g: String = ministers[key].get("look", {}).get("g", "m")
+	var prev: Dictionary = ministers[key]
+	var cand := Gobierno.make(key, "partido")
+	if cand["look"].get("g", "m") != g and key != "vice" and key != "jefa":
+		cand["role"] = Gobierno.role_for(key, cand["look"].get("g", "m"))
+	ministers[key] = cand
+	Gobierno.on_change(key, prev, cand)
 	_recalc_traits()
-	push_news("%s sustituye a %s como %s" % [nm, old, role.to_lower()], 2)
+	push_news("%s sustituye a %s como %s" % [cand["name"], old, String(cand["role"]).to_lower()], 2)
 
 
 func push_news(text: String, importance: int = 1) -> void:
@@ -1720,6 +1741,8 @@ func fmt(s: String) -> String:
 	var d := {
 		"pres": pres["name"], "pais": "Valdoria", "cap": "Santa Aurora",
 		"opo": opo_name(), "opo_party": W.PARTIES[opp]["name"], "party": W.PARTIES[pres["party"]]["name"],
+		"vice": ministers.get("vice", {}).get("name", ""),
+		"vice_rol": "el vicepresidente" if ministers.get("vice", {}).get("look", {}).get("g", "f") == "m" else "la vicepresidenta",
 		"jefa": ministers.get("jefa", {}).get("name", ""), "min_eco": ministers.get("economia", {}).get("name", ""),
 		"min_int": ministers.get("interior", {}).get("name", ""), "min_ext": ministers.get("exteriores", {}).get("name", ""),
 		"min_def": ministers.get("defensa", {}).get("name", ""), "min_san": ministers.get("sanidad", {}).get("name", ""),
@@ -1996,12 +2019,22 @@ func vote_base() -> float:
 	# Tras varias legislaturas, crecen las ganas de cambio
 	var t := float(term_index - 1)
 	var change := 2.5 * t + 0.6 * t * t
-	return approval * 0.62 + 1.0 + campaign_bonus + [2.0, -1.0, -3.0][difficulty] - change
+	# voto económico: con la economía mal se castiga al Gobierno (y bien, se le premia)
+	var econ: float = (float(meters["economia"]) - 50.0) * 0.12
+	# los grupos muy descontentos se movilizan para echarle
+	var angry := 0.0
+	for f in FACTIONS:
+		if f != "militares":
+			angry += maxf(0.0, 32.0 - float(fac[f])) * 0.08
+	# la campaña ayuda, pero con rendimientos decrecientes (como mucho unos 8 puntos)
+	var camp: float = campaign_bonus if campaign_bonus <= 0.0 else 8.0 * tanh(campaign_bonus / 8.0)
+	return approval * 0.62 + 1.0 + camp + ELECTION_BIAS[difficulty] - change + econ - angry
 
 
 func compute_election() -> Dictionary:
 	var own: String = pres["party"]
-	var base := clampf(vote_base() + rng.randf_range(-2.5, 2.5), 8.0, 58.0)
+	# error de las encuestas: el resultado nunca está garantizado
+	var base := clampf(vote_base() + rng.randfn(0.0, 3.2), 8.0, 58.0)
 	var shares := {}
 	var rest := 100.0 - base
 	var weights := {}
@@ -2012,7 +2045,8 @@ func compute_election() -> Dictionary:
 			continue
 		var w := float(W.SEATS[own][p])
 		if p == opp:
-			w *= 1.0 + (55.0 - approval) / 60.0
+			# la oposición también hace campaña (más dura cuanto más difícil)
+			w *= (1.0 + (55.0 - approval) / 60.0) * [1.0, 1.15, 1.3][difficulty]
 		w *= 0.8 + (100.0 - parties[p]["rel"]) / 250.0
 		weights[p] = maxf(4.0, w)
 		wsum += weights[p]
@@ -2069,7 +2103,9 @@ func compute_election() -> Dictionary:
 		if p == own or p == opp:
 			continue
 		var dist := absf(W.PARTIES[p]["ideo"] - W.PARTIES[own]["ideo"])
-		if parties[p]["rel"] >= 60.0 and dist <= 50.0:
+		# un socio con la relación justa puede preferir otro pacto: cuanto mejor la relación, más seguro es su apoyo
+		var sure := clampf((float(parties[p]["rel"]) - 55.0) / 30.0, 0.0, 1.0)
+		if parties[p]["rel"] >= 60.0 and dist <= 50.0 and rng.randf() < sure:
 			allies += int(seats[p])
 			ally_list.append(p)
 	# Para presidir el Gobierno, su partido debe ser el más votado de su bloque
@@ -2208,7 +2244,7 @@ var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
+	"debate_done", "last_law", "tutorial", "budget_year_done", "budget_passed_year", "budget_retry_day", "decree_pending", "decree_next_day", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
 	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino"]
 
 
@@ -2293,6 +2329,22 @@ func load_game() -> bool:
 	low_approval_days = int(low_approval_days)
 	mocion_until = int(mocion_until)
 	budget_year_done = int(budget_year_done)
+	budget_passed_year = int(budget_passed_year)
+	budget_retry_day = int(budget_retry_day)
+	decree_next_day = int(decree_next_day)
+	# partidas de antes de la Vicepresidencia y de la competencia de los ministros
+	for k in W.CABINET:
+		if not ministers.has(k):
+			ministers[k] = W.CHARACTERS[k].duplicate(true)
+			ministers[k]["traits"] = W.INITIAL_TRAITS.get(k, []).duplicate()
+		var mm: Dictionary = ministers[k]
+		if not mm.has("skill"):
+			mm["skill"] = Gobierno.fit_traits(float(W.INITIAL_SKILL.get(k, 60)), mm.get("traits", []))
+		mm["skill"] = float(mm["skill"])
+		if not mm.has("origin"):
+			mm["origin"] = "partido"
+		# rasgos antiguos que ya no existen
+		mm["traits"] = mm.get("traits", []).filter(func(t): return W.TRAITS.has(t))
 	for k in timers.keys():
 		timers[k] = int(timers[k])
 	inbox = _deserial_queue(inbox)

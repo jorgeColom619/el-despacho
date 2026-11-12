@@ -254,7 +254,7 @@ Todo es interactivo, tanto en 3D como en 2D.
 | Globo | Mapa diplomático: tratados, visitas de Estado, ayudas, sanciones. |
 | Micrófono | Discurso a la nación: eliges las frases y corriges a clic las **erratas del teleprompter** antes de leerlas en directo. En campaña abre el **mapa de campaña por regiones**. |
 | Móvil | La red social **Pío** y los mensajes privados. |
-| Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. |
+| Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. Una ley al año que vota el Congreso (cada impuesto ±3 puntos, cada partida ±15 %) o pequeños ajustes por decreto ley (±1 punto, ±5 %) que el Congreso debe convalidar en 30 días. Subir impuestos rinde cada vez menos y los cambios bruscos enfadan a quien los paga. |
 | Libro de Leyes | Todo lo que has legislado, con su número oficial: la **votación** de cada gran ley y qué grupos la apoyaron, sus efectos inmediatos y permanentes, **lo que cuesta cada mes**, si la oposición tiene munición contra ella y, en las leyes menores de la bandeja, **la letra pequeña del anexo** con lo que de verdad hacía. Avisa con un número cuando hay leyes nuevas. |
 | Periódico, TV, calendario, reloj, café | Noticias, encuestas, agenda... y un café para el estrés. |
 | Mascota | Si has comprado una en la tienda (gato, perro, loro, pez o tortuga), haz clic para bajar el estrés. |
@@ -357,9 +357,25 @@ en el modo meme invita el expresidente Galbana. No ir tiene su precio con el anf
 
 ### Tu Gobierno
 
-Cada ministro tiene rasgos (Negociador, Austero, Tecnócrata, Veterano, Polémico, Derrochador...) que cambian la
-partida: más dinero cada mes, más tiempo en la sesión de control, unidades extra en las crisis, etc. Puedes cesar a
-un ministro (cuesta capital político y estabilidad) y elegir a su sustituto entre tres candidatos.
+El Gobierno lo forman la **Vicepresidencia**, la Jefatura de Gabinete y cinco ministerios. Cada cargo tiene una
+**competencia** (0-100) y rasgos (Negociador, Austero, Tecnócrata, Veterano, Polémico, Derrochador...):
+
+- La competencia pesa en su área: Economía recauda más y abarata la deuda, Exteriores mejora las relaciones cada mes,
+  la Jefatura de Gabinete da más días para decidir y más capital político, y cada ministerio sube (o baja) su indicador.
+- Si **delegas una crisis** del teléfono rojo, la dirige el ministro responsable (Interior, Defensa, Sanidad o Economía):
+  con uno brillante sale bien; con uno incompetente puede ser un desastre. Si no contestas a una visita, decide el
+  ministro que la trajo, mejor o peor según lo bueno que sea.
+- La **Vicepresidencia** supervisa todo lo que delegas y te sustituye en la sesión de control si no vas. Si mandas a
+  Exteriores a una cumbre en tu lugar, se nota más o menos según lo bueno que sea.
+- Los rasgos cuentan **en el cargo que toca**: un Negociador ayuda en Exteriores (con otros países), en Economía (con
+  sindicatos y patronal) o en la Vicepresidencia; un Gran orador, en la Vicepresidencia o la Jefatura de Gabinete; un
+  Veterano, en las crisis que dirige su ministerio.
+- Los ministros **ganan oficio** con los meses (a los diez nadie es ya inexperto), pero los polémicos y los flojos
+  provocan **escándalos**, y un incompetente con su área hundida puede **dimitir**: cesarle, respaldarle o mandarle a
+  dar explicaciones al Congreso.
+- Al cesar a alguien eliges entre tres perfiles: un **independiente** muy capaz (cuesta más capital político), alguien
+  **del partido** (de confianza) o la **cuota del socio** (más flojo, pero afianza la coalición; quitárselo enfada al
+  socio).
 
 ## Sistemas de la versión 3.0
 
@@ -414,9 +430,12 @@ adelante a través de un servidor propio (ver `scripts/systems/interprete.gd`).
 
 ## Consejos
 
-- Si te limitas a esperar, el **desgaste del poder** te hundirá. Aprueba leyes, cuida a tus socios (relación ≥ 60 en
-  el Congreso) y habla al país. Para gobernar, tu partido debe ser el más votado de su bloque.
-- Vigila la **deuda** (quiebra al 155 % en normal), la **estabilidad** (moción de censura) y la moral de las
+- Si te limitas a esperar, el **desgaste del poder** te hundirá. Aprueba leyes, cuida a tus socios (desde 60 de relación
+  pueden apoyarte tras las elecciones; cuanto más alta, más seguro: por encima de 85, siempre) y habla al país. Para gobernar, tu partido debe ser el más votado de su bloque.
+- Vigila la **deuda** (quiebra al 155 % en normal; por encima del 105 % los intereses se disparan) y el **déficit**:
+  si pasa del 3 % del PIB cuatro meses seguidos, la Unión Continental abre expediente y, si no lo corriges, multa.
+  En las urnas también cuenta la economía, y los grupos muy descontentos se movilizan en tu contra.
+- Vigila la **estabilidad** (moción de censura) y la moral de las
   **Fuerzas Armadas** (golpe de Estado).
 - Las decisiones turbias suman **corrupción**: no se ve, pero acaba saliendo en forma de escándalo. Junto al capital
   político verás el riesgo (en fácil y normal).

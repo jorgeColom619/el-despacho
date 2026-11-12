@@ -405,7 +405,7 @@ func _word_dur(tk: Dictionary) -> float:
 	if tk["bad"] == "insert" and tk["fixed"]:
 		return 0.0
 	var base: float = READ_BASE[mini(si, READ_BASE.size() - 1)] * [1.2, 1.0, 0.88][GS.difficulty]
-	if GS.has_trait("orador"):
+	if GS.Gobierno.has("orador", ["vice", "jefa"]):
 		base *= 1.15
 	if GS.stress > 75:
 		base *= 0.9

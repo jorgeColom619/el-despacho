@@ -422,6 +422,11 @@ func _try_law() -> void:
 
 func _on_req(kind: String, data: Dictionary) -> void:
 	match kind:
+		"cabinet":
+			var pk := str(data.get("pick", ""))
+			if GS.ministers.has(pk):
+				var cs: Array = GS.gen_candidates(pk)
+				GS.hire_minister(pk, cs[randi() % cs.size()])
 		"casino":
 			# la noche entera sin interfaz: los buenos jugadores sacan poco y lo devuelven todo
 			var rng := RandomNumberGenerator.new()

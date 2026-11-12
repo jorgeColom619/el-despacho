@@ -5,6 +5,7 @@ const Widgets := preload("res://scripts/ui/widgets.gd")
 const TimerBar := preload("res://scripts/ui/timer_bar.gd")
 const MapView := preload("res://scripts/ui/map_view.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Gobierno := preload("res://scripts/systems/gobierno.gd")
 
 const DURATION := 60.0
 const MAP_POS := Vector2(60, 250)
@@ -41,6 +42,8 @@ var special_cards := {}
 var confidence_bonus := 0.0
 var _t := 0.0
 var fatal_t := 0.0
+## Previsión de la crisis si se delega en el ministro responsable (Gobierno.crisis_forecast)
+var deleg := {}
 
 
 func build() -> void:
@@ -126,7 +129,7 @@ func build() -> void:
 	right.add_child(roster)
 	for u in cr["units"]:
 		var ud: Dictionary = u.duplicate(true)
-		ud["left"] = int(u["n"]) + (1 if GS.has_trait("veterano") else 0)
+		ud["left"] = int(u["n"]) + (1 if Gobierno.has("veterano", [W.CRISIS_MINISTER.get(str(ev.get("crisis", "")), "interior")]) else 0)
 		units.append(ud)
 	_build_roster()
 	right.add_child(Widgets.section("Medidas extraordinarias"))
@@ -178,14 +181,26 @@ func _build_start() -> void:
 		Sfx.loop_start("siren", "siren", -18.0)
 		Sfx.play("alert", -4.0))
 	h.add_child(go)
-	var del := UI.btn("Delegar en el ministro", "normal", 18)
-	del.tooltip_text = "Resultado mediocre garantizado, sin riesgos ni esfuerzo."
+	deleg = Gobierno.crisis_forecast(str(ev.get("crisis", "disturbios")))
+	var first := String(deleg["name"]).replace("Gral. ", "").split(" ")[0]
+	var del := UI.btn("Delegar en %s" % first, "normal", 18)
 	del.pressed.connect(func():
 		start_panel.queue_free()
 		start_panel = null
-		_finish(0.42 + randf() * 0.1, true))
+		_finish(Gobierno.crisis_result(deleg), true))
 	h.add_child(del)
 	v.add_child(h)
+	# lo que cabe esperar si lo dirige el ministro: depende de lo bueno que sea
+	var lv: Array = Gobierno.level(float(deleg["skill"]))
+	var pct := int(roundf(float(deleg["score"]) * 100.0))
+	var expect := "probablemente bien" if float(deleg["score"]) >= 0.66 else ("con resultado irregular" if float(deleg["score"]) >= 0.45 else "con riesgo de desastre")
+	var info := UI.lbl("Si delega, dirigirá la operación %s (%s · %s). Eficacia prevista: %d-%d %% · coste ≈ %s · %s." % [deleg["name"], String(deleg["role"]).to_lower(), String(lv[0]).to_lower(), maxi(5, pct - 8), mini(95, pct + 8), UI.money(float(deleg["cost"])), expect], UI.f_sans, 16, lv[1])
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(740, 0)
+	v.add_child(info)
+	if cr.get("fatal", false) and float(deleg["score"]) < 0.5:
+		var warn := UI.lbl("Cuidado: si esta crisis sale mal, cae la democracia.", UI.f_sans_b, 16, UI.RED)
+		v.add_child(warn)
 	root.add_child(start_panel)
 	UI.pop_in(start_panel)
 
@@ -526,7 +541,7 @@ func _finish(score: float, delegated: bool) -> void:
 	timer_bar.stop()
 	Sfx.loop_stop("siren")
 	if delegated:
-		cost = 300.0
+		cost = float(deleg.get("cost", 300.0))
 		unit_fx = {}
 	var out := GS.resolve_crisis(item, score, unit_fx, cost)
 	if GS.game_ended:
@@ -544,12 +559,11 @@ func _finish(score: float, delegated: bool) -> void:
 	elif score < 0.62:
 		verdict = "GESTIÓN IRREGULAR"
 		vc = UI.AMBER
-	if delegated:
-		verdict = "GESTIONADO POR EL MINISTRO"
-		vc = UI.AMBER
 	var vl := UI.lbl(verdict, UI.f_cond_b, 56, vc)
 	vl.rotation = deg_to_rad(-2.0)
 	v.add_child(vl)
+	if delegated:
+		v.add_child(UI.lbl("Dirigió la operación %s (%s)" % [deleg.get("name", ""), String(deleg.get("role", "")).to_lower()], UI.f_sans_m, 19, UI.GOLD_L))
 	v.add_child(UI.lbl("%s: %s   ·   Coste de la operación: %s   ·   Eficacia: %d%%" % [cr["dmg"], UI.num(damage, 0), UI.money(cost), int(score * 100)], UI.f_sans_m, 19, UI.TEXT))
 	var chips := Widgets.effect_chips(out, 16, 10)
 	chips.custom_minimum_size = Vector2(820, 0)

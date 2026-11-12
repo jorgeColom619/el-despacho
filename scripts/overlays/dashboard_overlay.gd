@@ -461,9 +461,9 @@ func _gabinete(v: VBoxContainer) -> void:
 	grid.add_theme_constant_override("h_separation", 16)
 	grid.add_theme_constant_override("v_separation", 16)
 	v.add_child(grid)
-	for k in ["jefa", "economia", "interior", "exteriores", "defensa", "sanidad"]:
+	for k in W.CABINET:
 		var m: Dictionary = GS.ministers[k]
-		var c := _card(440, 330)
+		var c := _card(440, 352)
 		var cv := UI.vbox(6)
 		c.add_child(cv)
 		var pf := Control.new()
@@ -478,6 +478,9 @@ func _gabinete(v: VBoxContainer) -> void:
 		cv.add_child(pf)
 		cv.add_child(UI.lbl(m["name"], UI.f_serif_b, 24, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 		cv.add_child(UI.lbl(m["role"], UI.f_sans_m, 15, UI.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+		var sk := float(m.get("skill", 60.0))
+		var lv: Array = GS.Gobierno.level(sk)
+		cv.add_child(UI.lbl("Competencia %d · %s · %s" % [int(sk), lv[0], GS.Gobierno.origin_label(m)], UI.f_sans_b, 14, lv[1], HORIZONTAL_ALIGNMENT_CENTER))
 		var flow := HFlowContainer.new()
 		flow.alignment = FlowContainer.ALIGNMENT_CENTER
 		flow.add_theme_constant_override("h_separation", 6)

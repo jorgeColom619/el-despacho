@@ -34,9 +34,9 @@ const BUDGET := {
 }
 
 const TAXES := {
-	"renta": {"name": "IRPF (renta)", "base": 22.0, "min": 12.0, "max": 36.0},
-	"sociedades": {"name": "Impuesto de Sociedades", "base": 25.0, "min": 12.0, "max": 38.0},
-	"iva": {"name": "IVA", "base": 21.0, "min": 10.0, "max": 27.0},
+	"renta": {"name": "IRPF (renta)", "base": 22.0, "min": 12.0, "max": 36.0, "laffer": 0.042},
+	"sociedades": {"name": "Impuesto de Sociedades", "base": 25.0, "min": 12.0, "max": 38.0, "laffer": 0.0625},
+	"iva": {"name": "IVA", "base": 21.0, "min": 10.0, "max": 27.0, "laffer": 0.1},
 }
 
 const PARTIES := {
@@ -58,7 +58,7 @@ const SEATS := {
 }
 
 const PLAYER_PARTIES := {
-	"MP": {"desc": "Centro-izquierda. Fuerte entre trabajadores y jóvenes. Recelo empresarial.", "bonus": {"trabajadores": 8.0, "jovenes": 5.0, "empresarios": -8.0, "militares": -3.0}, "opp": "AR"},
+	"MP": {"desc": "Centro-izquierda. Fuerte entre trabajadores y jóvenes. Recelo empresarial.", "bonus": {"trabajadores": 8.0, "jovenes": 5.0, "empresarios": -6.0, "militares": -3.0}, "opp": "AR"},
 	"CC": {"desc": "Centro liberal. Gusta a la clase media; debe pactar a izquierda o derecha.", "bonus": {"clase_media": 6.0, "empresarios": 3.0}, "opp": "AR"},
 	"AR": {"desc": "Centro-derecha. Apoyo de empresarios, jubilados y militares.", "bonus": {"empresarios": 8.0, "militares": 6.0, "jubilados": 4.0, "jovenes": -5.0, "trabajadores": -6.0}, "opp": "MP"},
 }
@@ -67,6 +67,7 @@ const SKIN := ["f1d3bd", "e6bc98", "d4a276", "b67f56", "8d5a3b", "5e3b26"]
 const HAIR_COL := ["1c1816", "3b2a20", "6b4a2f", "8a4b2a", "c9a46a", "9a9a98", "dcd8d0"]
 
 const CHARACTERS := {
+	"vice": {"name": "Inés Aranda", "role": "Vicepresidenta del Gobierno", "look": {"g": "f", "skin": 2, "hair": "long", "hc": 2, "glasses": 0, "suit": "5a2b3c", "shirt": "f2ece4", "tie": "", "age": 1, "eyes": "4a3426"}},
 	"jefa": {"name": "Elena Márquez", "role": "Jefa de Gabinete", "look": {"g": "f", "skin": 1, "hair": "bob", "hc": 1, "glasses": 2, "suit": "243653", "shirt": "e8e4dc", "tie": "", "age": 1, "eyes": "5a4632"}},
 	"economia": {"name": "Tomás Ferrer", "role": "Ministro de Economía", "look": {"g": "m", "skin": 0, "hair": "balding", "hc": 5, "glasses": 1, "suit": "3a3d44", "shirt": "f2f2f2", "tie": "7a1f2b", "age": 2, "beard": "none", "eyes": "4d6a80"}},
 	"interior": {"name": "Carmen Robles", "role": "Ministra del Interior", "look": {"g": "f", "skin": 2, "hair": "bun", "hc": 0, "glasses": 0, "suit": "1f2124", "shirt": "d9d9d9", "tie": "", "age": 1, "eyes": "3b2a20"}},
@@ -83,28 +84,40 @@ const CHARACTERS := {
 
 ## Rasgos de los ministros: modifican objetivos, saldo, aprobación o minijuegos.
 const TRAITS := {
-	"negociador": {"name": "Negociador", "desc": "En las negociaciones, el límite del rival sube y su franja se ve con más precisión.", "good": true},
-	"austero": {"name": "Austero", "desc": "+350 M€ al mes de saldo.", "good": true, "monthly": 350.0},
+	"negociador": {"name": "Negociador", "desc": "En las negociaciones de su área, el límite del rival sube y su franja se ve con más precisión (Exteriores: con otros países; Economía: con sindicatos y patronal; Vicepresidencia: todas).", "good": true},
+	"austero": {"name": "Austero", "desc": "Gasto público −1,5 % (unos 600 M€ al mes); en las crisis que dirige, gasta un 20 % menos.", "good": true, "spend": -0.015},
 	"tecnocrata": {"name": "Tecnócrata", "desc": "Economía +3.", "good": true, "mods": {"economia": 3.0}},
 	"mano_dura": {"name": "Mano dura", "desc": "Seguridad +4, Jóvenes −2.", "good": true, "mods": {"seguridad": 4.0, "jovenes": -2.0}},
 	"diplomatico": {"name": "Diplomático", "desc": "Prestigio +3.", "good": true, "mods": {"prestigio": 3.0}},
 	"leal": {"name": "Leal", "desc": "Estabilidad +3.", "good": true, "mods": {"estabilidad": 3.0}},
 	"gestor": {"name": "Buen gestor", "desc": "Bienestar +3.", "good": true, "mods": {"bienestar": 3.0}},
 	"carismatico": {"name": "Carismático", "desc": "Aprobación +2.", "good": true, "approval": 2.0},
-	"veterano": {"name": "Veterano", "desc": "+1 unidad de cada tipo en el Gabinete de Crisis.", "good": true},
+	"veterano": {"name": "Veterano", "desc": "En las crisis que dirige su ministerio: +1 unidad de cada tipo y mejor resultado si se las delega.", "good": true},
 	"ecologista": {"name": "Ecologista", "desc": "Medio ambiente +4, Empresarios −2.", "good": true, "mods": {"ambiente": 4.0, "empresarios": -2.0}},
 	"sindicalista": {"name": "Amigo de los sindicatos", "desc": "Trabajadores +3, Empresarios −2.", "good": true, "mods": {"trabajadores": 3.0, "empresarios": -2.0}},
 	"liberal": {"name": "Liberal", "desc": "Empresarios +3, Trabajadores −2.", "good": true, "mods": {"empresarios": 3.0, "trabajadores": -2.0}},
-	"orador": {"name": "Gran orador", "desc": "+3 segundos para responder en la sesión de control.", "good": true},
+	"orador": {"name": "Gran orador", "desc": "En la Vicepresidencia o la Jefatura de Gabinete: +3 segundos para responder en la sesión de control y más tiempo en los discursos.", "good": true},
 	"polemico": {"name": "Polémico", "desc": "Estabilidad −3.", "good": false, "mods": {"estabilidad": -3.0}},
 	"inexperto": {"name": "Inexperto", "desc": "Su área −3.", "good": false, "area": -3.0},
-	"derrochador": {"name": "Derrochador", "desc": "−250 M€ al mes de saldo.", "good": false, "monthly": -250.0},
+	"derrochador": {"name": "Derrochador", "desc": "Gasto público +2 % (unos 800 M€ al mes); en las crisis que dirige, gasta un 35 % más.", "good": false, "spend": 0.02},
 }
 
 ## Área de cada cartera (para el rasgo "inexperto")
-const MINISTRY_AREA := {"jefa": "estabilidad", "economia": "economia", "interior": "seguridad", "exteriores": "prestigio", "defensa": "militares", "sanidad": "bienestar"}
+const MINISTRY_AREA := {"vice": "estabilidad", "jefa": "estabilidad", "economia": "economia", "interior": "seguridad", "exteriores": "prestigio", "defensa": "militares", "sanidad": "bienestar"}
 
-const INITIAL_TRAITS := {"jefa": ["leal"], "economia": ["tecnocrata", "polemico"], "interior": ["mano_dura"], "exteriores": ["diplomatico"], "defensa": ["veterano"], "sanidad": ["gestor"]}
+const INITIAL_TRAITS := {"vice": ["negociador"], "jefa": ["leal"], "economia": ["tecnocrata", "polemico"], "interior": ["mano_dura"], "exteriores": ["diplomatico"], "defensa": ["veterano"], "sanidad": ["gestor"]}
+
+## Miembros del Gobierno, en el orden en que se muestran
+const CABINET := ["vice", "jefa", "economia", "interior", "exteriores", "defensa", "sanidad"]
+## Competencia inicial (0-100) de cada cargo en la partida estándar
+const INITIAL_SKILL := {"vice": 64, "jefa": 72, "economia": 74, "interior": 60, "exteriores": 66, "defensa": 70, "sanidad": 58}
+## Qué ministro se hace cargo de cada crisis si el presidente la delega
+const CRISIS_MINISTER := {"migrantes": "interior", "huelga_sanitaria": "sanidad", "incendios": "interior", "disturbios": "interior",
+	"pandemia": "sanidad", "inundaciones": "interior", "terrorismo": "interior", "apagon": "defensa", "huelga_general": "economia",
+	"golpe": "defensa", "guerra": "defensa", "palomas": "sanidad", "patinetes": "interior", "wifi": "economia", "sequia": "economia",
+	"terremoto": "interior", "marea_negra": "defensa", "ciber_bancos": "economia", "temporal_nieve": "interior", "plaga": "economia"}
+## Rasgos que ayudan (+) o estorban (−) al ministro que dirige una crisis delegada (eficacia, de 0 a 1)
+const CRISIS_TRAITS := {"veterano": 0.06, "gestor": 0.05, "mano_dura": 0.03, "tecnocrata": 0.02, "inexperto": -0.08, "polemico": -0.03}
 
 const COUNTRIES := {
 	"norland": {"name": "Norland", "full": "Estados Federados de Norland", "leader": "Harrison Kade", "title": "Presidente", "pers": "orgulloso", "power": 95.0, "rel": 25.0, "map": 7, "color": "3b6fb6",

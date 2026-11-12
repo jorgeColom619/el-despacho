@@ -193,7 +193,7 @@ func _on_intro_card(_i: int) -> void:
 
 func _seconds() -> float:
 	var s := 7.5
-	if GS.has_trait("orador"):
+	if GS.Gobierno.has("orador", ["vice", "jefa"]):
 		s += 3.0
 	if GS.stress > 75:
 		s -= 1.5
