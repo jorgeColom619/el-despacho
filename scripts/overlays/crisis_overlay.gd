@@ -1,11 +1,15 @@
 extends "res://scripts/ui/overlay.gd"
 ## Gabinete de Crisis: despliegue de unidades en tiempo real sobre el mapa de Valdoria.
+## Con los minijuegos en 3D se juega en la sala de crisis: el mapa está en la mesa táctica, las unidades son fichas
+## de la bandeja que se arrastran a las regiones y las medidas extraordinarias, objetos del borde de la mesa. Arriba
+## a la derecha quedan el tiempo, los daños y la confianza. Sin ellos, el panel 2D de siempre.
 
 const Widgets := preload("res://scripts/ui/widgets.gd")
 const TimerBar := preload("res://scripts/ui/timer_bar.gd")
 const MapView := preload("res://scripts/ui/map_view.gd")
 const W := preload("res://scripts/data/world_data.gd")
 const Gobierno := preload("res://scripts/systems/gobierno.gd")
+const Room := preload("res://scripts/stages3d/crisis_room_3d.gd")
 
 const DURATION := 60.0
 const MAP_POS := Vector2(60, 250)
@@ -44,6 +48,12 @@ var _t := 0.0
 var fatal_t := 0.0
 ## Previsión de la crisis si se delega en el ministro responsable (Gobierno.crisis_forecast)
 var deleg := {}
+## Sala de crisis en 3D (si están activados los escenarios 3D) y los controles de la operación
+var stage: Control
+var ops: Control
+## Píxel del mapa bajo la ficha que se arrastra en la mesa 3D ((-1, -1) si no hay ninguna)
+var drag_px := Vector2(-1, -1)
+var _tok_id := 0
 
 
 func build() -> void:
@@ -52,6 +62,19 @@ func build() -> void:
 	ev = item.get("ev", {})
 	cr = W.CRISES[ev.get("crisis", "disturbios")]
 	Sfx.music("music_tension", 1.0)
+	# la sala de crisis en 3D, detrás de todo: la operación se juega en su mesa táctica
+	if Room.enabled():
+		dim.color = Color(0, 0, 0, 0)
+		stage = Room.new()
+		stage.crisis_title = cr["title"]
+		stage.crisis_icon = cr["icon"]
+		stage.resp_key = W.CRISIS_MINISTER.get(str(ev.get("crisis", "")), "interior")
+		root.add_child(stage)
+	ops = Control.new()
+	UI.full(ops)
+	ops.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ops.visible = stage == null
+	root.add_child(ops)
 	# fondo técnico
 	var grid := Control.new()
 	UI.full(grid)
@@ -61,7 +84,8 @@ func build() -> void:
 			grid.draw_line(Vector2(x, 0), Vector2(x, 1080), Color(0.2, 0.5, 0.7, 0.05), 1.0)
 		for y in range(0, 1080, 48):
 			grid.draw_line(Vector2(0, y), Vector2(1920, y), Color(0.2, 0.5, 0.7, 0.05), 1.0))
-	root.add_child(grid)
+	if stage == null:
+		root.add_child(grid)
 	# cabecera
 	var head := UI.vbox(2)
 	head.position = Vector2(60, 118)
@@ -79,31 +103,44 @@ func build() -> void:
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.custom_minimum_size = Vector2(1000, 0)
 	head.add_child(dl)
-	# mapa
+	# mapa (en 3D, en el tablero de la mesa táctica; las fichas son piezas de la sala)
 	map = MapView.new()
-	map.position = MAP_POS
 	map.size = MAP_SIZE
-	root.add_child(map)
-	var frame := Panel.new()
-	frame.add_theme_stylebox_override("panel", UI.sb(Color(0, 0, 0, 0), 4, Color(0.4, 0.8, 1.0, 0.35), 1))
-	frame.position = MAP_POS - Vector2(2, 2)
-	frame.size = MAP_SIZE + Vector2(4, 4)
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(frame)
 	layer = Control.new()
-	layer.position = MAP_POS
 	layer.size = MAP_SIZE
 	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.draw.connect(_draw_layer)
-	root.add_child(layer)
-	# panel derecho
+	if stage != null:
+		stage.table_ui.add_child(map)
+		stage.table_ui.add_child(layer)
+		stage.table_map = map
+	else:
+		map.position = MAP_POS
+		ops.add_child(map)
+		var frame := Panel.new()
+		frame.add_theme_stylebox_override("panel", UI.sb(Color(0, 0, 0, 0), 4, Color(0.4, 0.8, 1.0, 0.35), 1))
+		frame.position = MAP_POS - Vector2(2, 2)
+		frame.size = MAP_SIZE + Vector2(4, 4)
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ops.add_child(frame)
+		layer.position = MAP_POS
+		ops.add_child(layer)
+	# panel derecho (en 3D, un recuadro arriba a la derecha con el tiempo, los daños y la confianza)
 	right = UI.vbox(12)
-	right.position = Vector2(1110, 250)
-	right.size = Vector2(760, 760)
-	root.add_child(right)
+	if stage != null:
+		var box := UI.panel(Color(0.02, 0.035, 0.06, 0.84), 10, Color(UI.RED, 0.45), 16)
+		box.position = Vector2(1330, 104)
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(right)
+		ops.add_child(box)
+	else:
+		right.position = Vector2(1110, 250)
+		right.size = Vector2(760, 760)
+		ops.add_child(right)
 	timer_bar = TimerBar.new()
-	timer_bar.custom_minimum_size = Vector2(760, 12)
-	right.add_child(UI.spacer(0, 14))
+	timer_bar.custom_minimum_size = Vector2(540 if stage != null else 760, 12)
+	if stage == null:
+		right.add_child(UI.spacer(0, 14))
 	right.add_child(timer_bar)
 	var stats := UI.hbox(30)
 	var dv := UI.vbox(0)
@@ -124,20 +161,33 @@ func build() -> void:
 	cv.add_child(conf_bar)
 	stats.add_child(cv)
 	right.add_child(stats)
-	right.add_child(Widgets.section("Unidades disponibles · arrástrelas al mapa"))
-	roster = UI.vbox(8)
-	right.add_child(roster)
+	if stage == null:
+		right.add_child(Widgets.section("Unidades disponibles · arrástrelas al mapa"))
+		roster = UI.vbox(8)
+		right.add_child(roster)
+	else:
+		var hint := UI.lbl("Arrastre las fichas de la bandeja a las regiones en rojo. Para moverlas, arrástrelas a otra región; para retirarlas, sáquelas del mapa o haga clic derecho.", UI.f_sans, 15, UI.DIM)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hint.custom_minimum_size = Vector2(540, 0)
+		right.add_child(hint)
 	for u in cr["units"]:
 		var ud: Dictionary = u.duplicate(true)
-		ud["left"] = int(u["n"]) + (1 if Gobierno.has("veterano", [W.CRISIS_MINISTER.get(str(ev.get("crisis", "")), "interior")]) else 0)
+		ud["left"] = int(u["n"]) + (1 if Gobierno.has("veterano", [W.CRISIS_MINISTER.get(str(ev.get("crisis", "")), "interior")]) else 0) + (1 if Gobierno.crisis_bonus(str(ev.get("crisis", ""))) else 0)
 		units.append(ud)
+	if stage != null:
+		_connect_room()
 	_build_roster()
-	right.add_child(Widgets.section("Medidas extraordinarias"))
-	var sp := UI.hbox(10)
-	right.add_child(sp)
-	sp.add_child(_special("emergencia", "Estado de alarma", "alerta", "+1 unidad de cada tipo · Estabilidad ▼"))
-	sp.add_child(_special("ayuda", "Ayuda de la Unión", "prestigio", "Refuerzos si la relación lo permite"))
-	sp.add_child(_special("comparecer", "Comparecer en TV", "microfono", "Tranquiliza a la población"))
+	if stage == null:
+		right.add_child(Widgets.section("Medidas extraordinarias"))
+		var sp := UI.hbox(10)
+		right.add_child(sp)
+		sp.add_child(_special("emergencia", "Estado de alarma", "alerta", "+1 unidad de cada tipo · Estabilidad ▼"))
+		sp.add_child(_special("ayuda", "Ayuda de la Unión", "prestigio", "Refuerzos si la relación lo permite"))
+		sp.add_child(_special("comparecer", "Comparecer en TV", "microfono", "Tranquiliza a la población"))
+	else:
+		stage.add_special("emergencia", "Estado de alarma", "+1 unidad de cada tipo · Estabilidad ▼")
+		stage.add_special("ayuda", "Ayuda de la Unión", "Refuerzos si la relación con la Unión lo permite")
+		stage.add_special("comparecer", "Comparecer en TV", "Tranquiliza a la población")
 	# regiones
 	for i in range(1, 9):
 		regions[i] = {"i": 0.0, "hidden": cr.get("hidden", false), "revealed": false, "collapsed": false, "units": 0}
@@ -152,11 +202,60 @@ func build() -> void:
 		start_panel.queue_free()
 		start_panel = null
 		running = true
+		_show_ops()
 		timer_bar.start(DURATION, "TIEMPO DE OPERACIÓN")
 		for k in regions.keys():
 			if regions[k]["i"] > 0.0:
 				_deploy(0, k)
 				_deploy(1, k)
+
+
+## Empieza la operación: en 3D, la cámara se asoma a la mesa táctica y se pueden coger las fichas
+func _show_ops() -> void:
+	ops.visible = true
+	if stage != null:
+		stage.set_running(true)
+		stage.set_ops(true)
+
+
+## La mesa táctica avisa de lo que se hace con las fichas y las medidas
+func _connect_room() -> void:
+	stage.on_hover_px = func(px: Vector2):
+		drag_px = px
+		var id: int = map.id_at(px) if px.x >= 0.0 else 0
+		map.hover_id = id if id >= 1 and id <= 8 else 0
+		map._refresh_hover()
+	stage.on_drop_unit = func(i: int, px: Vector2):
+		if not running or finished:
+			_build_roster()
+			return
+		var id: int = map.id_at(px) if _on_map(px) else 0
+		if id >= 1 and id <= 8:
+			_deploy(i, id, px)
+		else:
+			# soltada fuera de las regiones: vuelve a su pila
+			_build_roster()
+	stage.on_drop_token = func(tid: int, px: Vector2):
+		var tk = null
+		for t in tokens:
+			if int(t["id"]) == tid:
+				tk = t
+		if tk == null or not running or finished:
+			return
+		if not _on_map(px):
+			_recall(tk)
+			return
+		var id: int = map.id_at(px)
+		if id >= 1 and id <= 8 and id != tk["region"]:
+			tk["from"] = px
+			tk["region"] = id
+			tk["travel"] = 0.0
+			Sfx.play("click", -4.0)
+	stage.on_special = _press_special
+
+
+func _on_map(px: Vector2) -> bool:
+	return px.x >= 0.0 and px.y >= 0.0 and px.x <= MAP_SIZE.x and px.y <= MAP_SIZE.y
 
 
 func _build_start() -> void:
@@ -167,7 +266,8 @@ func _build_start() -> void:
 	start_panel.add_child(v)
 	v.add_child(UI.lbl("SITUACIÓN DE EMERGENCIA", UI.f_sans_b, 15, UI.RED))
 	v.add_child(UI.lbl("Asuma el mando de la operación", UI.f_serif_b, 36, UI.CREAM))
-	var t := UI.lbl("Arrastre las unidades del panel derecho a las regiones afectadas (en rojo). Cada unidad reduce la intensidad donde se despliega; algunas tienen efectos secundarios en la opinión pública. Puede redistribuir las unidades arrastrándolas de nuevo. Tiene %d segundos." % int(DURATION), UI.f_sans, 19, UI.TEXT)
+	var how := "las fichas de la bandeja de la mesa" if stage != null else "las unidades del panel derecho"
+	var t := UI.lbl("Arrastre %s a las regiones afectadas (en rojo). Cada unidad reduce la intensidad donde se despliega; algunas tienen efectos secundarios en la opinión pública. Puede redistribuir las unidades arrastrándolas de nuevo. Tiene %d segundos." % [how, int(DURATION)], UI.f_sans, 19, UI.TEXT)
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	t.custom_minimum_size = Vector2(740, 0)
 	v.add_child(t)
@@ -177,6 +277,7 @@ func _build_start() -> void:
 		start_panel.queue_free()
 		start_panel = null
 		running = true
+		_show_ops()
 		timer_bar.start(DURATION, "TIEMPO DE OPERACIÓN")
 		Sfx.loop_start("siren", "siren", -18.0)
 		Sfx.play("alert", -4.0))
@@ -201,11 +302,17 @@ func _build_start() -> void:
 	if cr.get("fatal", false) and float(deleg["score"]) < 0.5:
 		var warn := UI.lbl("Cuidado: si esta crisis sale mal, cae la democracia.", UI.f_sans_b, 16, UI.RED)
 		v.add_child(warn)
+	if stage != null:
+		# más abajo: arriba se ve el videowall de la sala
+		start_panel.position.y = 600.0
 	root.add_child(start_panel)
 	UI.pop_in(start_panel)
 
 
 func _build_roster() -> void:
+	if stage != null:
+		stage.set_units(units)
+		return
 	for c in roster.get_children():
 		c.queue_free()
 	for i in units.size():
@@ -252,15 +359,22 @@ func _special(id: String, title: String, icon_name: String, desc: String) -> Con
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	d.custom_minimum_size = Vector2(220, 0)
 	v.add_child(d)
-	var card := Widgets.click_card(v, func():
-		if not running or special_used.has(id):
-			return
-		special_used[id] = true
-		special_cards[id].set_meta("enabled", false)
-		special_cards[id].modulate.a = 0.4
-		_use_special(id), 10)
+	var card := Widgets.click_card(v, func(): _press_special(id), 10)
 	special_cards[id] = card
 	return card
+
+
+## Medida extraordinaria elegida (tarjeta del panel u objeto de la mesa): una sola vez y con la operación en marcha
+func _press_special(id: String) -> void:
+	if not running or finished or special_used.has(id):
+		return
+	special_used[id] = true
+	if special_cards.has(id):
+		special_cards[id].set_meta("enabled", false)
+		special_cards[id].modulate.a = 0.4
+	if stage != null:
+		stage.special_done(id)
+	_use_special(id)
 
 
 func _use_special(id: String) -> void:
@@ -305,6 +419,19 @@ func _process(delta: float) -> void:
 	layer.queue_redraw()
 	conf_bar.queue_redraw()
 	dmg_lbl.text = UI.num(damage, 0)
+	if stage != null:
+		_sync_pucks()
+
+
+## Las fichas desplegadas, como piezas de la mesa táctica (en el aire mientras van de camino)
+func _sync_pucks() -> void:
+	var list := []
+	for tk in tokens:
+		var u: Dictionary = units[tk["unit"]]
+		var tr: float = tk["travel"]
+		list.append({"id": tk["id"], "pos": _token_pos(tk), "icon": u["icon"], "lift": sin(tr * PI) * 0.1 if tr < 1.0 else 0.0,
+			"tip": "%s en %s\nArrástrela a otra región, o fuera del mapa para retirarla" % [u["name"], W.REGIONS[tk["region"]]["name"]]})
+	stage.sync_tokens(list)
 
 
 func _simulate(dt: float) -> void:
@@ -412,12 +539,20 @@ func _update_palette() -> void:
 		var vis: bool = not rg["hidden"] or rg["revealed"]
 		var inten: float = rg["i"] / 100.0 if vis else 0.0
 		map.set_region(id, Color(inten, 0.6 if (rg["hidden"] and rg["revealed"]) else 0.0, 0, 0))
+		if stage != null and stage.wall_map != null:
+			stage.wall_map.set_region(id, Color(inten, 0.6 if (rg["hidden"] and rg["revealed"]) else 0.0, 0, 0))
 
 
 # ------------------------------------------------------------------ interacción
 
 func _input(event: InputEvent) -> void:
 	if finished:
+		return
+	if stage != null:
+		# en la mesa 3D las fichas se cogen con el ratón (la sala); con el botón derecho se retira la que haya debajo
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and running:
+			if _recall_at(stage.map_px_at(stage.get_local_mouse_position())):
+				get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var local: Vector2 = get_global_mouse_position() - MAP_POS
@@ -444,17 +579,28 @@ func _input(event: InputEvent) -> void:
 					Sfx.play("click", -4.0)
 				drag_token = null
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and running:
-		var local2: Vector2 = get_global_mouse_position() - MAP_POS
-		for tk in tokens:
-			if _token_pos(tk).distance_to(local2) < 24.0:
-				units[tk["unit"]]["left"] += 1
-				tokens.erase(tk)
-				_build_roster()
-				Sfx.play("close", -6.0)
-				break
+		_recall_at(get_global_mouse_position() - MAP_POS)
 
 
-func _deploy(ui: int, region: int) -> void:
+## Retira la ficha que haya en ese punto del mapa (vuelve a su pila)
+func _recall_at(local: Vector2) -> bool:
+	for tk in tokens:
+		if _token_pos(tk).distance_to(local) < 24.0:
+			_recall(tk)
+			return true
+	return false
+
+
+func _recall(tk: Dictionary) -> void:
+	units[tk["unit"]]["left"] += 1
+	tokens.erase(tk)
+	_build_roster()
+	Sfx.play("close", -6.0)
+
+
+## Despliega una unidad en una región. from: píxel del mapa donde se ha soltado (si no, donde esté el ratón en 2D o
+## el borde de la bandeja en 3D)
+func _deploy(ui: int, region: int, from := Vector2(-1, -1)) -> void:
 	var u: Dictionary = units[ui]
 	if u["left"] <= 0:
 		return
@@ -462,8 +608,10 @@ func _deploy(ui: int, region: int) -> void:
 	cost += float(u["cost"])
 	for k in u["fx"].keys():
 		unit_fx[k] = unit_fx.get(k, 0.0) + float(u["fx"][k])
-	var from := get_global_mouse_position() - MAP_POS
-	tokens.append({"unit": ui, "region": region, "travel": 0.0, "from": from, "slot": tokens.size()})
+	if from.x < 0.0:
+		from = (get_global_mouse_position() - MAP_POS) if stage == null else Vector2(MAP_SIZE.x, MAP_SIZE.y * 0.5)
+	_tok_id += 1
+	tokens.append({"id": _tok_id, "unit": ui, "region": region, "travel": 0.0, "from": from, "slot": tokens.size()})
 	Sfx.play("click", -2.0, 0.9)
 	_build_roster()
 
@@ -491,10 +639,10 @@ func _draw_layer() -> void:
 		var rg: Dictionary = regions[id]
 		var vis: bool = not rg["hidden"] or rg["revealed"]
 		var name: String = W.REGIONS[id]["name"]
-		layer.draw_string(UI.f_sans_b, c + Vector2(-80, -16), name.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, 160, 13, Color(1, 1, 1, 0.85))
+		layer.draw_string(UI.f_sans_b, c + Vector2(-90, -16), name.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, 180, 16 if stage != null else 13, Color(1, 1, 1, 0.85))
 		if vis and rg["i"] > 0.0:
 			var col := UI.RED.lightened(0.3) if rg["i"] > 60 else UI.AMBER
-			layer.draw_string(UI.f_cond_b, c + Vector2(-60, 6), "%d%%" % int(rg["i"]), HORIZONTAL_ALIGNMENT_CENTER, 120, 22, col)
+			layer.draw_string(UI.f_cond_b, c + Vector2(-60, 8), "%d%%" % int(rg["i"]), HORIZONTAL_ALIGNMENT_CENTER, 120, 28 if stage != null else 22, col)
 			layer.draw_rect(Rect2(c + Vector2(-30, 12), Vector2(60, 4)), Color(0, 0, 0, 0.5))
 			layer.draw_rect(Rect2(c + Vector2(-30, 12), Vector2(60 * rg["i"] / 100.0, 4)), col)
 			if rg["collapsed"]:
@@ -509,6 +657,12 @@ func _draw_layer() -> void:
 		var tt: float = p["t"]
 		var pc := Color(0.3, 1.0, 0.5) if p.get("good", false) else Color(1, 0.3, 0.2)
 		layer.draw_arc(c2, 20 + tt * 90.0, 0, TAU, 48, Color(pc, 1.0 - tt / 1.2), 3.0, true)
+	if stage != null:
+		# en 3D las fichas son piezas de la mesa: aquí solo se marca la región donde caería la que se arrastra
+		var did: int = map.id_at(drag_px) if _on_map(drag_px) else 0
+		if did >= 1 and did <= 8:
+			layer.draw_arc(map.centroids.get(did, drag_px), 50, 0, TAU, 48, Color(UI.GOLD_L, 0.85), 3.0, true)
+		return
 	# fichas
 	for tk in tokens:
 		if tk == drag_token:
@@ -543,6 +697,11 @@ func _finish(score: float, delegated: bool) -> void:
 	if delegated:
 		cost = float(deleg.get("cost", 300.0))
 		unit_fx = {}
+	if stage != null:
+		stage.result(score, delegated)
+		ops.visible = false
+		map.hover_id = 0
+		map._refresh_hover()
 	var out := GS.resolve_crisis(item, score, unit_fx, cost)
 	if GS.game_ended:
 		return

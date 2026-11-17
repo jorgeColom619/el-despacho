@@ -383,7 +383,7 @@ func _next_if(gen: int) -> void:
 func _finish() -> void:
 	var avg := points / float(rounds.size())
 	var won := avg >= 0.62
-	var fx := {"approval": snappedf((avg - 0.55) * 7.0, 0.1), "estabilidad": 3 if won else -3}
+	var fx := {"approval": snappedf((avg - 0.55) * 7.0, 0.1), "estabilidad": 3 if won else -3, "pc": 4 if won else 0}
 	var opp_party: String = W.PLAYER_PARTIES[GS.pres["party"]]["opp"]
 	fx["party"] = {GS.pres["party"]: 2.0 if won else -1.0, opp_party: -2.0 if won else 1.0}
 	var out := GS.apply_fx(fx, "Sesión de control")

@@ -123,6 +123,9 @@ static func monthly() -> void:
 	_experience()
 	_deficit_rule()
 	_troubles()
+	_prices()
+	_coalition_monthly()
+	_pc_decay()
 
 
 ## ¿Tiene ese rasgo alguno de estos cargos? (los rasgos solo cuentan en el puesto que toca)
@@ -285,6 +288,8 @@ static func summit_send_fx() -> Dictionary:
 
 ## El socio más cercano (para la «cuota del socio»): el partido con mejor relación que no sea el propio ni la oposición
 static func partner_party() -> String:
+	if pact_partner() != "":
+		return pact_partner()
 	var own: String = GS.pres["party"]
 	var opp: String = W.PLAYER_PARTIES[own]["opp"]
 	var best := ""
@@ -365,6 +370,7 @@ static func hire_cost(cand: Dictionary) -> int:
 
 ## Consecuencias políticas de un relevo: el socio que pierde su cartera se enfada; el que la gana, se acerca
 static func on_change(key: String, old: Dictionary, cand: Dictionary) -> void:
+	drop_reform(key)
 	var vice := key == "vice"
 	if str(old.get("origin", "")) == "socio" and GS.parties.has(str(old.get("party", ""))):
 		var p := str(old["party"])
@@ -391,6 +397,9 @@ static func crisis_forecast(crisis_id: String) -> Dictionary:
 		sc += float(W.CRISIS_TRAITS.get(t, 0.0))
 	# la Vicepresidencia supervisa
 	sc += (skill("vice") - MID) * 0.0015
+	# una reforma terminada con éxito (Protección Civil, Ciberdefensa, Salud Pública) ayuda en sus crisis
+	if crisis_bonus(crisis_id):
+		sc += 0.06
 	sc = clampf(sc, 0.12, 0.86)
 	var cost := 320.0 * (1.5 - s * 0.01)
 	if "austero" in m.get("traits", []):
@@ -405,7 +414,7 @@ static func crisis_result(f: Dictionary) -> float:
 	return clampf(float(f["score"]) + GS.rng.randf_range(-0.08, 0.08), 0.05, 0.95)
 
 
-const INTERACTIVE := ["nego", "speech", "debate", "press", "control", "casino", "summit", "pick"]
+const INTERACTIVE := ["nego", "speech", "debate", "press", "control", "casino", "summit", "pick", "pact"]
 
 
 ## Cuando el presidente no contesta a una visita, decide el ministro que la trajo. Uno competente (y una buena
@@ -510,6 +519,79 @@ static func ideology(b: Dictionary, t: Dictionary) -> float:
 	return clampf(-social * 180.0 + hard * 120.0 - tax * 3.0, -80.0, 80.0)
 
 
+## Saldo mensual que darían unas cuentas (sin tocarlas de verdad)
+static func projected_balance(nb: Dictionary, nt: Dictionary) -> float:
+	var ob: Dictionary = GS.budget.duplicate()
+	var ot: Dictionary = GS.taxes.duplicate()
+	for k in nb.keys():
+		GS.budget[k] = float(nb[k])
+	for k in nt.keys():
+		GS.taxes[k] = float(nt[k])
+	var bal := GS.monthly_balance()
+	GS.budget = ob
+	GS.taxes = ot
+	return bal
+
+
+## Lo que le parece a un partido un cambio de las cuentas respecto a lo vigente (+ le gusta, − le disgusta).
+## La izquierda quiere más gasto social e impuestos a la renta y a las empresas; la derecha, lo contrario; el IVA no
+## lo quiere nadie; recortar pensiones es tóxico para todos; el déficit alto asusta (más a la derecha) y un vuelco
+## brusco de las cuentas no lo apoya casi nadie.
+static func budget_utility(p: String, nb: Dictionary, nt: Dictionary, bal: float) -> float:
+	var x := clampf(float(W.PARTIES[p]["ideo"]) / 75.0, -1.0, 1.0)
+	var dr := float(nt.get("renta", GS.taxes["renta"])) - float(GS.taxes["renta"])
+	var ds := float(nt.get("sociedades", GS.taxes["sociedades"])) - float(GS.taxes["sociedades"])
+	var di := float(nt.get("iva", GS.taxes["iva"])) - float(GS.taxes["iva"])
+	var u := dr * (-0.45 - 0.75 * x) + ds * (-0.2 - 0.9 * x) + di * (-0.9 + 0.3 * x)
+	var mag := absf(dr) + absf(ds) + absf(di)
+	for k in nb.keys():
+		# en tramos del 10 %
+		var d := (float(nb[k]) - float(GS.budget[k])) * 10.0
+		mag += absf(d)
+		match str(k):
+			"sanidad", "educacion", "social", "ambiente":
+				u += d * (0.3 - 0.5 * x)
+			"pensiones":
+				u += d * (0.25 - 0.3 * x) + minf(0.0, d) * 0.6
+			"defensa", "seguridad":
+				u += d * (0.6 * x - 0.1)
+			"infraestructura":
+				u += d * (0.9 if p == "CR" else 0.3)
+	var dp := maxf(0.0, -bal * 12.0 / GS.gdp * 100.0)
+	u -= maxf(0.0, dp - DEFICIT_LIMIT) * (0.8 + 0.4 * x)
+	u -= maxf(0.0, mag - 4.0) * 0.3
+	return u
+
+
+## Probabilidad de que cada partido vote a favor de unas cuentas. Las negociaciones (lobby) ayudan, pero con
+## rendimientos decrecientes y un tope: no se puede comprar cualquier cosa.
+static func budget_probs(nb: Dictionary, nt: Dictionary, lobby: Dictionary = {}) -> Dictionary:
+	var bal := projected_balance(nb, nt)
+	var own: String = GS.pres["party"]
+	var late := GS.term_days - GS.day < 180
+	var out := {}
+	for p in GS.parties.keys():
+		var u := budget_utility(p, nb, nt, bal)
+		if late and u < 0.0:
+			u *= 1.5
+		var pr: float
+		if p == own:
+			# hasta los diputados propios se rebelan contra unas cuentas que les hunden en su circunscripción
+			pr = 0.96 + minf(0.0, u) * 0.05
+		else:
+			var dist := absf(float(W.PARTIES[p]["ideo"]) - float(W.PARTIES[own]["ideo"]))
+			pr = 0.42 + (60.0 - dist) / 200.0 + (float(GS.parties[p]["rel"]) - 50.0) / 140.0 + u * 0.07 - [-0.04, 0.0, 0.07][GS.difficulty]
+			if GS.approval < 40.0:
+				pr -= (40.0 - GS.approval) * 0.006
+			# el socio de coalición vota con el Gobierno
+			if p == pact_partner():
+				pr += 0.15
+			# negociar ayuda, pero no se compra a un partido para que vote lo que detesta
+			pr += 0.22 * tanh(float(lobby.get(p, 0.0)) / 0.22) * clampf(1.0 + u / 8.0, 0.3, 1.0)
+		out[p] = clampf(pr, 0.02, 0.98)
+	return out
+
+
 ## Pone en vigor unas cuentas. Los cambios bruscos tienen un coste inmediato que se va olvidando (además del efecto
 ## permanente de tener los impuestos altos o el gasto bajo): subidas de impuestos y recortes enfadan a quien los paga.
 static func apply_budget(new_b: Dictionary, new_t: Dictionary) -> void:
@@ -582,6 +664,8 @@ static func decree(new_b: Dictionary, new_t: Dictionary) -> void:
 static func tick() -> void:
 	if not GS.decree_pending.is_empty() and GS.day >= int(GS.decree_pending.get("day", 0)):
 		_convalidate()
+	_reforms_tick()
+	_coalition_check()
 
 
 static func _sharp(p: float) -> float:
@@ -593,7 +677,16 @@ static func _sharp(p: float) -> float:
 static func _convalidate() -> void:
 	var d: Dictionary = GS.decree_pending
 	GS.decree_pending = {}
-	var probs: Dictionary = GS.vote_forecast({"name": "Convalidación del decreto ley", "ideo": float(d.get("ideo", 0.0))}, {})
+	# se vota lo que hizo el decreto: las cuentas de antes frente a las de ahora
+	var nb: Dictionary = GS.budget.duplicate()
+	var nt: Dictionary = GS.taxes.duplicate()
+	for k in d.get("db", {}).keys():
+		GS.budget[k] = float(GS.budget[k]) - float(d["db"][k])
+	for k in d.get("dt", {}).keys():
+		GS.taxes[k] = float(GS.taxes[k]) - float(d["dt"][k])
+	var probs: Dictionary = budget_probs(nb, nt)
+	GS.budget = nb
+	GS.taxes = nt
 	var yes := 0
 	for p in GS.parties.keys():
 		if GS.rng.randf() < _sharp(float(probs.get(p, 0.5))):
@@ -613,3 +706,336 @@ static func _convalidate() -> void:
 	GS.push_news("El Congreso tumba el decreto ley: las medidas fiscales quedan derogadas", 3)
 	GS.toast.emit("El Congreso no convalida su decreto ley (%d votos a favor): queda derogado" % yes, "bad", "mazo")
 	GS.apply_fx({"estabilidad": -5, "pc": -8}, "Decreto ley derogado")
+
+
+# ------------------------------------------------------------------ capital político
+
+## Por encima de esto, el capital político se va perdiendo: no se puede guardar, hay que gastarlo
+const PC_KEEP := 40.0
+
+
+## Capital político que llega cada mes: aprobación, estabilidad, dificultad y la Jefatura de Gabinete
+static func pc_income() -> float:
+	return 2.0 + GS.approval * 0.05 + float(GS.meters["estabilidad"]) * 0.03 + [1.0, 0.0, -1.0][GS.difficulty] + monthly_pc()
+
+
+static func _pc_decay() -> void:
+	if GS.pc > PC_KEEP:
+		GS.pc -= (GS.pc - PC_KEEP) * 0.25
+
+
+# ------------------------------------------------------------------ inflación y Banco Central
+
+const INFL_TARGET := 2.0
+
+
+## Gasto público respecto al habitual (1 = el de siempre)
+static func spend_ratio() -> float:
+	var sb := 0.0
+	var sn := 0.0
+	for k in W.BUDGET.keys():
+		sb += float(W.BUDGET[k]["base"])
+		sn += float(W.BUDGET[k]["base"]) * float(GS.budget[k])
+	return sn / maxf(1.0, sb)
+
+
+## Hacia dónde van los precios: más gasto, déficit, IVA alto o una economía recalentada los empujan hacia arriba
+static func inflation_target() -> float:
+	return INFL_TARGET + (spend_ratio() - 1.0) * 6.0 + maxf(0.0, deficit_pct() - 2.0) * 0.35 + (float(GS.meters["economia"]) - 55.0) * 0.06 + GS.cycle * 0.8 + (float(GS.taxes["iva"]) - 21.0) * 0.12
+
+
+## Cada mes: los precios se mueven y el Banco Central (independiente) ajusta los tipos, como mucho medio punto
+static func _prices() -> void:
+	GS.inflation = clampf(GS.inflation + (inflation_target() - GS.inflation) * 0.18 + GS.rng.randf_range(-0.15, 0.15), -2.0, 18.0)
+	var want := clampf(INFL_TARGET + 1.5 * (GS.inflation - INFL_TARGET) + (float(GS.meters["economia"]) - 55.0) * 0.05, 0.0, 9.0)
+	want = roundf(want * 4.0) / 4.0
+	var old: float = GS.policy_rate
+	GS.policy_rate = move_toward(GS.policy_rate, want, 0.5)
+	if absf(GS.policy_rate - old) >= 0.24:
+		GS.push_news("El Banco Central %s los tipos de interés al %s %%" % ["sube" if GS.policy_rate > old else "baja", UI.num(GS.policy_rate, 2)], 2)
+	if GS.inflation > 5.0 and GS.day >= int(GS.flags.get("infl_aviso", -1)) and not GS._is_queued("inflacion_alta"):
+		GS.flags["infl_aviso"] = GS.day + 150
+		_inflation_event()
+
+
+## Puntos de satisfacción que quita la subida de precios (por encima del 3 %)
+static func price_pain() -> float:
+	return maxf(0.0, GS.inflation - 3.0)
+
+
+static func _inflation_event() -> void:
+	GS.spawn({"id": "inflacion_alta", "type": "advisor", "who": "economia", "gen": true,
+		"title": "Los precios se disparan",
+		"text": "Presidente, la inflación ya está en el %s %%. La cesta de la compra, la luz y los alquileres suben cada mes, los jubilados y los trabajadores pierden poder adquisitivo y el Banco Central tiene los tipos al %s %%. ¿Qué hacemos?" % [UI.num(GS.inflation, 1), UI.num(GS.policy_rate, 2)],
+		"choices": [
+			{"t": "Rebajar el IVA de los alimentos y la energía.", "fx": {"monthly": -600, "inflation": -0.8, "trabajadores": 2, "jubilados": 2}},
+			{"t": "Pacto de rentas con sindicatos y patronal.", "fx": {"pc": -8, "inflation": -1.2, "trabajadores": -1, "empresarios": 1}, "rec": "economia"},
+			{"t": "Recortar gasto para enfriar la economía.", "fx": {"monthly": 700, "inflation": -1.0, "bienestar": -2, "trabajadores": -2}},
+			{"t": "Dejar actuar al Banco Central.", "fx": {"estabilidad": -1}}],
+		"default": 3})
+
+
+# ------------------------------------------------------------------ coalición de gobierno
+
+const PACT_CP := 10
+const PACT_SEAT_DAYS := 75
+const PACT_DAYS := 365
+## La partida que cada partido exige subir (al menos un 10 %) si entra en el Gobierno
+const PARTY_ITEM := {"FS": "social", "VV": "ambiente", "MP": "sanidad", "CC": "educacion", "CR": "infraestructura", "AR": "seguridad", "PO": "defensa"}
+
+
+static func pact_partner() -> String:
+	return str(GS.coalition.get("party", ""))
+
+
+## Partidos con los que se puede negociar un pacto de gobierno: afines y con buena relación
+static func pact_candidates() -> Array:
+	var own: String = GS.pres["party"]
+	var opp: String = W.PLAYER_PARTIES[own]["opp"]
+	var out := []
+	for p in W.PARTY_ORDER:
+		if p == own or p == opp or not GS.parties.has(p):
+			continue
+		if absf(float(W.PARTIES[p]["ideo"]) - float(W.PARTIES[own]["ideo"])) <= 50.0 and float(GS.parties[p]["rel"]) >= 50.0:
+			out.append(p)
+	return out
+
+
+## La ley de su programa (closest) o su línea roja (la más alejada de sus ideas)
+static func _law_for(p: String, closest: bool) -> String:
+	var own_i := float(W.PARTIES[GS.pres["party"]]["ideo"])
+	var pi := float(W.PARTIES[p]["ideo"])
+	var best := ""
+	var bd := INF if closest else -INF
+	for id in W.LAWS.keys():
+		var law: Dictionary = W.LAWS[id]
+		if law.get("super", false) or id in GS.policies:
+			continue
+		var li := float(law.get("ideo", 0.0))
+		var d := absf(li - pi)
+		if closest:
+			if absf(li - own_i) <= 45.0 and d < bd:
+				bd = d
+				best = id
+		elif d > bd:
+			bd = d
+			best = id
+	return best
+
+
+static func pact_offer(p: String) -> Dictionary:
+	var item: String = PARTY_ITEM.get(p, "social")
+	return {"party": p, "law": _law_for(p, true), "veto": _law_for(p, false), "item": item, "item_from": float(GS.budget[item])}
+
+
+## La Vicepresidencia trae las condiciones del socio; se firma (o no) como cualquier otra decisión
+static func offer_pact(p: String) -> void:
+	if GS._is_queued("pacto_" + p):
+		return
+	var o := pact_offer(p)
+	GS.flags["pact_offer"] = o
+	var pn: String = W.PARTIES[p]["name"]
+	var law_n: String = W.LAWS[o["law"]]["name"] if o["law"] != "" else "su programa"
+	var veto_n: String = W.LAWS[o["veto"]]["name"] if o["veto"] != "" else "ninguna"
+	GS.spawn({"id": "pacto_" + p, "type": "advisor", "who": "vice", "gen": true, "front": true,
+		"title": "Pacto de gobierno con %s" % pn,
+		"text": "Presidente, %s está dispuesto a entrar en el Gobierno y votar con nosotros las leyes y los Presupuestos. Sus condiciones: una cartera para uno de los suyos (antes de %d días), aprobar «%s» y subir al menos un 10 %% la partida de %s (antes de un año). Su línea roja: «%s». Si incumplimos, romperá el pacto." % [pn, PACT_SEAT_DAYS, law_n, String(W.BUDGET[o["item"]]["name"]).to_lower(), veto_n],
+		"choices": [
+			{"t": "Firmar el pacto de gobierno (−%d CP)." % PACT_CP, "fx": {"pact": p}, "rec": "vice"},
+			{"t": "No aceptar sus condiciones.", "fx": {"party": {p: -3}}}],
+		"default": 1})
+
+
+static func sign_pact(p: String) -> void:
+	var o: Dictionary = GS.flags.get("pact_offer", {})
+	if str(o.get("party", "")) != p:
+		o = pact_offer(p)
+	GS.flags.erase("pact_offer")
+	GS.pc -= PACT_CP
+	GS.coalition = {"party": p, "since": GS.day, "law": o["law"], "veto": o["veto"], "item": o["item"], "item_from": float(o["item_from"]),
+		"seat_due": GS.day + PACT_SEAT_DAYS, "due": GS.day + PACT_DAYS}
+	GS.parties[p]["rel"] = clampf(float(GS.parties[p]["rel"]) + 12.0, 0.0, 100.0)
+	GS.push_news("%s entra en el Gobierno: firmado el pacto de coalición" % W.PARTIES[p]["name"], 3)
+	GS.log_history("Pacto de gobierno", "Coalición con %s" % W.PARTIES[p]["name"])
+	GS._update_targets()
+	GS.stats_changed.emit()
+
+
+## Estado de las condiciones del pacto: [{t, done, due}]
+static func pact_status() -> Array:
+	var c: Dictionary = GS.coalition
+	if c.is_empty():
+		return []
+	var p := str(c["party"])
+	var seat := false
+	for k in GS.ministers.keys():
+		var m: Dictionary = GS.ministers[k]
+		if str(m.get("origin", "")) == "socio" and str(m.get("party", "")) == p:
+			seat = true
+	var out := [{"t": "Una cartera para %s (cese a un ministro y elija la «cuota de %s»)" % [W.PARTIES[p]["short"], W.PARTIES[p]["short"]], "done": seat, "due": int(c["seat_due"])}]
+	if str(c["law"]) != "":
+		out.append({"t": "Aprobar «%s»" % W.LAWS[c["law"]]["name"], "done": str(c["law"]) in GS.policies, "due": int(c["due"])})
+	var item := str(c["item"])
+	out.append({"t": "Subir un 10 %% la partida de %s" % String(W.BUDGET[item]["name"]).to_lower(), "done": float(GS.budget[item]) >= float(c["item_from"]) + 0.099, "due": int(c["due"])})
+	return out
+
+
+static func _coalition_check() -> void:
+	var c: Dictionary = GS.coalition
+	if c.is_empty():
+		return
+	if str(c["veto"]) != "" and str(c["veto"]) in GS.policies:
+		break_pact("el Gobierno ha aprobado su línea roja («%s»)" % W.LAWS[c["veto"]]["name"])
+		return
+	for d in pact_status():
+		if not d["done"] and GS.day > int(d["due"]):
+			break_pact("no se ha cumplido lo pactado: %s" % String(d["t"]).to_lower())
+			return
+
+
+static func _coalition_monthly() -> void:
+	if GS.coalition.is_empty():
+		return
+	if GS.approval < 30.0 and GS.rng.randf() < 0.2:
+		break_pact("no quiere hundirse con un Gobierno sin apoyo en la calle")
+
+
+static func break_pact(reason: String, by_player := false) -> void:
+	var p := pact_partner()
+	if p == "":
+		return
+	GS.coalition = {}
+	GS.parties[p]["rel"] = clampf(float(GS.parties[p]["rel"]) - (30.0 if by_player else 25.0), 0.0, 100.0)
+	GS.apply_fx({"estabilidad": -4 if by_player else -6}, "Ruptura de la coalición")
+	var pn: String = W.PARTIES[p]["name"]
+	if by_player:
+		GS.push_news("El presidente rompe la coalición con %s" % pn, 3)
+	else:
+		GS.push_news("Se rompe la coalición: %s sale del Gobierno porque %s" % [pn, reason], 3)
+		GS.toast.emit("%s rompe la coalición: %s" % [pn, reason], "bad", "alerta")
+	# sus ministros se van con ellos (sin el enfado extra de un cese: ya se van por su cuenta)
+	for k in GS.ministers.keys():
+		var m: Dictionary = GS.ministers[k]
+		if str(m.get("origin", "")) == "socio" and str(m.get("party", "")) == p:
+			m["origin"] = "ex_socio"
+			GS._fire_minister(k)
+	GS._update_targets()
+	GS.stats_changed.emit()
+
+
+# ------------------------------------------------------------------ cuestión de confianza
+
+static func confidence_used() -> bool:
+	return int(GS.flags.get("confianza_term", -1)) == GS.term_index
+
+
+# ------------------------------------------------------------------ encargos a los ministros
+
+## Probabilidades [éxito, fracaso] de una reforma según la competencia del ministro (y la Vicepresidencia)
+static func reform_chance(key: String) -> Array:
+	var q := skill(key) / 100.0
+	var ok := clampf(0.15 + q * 0.75 + (skill("vice") - MID) * 0.002, 0.1, 0.92)
+	var bad := clampf(0.45 - q * 0.45, 0.03, 0.4)
+	return [ok, bad]
+
+
+static func reform_data(key: String, id: String) -> Dictionary:
+	for r in W.REFORMS.get(key, []):
+		if r["id"] == id:
+			return r
+	return {}
+
+
+static func start_reform(key: String, id: String) -> bool:
+	var r := reform_data(key, id)
+	if r.is_empty() or GS.reforms.has(key) or GS.pc < float(r["pc"]):
+		return false
+	GS.pc -= float(r["pc"])
+	if float(r.get("money", 0.0)) > 0.0:
+		GS.apply_fx({"money": -float(r["money"])}, r["name"], false)
+	GS.reforms[key] = {"id": id, "start": GS.day, "end": GS.day + int(r["days"])}
+	GS.push_news("%s pone en marcha: %s" % [GS.ministers[key]["name"], r["name"]], 2)
+	GS.stats_changed.emit()
+	return true
+
+
+## Si cesan al ministro, su reforma se queda en un cajón
+static func drop_reform(key: String) -> void:
+	if GS.reforms.has(key):
+		var r := reform_data(key, str(GS.reforms[key]["id"]))
+		GS.reforms.erase(key)
+		GS.toast.emit("La reforma «%s» se queda en un cajón" % r.get("name", ""), "warn", "documento")
+
+
+static func _reforms_tick() -> void:
+	for key in GS.reforms.keys():
+		if GS.day >= int(GS.reforms[key]["end"]):
+			_resolve_reform(key)
+
+
+static func _resolve_reform(key: String) -> void:
+	var id := str(GS.reforms[key]["id"])
+	GS.reforms.erase(key)
+	var r := reform_data(key, id)
+	if r.is_empty():
+		return
+	var ch := reform_chance(key)
+	var x := GS.rng.randf()
+	var m: Dictionary = GS.ministers.get(key, {})
+	var fx: Dictionary
+	var how := ""
+	if x < float(ch[0]):
+		fx = r["ok"]
+		how = "con éxito"
+		if r.has("flag"):
+			GS.flags[r["flag"]] = GS.day
+	elif x < 1.0 - float(ch[1]):
+		fx = _scaled(r["ok"], 0.5)
+		how = "a medias"
+	else:
+		fx = r["bad"]
+		how = "en fracaso"
+	GS.apply_fx(_tokens(fx), r["name"])
+	GS.push_news("%s termina «%s» %s" % [m.get("name", "El Gobierno"), r["name"], how], 2)
+	GS.toast.emit("Reforma «%s»: %s" % [r["name"], how], "good" if how == "con éxito" else ("info" if how == "a medias" else "bad"), "documento")
+	GS.log_history(r["name"], "Reforma terminada %s" % how)
+
+
+static func _scaled(fx: Dictionary, k: float) -> Dictionary:
+	var out := {}
+	for key in fx.keys():
+		var v = fx[key]
+		if v is Dictionary:
+			out[key] = _scaled(v, k)
+		elif typeof(v) in [TYPE_INT, TYPE_FLOAT]:
+			out[key] = float(v) * k
+		else:
+			out[key] = v
+	return out
+
+
+## «@all» (todos los países) y «@opp» (el partido de la oposición) en los efectos de las reformas
+static func _tokens(fx: Dictionary) -> Dictionary:
+	var out := fx.duplicate(true)
+	if out.has("rel") and out["rel"].has("@all"):
+		var v := float(out["rel"]["@all"])
+		out["rel"] = {}
+		for c in GS.countries.keys():
+			out["rel"][c] = v
+	if out.has("party") and out["party"].has("@opp"):
+		var v2 := float(out["party"]["@opp"])
+		out["party"].erase("@opp")
+		out["party"][W.PLAYER_PARTIES[GS.pres["party"]]["opp"]] = v2
+	return out
+
+
+## Reformas terminadas con éxito que ayudan en ciertas crisis: +1 unidad de cada tipo y mejor resultado si se delega
+const CRISIS_FLAGS := {"proteccion_civil": ["incendios", "inundaciones", "terremoto", "temporal_nieve"],
+	"ciberdefensa": ["apagon", "ciber_bancos", "wifi"], "salud_publica": ["pandemia", "plaga", "palomas", "huelga_sanitaria"]}
+
+
+static func crisis_bonus(crisis_id: String) -> bool:
+	for f in CRISIS_FLAGS.keys():
+		if GS.flags.has(f) and crisis_id in CRISIS_FLAGS[f]:
+			return true
+	return false

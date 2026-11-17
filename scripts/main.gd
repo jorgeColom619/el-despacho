@@ -546,6 +546,38 @@ func _debug_start() -> void:
 		"crisisrun":
 			GS.spawn(DB.event(OS.get_environment("CRISIS") if OS.get_environment("CRISIS") != "" else "crisis_incendios"))
 			open_overlay("crisis", {"item": GS.alerts[0], "autostart": true})
+		"crisisdrag":
+			# mesa táctica 3D con el ratón simulado: una ficha de la bandeja a una región en llamas (3,5 s), luego
+			# esa ficha fuera del mapa para retirarla (6 s) y el pulsador del estado de alarma (8 s)
+			GS.spawn(DB.event(OS.get_environment("CRISIS") if OS.get_environment("CRISIS") != "" else "crisis_incendios"))
+			open_overlay("crisis", {"item": GS.alerts[0], "autostart": true})
+			var ovc = current_overlay
+			var st = ovc.stage
+			var drag := func(a: Vector3, b: Vector3, hold: float):
+				var pa: Vector2 = st.scene_point(a)
+				var pb: Vector2 = st.scene_point(b)
+				st.test_mouse(pa, "press")
+				st.test_mouse(pa.lerp(pb, 0.5), "move")
+				st.test_mouse(pb, "move")
+				get_tree().create_timer(hold).timeout.connect(func():
+					st.test_mouse(pb, "release")
+					print("fichas desplegadas: ", ovc.tokens.size(), " · quedan ", ovc.units.map(func(u): return u["left"])))
+			get_tree().create_timer(3.5).timeout.connect(func():
+				var hot := 1
+				for k in ovc.regions:
+					if ovc.regions[k]["i"] > ovc.regions[hot]["i"]:
+						hot = k
+				print("región en llamas: ", hot)
+				drag.call(st._piles[2]["root"].global_position + Vector3(0, 0.1, 0), st.map_to_world(ovc.map.centroids[hot]), 0.6))
+			get_tree().create_timer(6.0).timeout.connect(func():
+				var last: Dictionary = ovc.tokens.back()
+				drag.call(st._pucks[last["id"]]["node"].global_position + Vector3(0, 0.02, 0), Vector3(1.0, st.TABLE_H, 1.25), 0.5))
+			get_tree().create_timer(8.0).timeout.connect(func():
+				var sp: Node3D = st._specials["emergencia"]["node"]
+				var p: Vector2 = st.scene_point(sp.global_position + Vector3(0, 0.04, 0))
+				st.test_mouse(p, "press")
+				st.test_mouse(p, "release")
+				print("medidas usadas: ", ovc.special_used.keys(), " · quedan ", ovc.units.map(func(u): return u["left"])))
 		"vote":
 			open_overlay("vote", {"law": "vivienda"})
 		"interview":
@@ -598,6 +630,14 @@ func _debug_start() -> void:
 				current_overlay._select(3)
 		"debate":
 			open_overlay("debate", {"electoral": true})
+		"debaterun", "debatereply":
+			open_overlay("debate", {"electoral": true})
+			if current_overlay.intro != null:
+				current_overlay.intro.queue_free()
+				current_overlay._next()
+			if debug_open == "debatereply":
+				var ovd = current_overlay
+				get_tree().create_timer(5.0).timeout.connect(func(): ovd._reply(DB.P.DEBATE_REPLIES[0]))
 		"live":
 			GS.timers["press"] = 9999
 			GS.set_speed(3)

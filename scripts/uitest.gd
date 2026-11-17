@@ -400,15 +400,26 @@ func _suite() -> void:
 		print("OK discurso (", occ, ") · erratas corregidas ", o.errors_fixed, "/", o.errors_total, " · lapsus ", o.gaffes, " · aprobación ", o.qualities)
 		await _close_current()
 	o = await _open("debate", {"electoral": false})
-	await _wait(1.5)
-	for r in 4:
-		o.bubble_opp.skip()
-		await _wait(0.3)
-		o._reply(DB.P.DEBATE_REPLIES[r])
-		await _wait(0.3)
-		o.bubble_me.skip()
-		await _wait(3.0)
-	print("OK debate")
+	if o.stage != null:
+		# en 3D: la moderadora abre el bloque, ataca el rival y las réplicas salen en el atril
+		o.intro.queue_free()
+		o._next()
+		for r in 4:
+			await _until(func(): return o.stage.cards.size() > 0, o)
+			o._reply(DB.P.DEBATE_REPLIES[r] if r < 3 else null)
+			var r1: int = o.ri
+			await _until(func(): return o.ri != r1 or o.closing, o)
+		await _wait(0.5)
+	else:
+		await _wait(1.5)
+		for r in 4:
+			o.bubble_opp.skip()
+			await _wait(0.3)
+			o._reply(DB.P.DEBATE_REPLIES[r])
+			await _wait(0.3)
+			o.bubble_me.skip()
+			await _wait(3.0)
+	print("OK debate (bloques ", o.ri, ", gusano ", o.worm, ")")
 	await _close_current()
 	await _casino()
 	for k in ["cabinet", "phonebook", "tv", "pause", "newspaper"]:

@@ -118,6 +118,53 @@ const CRISIS_MINISTER := {"migrantes": "interior", "huelga_sanitaria": "sanidad"
 	"terremoto": "interior", "marea_negra": "defensa", "ciber_bancos": "economia", "temporal_nieve": "interior", "plaga": "economia"}
 ## Rasgos que ayudan (+) o estorban (−) al ministro que dirige una crisis delegada (eficacia, de 0 a 1)
 const CRISIS_TRAITS := {"veterano": 0.06, "gestor": 0.05, "mano_dura": 0.03, "tecnocrata": 0.02, "inexperto": -0.08, "polemico": -0.03}
+## Encargos a los ministros: dos reformas por cargo. pc y money se pagan al empezar; days es lo que tardan.
+## ok: efectos si sale bien (a medias, la mitad); bad: si fracasa. flag: marca que dejan (ayuda en ciertas crisis).
+## «mods» son permanentes. «@all» = todos los países; «@opp» = el partido de la oposición.
+const REFORMS := {
+	"vice": [
+		{"id": "coordinacion", "name": "Plan de coordinación del Gobierno", "desc": "Comisiones delegadas y un calendario común para todos los ministerios.", "days": 120, "pc": 8, "money": 0.0,
+			"ok": {"mods": {"estabilidad": 4}}, "bad": {"estabilidad": -2}},
+		{"id": "pacto_estado", "name": "Pacto de Estado por la Sanidad", "desc": "Sentar a la oposición para blindar la sanidad pública más allá de esta legislatura.", "days": 180, "pc": 12, "money": 0.0,
+			"ok": {"mods": {"bienestar": 3, "estabilidad": 2}, "party": {"@opp": 8}}, "bad": {"estabilidad": -3, "party": {"@opp": -4}}},
+	],
+	"jefa": [
+		{"id": "administracion", "name": "Modernización de la Administración", "desc": "Trámites digitales y menos papeleo: ahorra dinero cada mes.", "days": 150, "pc": 8, "money": 500.0,
+			"ok": {"monthly": 300, "mods": {"estabilidad": 2}}, "bad": {"money": -800, "trabajadores": -2}},
+		{"id": "comunicacion", "name": "Nueva estrategia de comunicación", "desc": "Un relato claro del Gobierno en los medios y en las redes.", "days": 90, "pc": 6, "money": 0.0,
+			"ok": {"approval": 3, "mods": {"clase_media": 2}}, "bad": {"approval": -2}},
+	],
+	"economia": [
+		{"id": "fraude", "name": "Plan contra el fraude fiscal", "desc": "Más inspectores y cruce de datos: más recaudación sin subir impuestos.", "days": 180, "pc": 10, "money": 400.0,
+			"ok": {"monthly": 900}, "bad": {"empresarios": -3}},
+		{"id": "vivienda_plan", "name": "Plan de vivienda asequible", "desc": "Cien mil viviendas de alquiler público en cinco años.", "days": 240, "pc": 12, "money": 3000.0,
+			"ok": {"mods": {"jovenes": 5, "clase_media": 2}}, "bad": {"money": -1500, "jovenes": -2}},
+	],
+	"interior": [
+		{"id": "proximidad", "name": "Policía de proximidad", "desc": "Patrullas a pie en los barrios y comisarías abiertas por la noche.", "days": 150, "pc": 8, "money": 800.0,
+			"ok": {"mods": {"seguridad": 4, "clase_media": 2}}, "bad": {"seguridad": -2}},
+		{"id": "proteccion_civil", "name": "Reforma de Protección Civil", "desc": "Brigadas y medios aéreos propios para incendios, inundaciones y terremotos.", "days": 180, "pc": 8, "money": 600.0, "flag": "proteccion_civil",
+			"ok": {"mods": {"seguridad": 2}}, "bad": {"money": -400}},
+	],
+	"exteriores": [
+		{"id": "ofensiva", "name": "Ofensiva diplomática", "desc": "Visitas, embajadas reforzadas y cooperación con todos los países.", "days": 120, "pc": 8, "money": 300.0,
+			"ok": {"rel": {"@all": 6}, "mods": {"prestigio": 2}}, "bad": {"prestigio": -2}},
+		{"id": "inversion_ext", "name": "Atraer inversión extranjera", "desc": "Ventanilla única y giras comerciales para que las empresas se instalen aquí.", "days": 180, "pc": 10, "money": 0.0,
+			"ok": {"mods": {"economia": 3, "empresarios": 2}}, "bad": {"prestigio": -2, "empresarios": -1}},
+	],
+	"defensa": [
+		{"id": "modernizar", "name": "Modernización de las Fuerzas Armadas", "desc": "Material nuevo, mejores sueldos y menos cuarteles vacíos.", "days": 240, "pc": 8, "money": 2500.0,
+			"ok": {"mods": {"militares": 6, "prestigio": 2}}, "bad": {"money": -1500, "militares": -3}},
+		{"id": "ciberdefensa", "name": "Mando de Ciberdefensa", "desc": "Protege las redes del Estado y de los bancos frente a ciberataques.", "days": 150, "pc": 8, "money": 1000.0, "flag": "ciberdefensa",
+			"ok": {"mods": {"seguridad": 2}}, "bad": {"money": -500}},
+	],
+	"sanidad": [
+		{"id": "listas", "name": "Plan de choque contra las listas de espera", "desc": "Quirófanos por la tarde y más plantilla en los hospitales.", "days": 150, "pc": 8, "money": 1500.0,
+			"ok": {"mods": {"bienestar": 4, "jubilados": 3}}, "bad": {"money": -800, "jubilados": -3}},
+		{"id": "salud_publica", "name": "Agencia de Salud Pública", "desc": "Vigilancia epidemiológica y reservas de material para la próxima epidemia.", "days": 180, "pc": 8, "money": 900.0, "flag": "salud_publica",
+			"ok": {"mods": {"bienestar": 2}}, "bad": {"money": -500}},
+	],
+}
 
 const COUNTRIES := {
 	"norland": {"name": "Norland", "full": "Estados Federados de Norland", "leader": "Harrison Kade", "title": "Presidente", "pers": "orgulloso", "power": 95.0, "rel": 25.0, "map": 7, "color": "3b6fb6",

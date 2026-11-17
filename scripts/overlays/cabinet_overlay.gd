@@ -158,6 +158,79 @@ func _open_picker(k: String, cands: Array) -> void:
 	UI.pop_in(v)
 
 
+## Encargar una reforma al ministro: dos a elegir, con lo que cuestan y lo que se juega
+func _open_reforms(k: String) -> void:
+	if picker != null:
+		picker.queue_free()
+	picker = Control.new()
+	UI.full(picker)
+	var dr := ColorRect.new()
+	dr.color = Color(0.01, 0.015, 0.03, 0.97)
+	UI.full(dr)
+	picker.add_child(dr)
+	var v := UI.vbox(16)
+	v.position = Vector2(110, 150)
+	picker.add_child(v)
+	var m: Dictionary = GS.ministers[k]
+	v.add_child(UI.lbl("ENCARGO A %s · %s" % [String(m["name"]).to_upper(), String(m["role"]).to_upper()], UI.f_sans_b, 15, UI.GOLD))
+	v.add_child(UI.lbl("¿Qué reforma le encarga?", UI.f_serif_b, 40, UI.CREAM))
+	var ch: Array = Gobierno.reform_chance(k)
+	var ok := int(float(ch[0]) * 100.0)
+	var bad := int(float(ch[1]) * 100.0)
+	v.add_child(UI.lbl("Con su competencia (%d), sale bien el %d %% de las veces, a medias el %d %% y fracasa el %d %%." % [int(Gobierno.skill(k)), ok, 100 - ok - bad, bad], UI.f_sans_m, 18, UI.TEXT))
+	var h := UI.hbox(20)
+	v.add_child(h)
+	for r in W.REFORMS.get(k, []):
+		var cv := UI.vbox(10)
+		cv.custom_minimum_size = Vector2(800, 330)
+		cv.add_child(UI.lbl(r["name"], UI.f_serif_b, 28, UI.CREAM))
+		var d := UI.lbl(r["desc"], UI.f_sans, 17, UI.TEXT)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(760, 0)
+		cv.add_child(d)
+		var money := float(r.get("money", 0.0))
+		cv.add_child(UI.lbl("Coste: %d CP%s · Tarda %d días" % [int(r["pc"]), (" y " + UI.money(money)) if money > 0.0 else "", int(r["days"])], UI.f_sans_b, 16, UI.GOLD_L))
+		cv.add_child(UI.lbl("Si sale bien:", UI.f_sans_b, 14, UI.GREEN))
+		cv.add_child(Widgets.effect_chips(GS.preview(_flat(Gobierno._tokens(r["ok"]))), 15, 8))
+		if r.has("flag"):
+			var fl := UI.lbl("Además: +1 unidad de cada tipo y mejor resultado al delegar en sus crisis.", UI.f_sans, 15, UI.TEXT)
+			fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			fl.custom_minimum_size = Vector2(760, 0)
+			cv.add_child(fl)
+		cv.add_child(UI.lbl("Si fracasa:", UI.f_sans_b, 14, UI.RED))
+		cv.add_child(Widgets.effect_chips(GS.preview(_flat(Gobierno._tokens(r["bad"]))), 15, 8))
+		var rid: String = r["id"]
+		h.add_child(Widgets.click_card(cv, func(): _start_reform(k, rid), 18))
+	var cancel := UI.btn("Cancelar", "ghost", 18)
+	cancel.pressed.connect(func():
+		picker.queue_free()
+		picker = null)
+	v.add_child(cancel)
+	root.add_child(picker)
+	UI.pop_in(v)
+
+
+## Los efectos permanentes («mods») se enseñan como los demás
+static func _flat(fx: Dictionary) -> Dictionary:
+	var out := fx.duplicate(true)
+	if out.has("mods"):
+		for mk in out["mods"].keys():
+			out[mk] = float(out.get(mk, 0.0)) + float(out["mods"][mk])
+		out.erase("mods")
+	return out
+
+
+func _start_reform(k: String, id: String) -> void:
+	if not Gobierno.start_reform(k, id):
+		GS.toast.emit("No tiene capital político suficiente para este encargo", "warn", "capital")
+		return
+	Sfx.play("stamp", -2.0)
+	if picker != null:
+		picker.queue_free()
+		picker = null
+	_fill()
+
+
 func _hire(k: String, cand: Dictionary) -> void:
 	var cost := (0 if forced == k else FIRE_CP) + Gobierno.hire_cost(cand)
 	if GS.pc < cost:
@@ -275,11 +348,25 @@ func _card(m: Dictionary, text: String, mood: float, key: String) -> Control:
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	t.custom_minimum_size = Vector2(395, 0)
 	v.add_child(t)
-	var b := UI.btn("Cesar y fichar sustituto (%d CP)" % FIRE_CP, "ghost", 15)
-	b.size_flags_horizontal = Control.SIZE_SHRINK_END
-	b.size_flags_vertical = Control.SIZE_SHRINK_END
+	var rf: Dictionary = GS.reforms.get(key, {})
+	if not rf.is_empty():
+		var rd := Gobierno.reform_data(key, str(rf["id"]))
+		var ch: Array = Gobierno.reform_chance(key)
+		var rl := UI.lbl("Encargo en marcha: %s · quedan %d días · éxito ~%d %%" % [rd.get("name", ""), maxi(0, int(rf["end"]) - GS.day), int(float(ch[0]) * 100.0)], UI.f_sans_m, 14, UI.GOLD_L)
+		rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rl.custom_minimum_size = Vector2(395, 0)
+		v.add_child(rl)
+	var bh := UI.hbox(8)
+	bh.size_flags_vertical = Control.SIZE_SHRINK_END
+	v.add_child(bh)
+	if rf.is_empty():
+		var eb := UI.btn("Encargar reforma", "normal", 14)
+		eb.pressed.connect(func(): _open_reforms(key))
+		bh.add_child(eb)
+	bh.add_child(UI.spacer(0, 0, true))
+	var b := UI.btn("Cesar (%d CP)" % FIRE_CP, "ghost", 14)
 	b.pressed.connect(func(): _fire(key))
-	v.add_child(b)
+	bh.add_child(b)
 	return card
 
 

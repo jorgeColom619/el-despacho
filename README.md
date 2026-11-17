@@ -13,8 +13,8 @@ cargo en el Congreso.
 
 - **Un despacho en 3D en primera persona** que se puede recorrer, con objetos que se cogen y se lanzan (y el despacho
   2D clásico, si lo prefieres).
-- **Minijuegos dentro de la escena**: rueda de prensa, entrevista en el plató, negociaciones y cumbres, y la sesión
-  de control en el hemiciclo, sin ventanas de opciones.
+- **Minijuegos dentro de la escena**: rueda de prensa, entrevista y debate en el plató, negociaciones y cumbres, la
+  sesión de control en el hemiciclo y la sala de crisis, sin ventanas de opciones.
 - **El Gran Casino**: alguna vez te invitan a una noche de ruleta, blackjack y tragaperras... con dinero público. Si
   sale mal, hay que tapar el agujero, y si alguien tira del hilo, la has liado.
 - **Cada partida es distinta**: escenarios, tramas, mundo aleatorio, memoria de tus diez últimas partidas y
@@ -254,7 +254,7 @@ Todo es interactivo, tanto en 3D como en 2D.
 | Globo | Mapa diplomático: tratados, visitas de Estado, ayudas, sanciones. |
 | Micrófono | Discurso a la nación: eliges las frases y corriges a clic las **erratas del teleprompter** antes de leerlas en directo. En campaña abre el **mapa de campaña por regiones**. |
 | Móvil | La red social **Pío** y los mensajes privados. |
-| Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. Una ley al año que vota el Congreso (cada impuesto ±3 puntos, cada partida ±15 %) o pequeños ajustes por decreto ley (±1 punto, ±5 %) que el Congreso debe convalidar en 30 días. Subir impuestos rinde cada vez menos y los cambios bruscos enfadan a quien los paga. |
+| Carpeta de cuero | Presupuestos Generales: gasto por partidas e impuestos. Una ley al año que vota el Congreso (cada impuesto ±3 puntos, cada partida ±15 %) o pequeños ajustes por decreto ley (±1 punto, ±5 %) que el Congreso debe convalidar en 30 días. Cada grupo vota según lo que contienen las cuentas (el IVA no lo quiere nadie, recortar pensiones es tóxico, el déficit asusta) y negociar ayuda, pero no compra cualquier cosa. Subir impuestos rinde cada vez menos y los cambios bruscos enfadan a quien los paga. |
 | Libro de Leyes | Todo lo que has legislado, con su número oficial: la **votación** de cada gran ley y qué grupos la apoyaron, sus efectos inmediatos y permanentes, **lo que cuesta cada mes**, si la oposición tiene munición contra ella y, en las leyes menores de la bandeja, **la letra pequeña del anexo** con lo que de verdad hacía. Avisa con un número cuando hay leyes nuevas. |
 | Periódico, TV, calendario, reloj, café | Noticias, encuestas, agenda... y un café para el estrés. |
 | Mascota | Si has comprado una en la tienda (gato, perro, loro, pez o tortuga), haz clic para bajar el estrés. |
@@ -278,10 +278,15 @@ el retrato oficial que cuelga sobre la chimenea es el tuyo.
   oposición. Cuatro preguntas, réplica contrarreloj y combos de aciertos. Las réplicas, las reacciones y los
   reproches por promesas rotas no se repiten de una sesión a la siguiente.
 - **Gabinete de Crisis**: incendios, pateras, huelgas, pandemia, terrorismo, apagones, sequía, terremoto,
-  ciberataques, golpe de Estado, guerra...
+  ciberataques, golpe de Estado, guerra... En 3D, en la **sala de crisis** del Palacio: el Gobierno de pie alrededor
+  de una **mesa táctica** con el mapa de la emergencia en el tablero, el videowall y la alerta roja. Las unidades son
+  **fichas apiladas en la bandeja** de la mesa que se **arrastran a las regiones** en llamas; las desplegadas se llevan
+  a otra región o se sacan del mapa (o clic derecho) para retirarlas, y las medidas extraordinarias son objetos del
+  borde de la mesa: el **pulsador del estado de alarma**, la banderita de la Unión y el micrófono. Al acabar, los
+  ministros aplauden o ponen mala cara.
 - **Congreso**: hemiciclo de 350 escaños, negociación de apoyos (enmiendas, inversión regional o presión) y votación
   escaño a escaño.
-- **Rueda de prensa y entrevista** y **debate electoral** cara a cara.
+- **Rueda de prensa y entrevista** y **debate electoral** cara a cara (en 3D, en el plató de Canal 7).
 - **Discurso a la nación**: eliges una frase para cada parte (apertura, economía, sociedad, promesa y cierre) y la
   lees en el teleprompter... que el becario ha llenado de erratas: palabras cambiadas («Nuestra sanidad pública es un
   *chollo* que *venderé* con uñas y dientes») y coletillas que sobran («[CHISTE AQUÍ]», «(toser)»). Mientras el
@@ -290,7 +295,8 @@ el retrato oficial que cuelga sobre la chimenea es el tuyo.
   erratas; corregir una palabra que estaba bien también resta.
 - **Campaña por regiones**: en los últimos 60 días repartes actos (mitin, visita, anuncio de inversión, spot de TV)
   por las 8 regiones del mapa. Cada región suma a su resultado electoral.
-- **Noche electoral** con escrutinio región a región.
+- **Noche electoral** con escrutinio región a región. En 3D, en la **sede del partido**: los militantes ante la
+  pantalla gigante con el escrutinio y, al final, el presidente sale al atril (con confeti si gana).
 
 ### Los minijuegos en 3D
 
@@ -308,6 +314,10 @@ resume el resultado. Al mover el ratón, la cámara mira un poco hacia él.
 - **Entrevista**: en el plató de Canal 7, frente a la entrevistadora, con cámaras, focos, el cartel de «En el aire» y
   la pantalla gigante. Las respuestas son tarjetas sobre la mesa; ella asiente, se ríe o se cruza de brazos, y la
   audiencia en directo sale en el monitor del plató.
+- **Debate**: en el plató de Canal 7, con **dos atriles enfrentados** (el tuyo y el del líder de la oposición, cada uno
+  con su nombre y el color de su partido), la moderadora en su mesa y el público en las butacas. La moderadora abre
+  cada bloque, el rival ataca y **las réplicas son tarjetas sobre tu atril** antes de que se apague la luz del tiempo;
+  el público aplaude o se ríe y el «¿quién va ganando?» sale en los marcadores colgados detrás de cada candidato.
 - **Negociaciones**: sentado a la mesa frente al otro líder, con sus asesores, sus banderas y su placa. La oferta se
   fija **arrastrando la pluma por la regla del tratado** y **el otro reacciona en directo**: sonríe en verde, frunce
   el ceño en ámbar y se cruza de brazos en rojo. **Se propone con el sello**, **su propuesta es un cartel** de su lado
@@ -376,6 +386,16 @@ El Gobierno lo forman la **Vicepresidencia**, la Jefatura de Gabinete y cinco mi
 - Al cesar a alguien eliges entre tres perfiles: un **independiente** muy capaz (cuesta más capital político), alguien
   **del partido** (de confianza) o la **cuota del socio** (más flojo, pero afianza la coalición; quitárselo enfada al
   socio).
+- **Encargos**: a cada cargo se le puede encargar una reforma (dos a elegir por ministerio: contra el fraude fiscal,
+  policía de proximidad, listas de espera, Protección Civil, Ciberdefensa...). Cuestan capital político y dinero,
+  tardan meses y salen bien, a medias o mal según la competencia del ministro.
+- **Pacto de gobierno**: con un partido afín (relación de 50 o más) se puede firmar una coalición desde la pestaña
+  Congreso del ordenador. El socio vota con usted y da estabilidad, pero pide una cartera, una ley de su programa y
+  subir una partida, y tiene una línea roja: si se incumple, rompe el pacto (y se lleva a sus ministros). Desde ahí
+  también se puede plantear una **cuestión de confianza** (una vez por legislatura): si se gana, un año sin mociones
+  de censura; si se pierde, hay que dimitir.
+- **Capital político**: se gana cada mes según la aprobación y la estabilidad y con victorias (crisis superadas,
+  sesiones de control ganadas); por encima de 40 se va perdiendo, así que hay que gastarlo.
 
 ## Sistemas de la versión 3.0
 
@@ -432,6 +452,8 @@ adelante a través de un servidor propio (ver `scripts/systems/interprete.gd`).
 
 - Si te limitas a esperar, el **desgaste del poder** te hundirá. Aprueba leyes, cuida a tus socios (desde 60 de relación
   pueden apoyarte tras las elecciones; cuanto más alta, más seguro: por encima de 85, siempre) y habla al país. Para gobernar, tu partido debe ser el más votado de su bloque.
+- Vigila la **inflación**: el gasto alto, el déficit, el IVA o una economía recalentada suben los precios, el Banco
+  Central sube los tipos (la deuda se encarece y la economía se frena) y los jubilados y los trabajadores lo notan.
 - Vigila la **deuda** (quiebra al 155 % en normal; por encima del 105 % los intereses se disparan) y el **déficit**:
   si pasa del 3 % del PIB cuatro meses seguidos, la Unión Continental abre expediente y, si no lo corriges, multa.
   En las urnas también cuenta la economía, y los grupos muy descontentos se movilizan en tu contra.
@@ -454,7 +476,7 @@ Desde el menú principal o el menú de pausa:
 | Pantalla completa | También con **F11** |
 | Grano cinematográfico | El filtro de película sobre la imagen |
 | Despacho en 3D | Desactívalo para volver al despacho 2D clásico (se cambia al momento) |
-| Minijuegos en 3D | Rueda de prensa, entrevista, Congreso y negociaciones en 3D o con los fondos 2D |
+| Minijuegos en 3D | Rueda de prensa, entrevista, debate, Congreso, negociaciones y sala de crisis en 3D o con los fondos 2D |
 | Calidad gráfica | Automática, Baja, Media, Alta o Ultra |
 | Motor gráfico | Automático, Avanzado (Forward+) o Compatible (sin tarjeta gráfica) |
 
@@ -593,7 +615,7 @@ godot --path . -- --shot=office --open=controlrun --stageframes=200,400,600 --st
 | Opción | Qué hace |
 |---|---|
 | `--shot=office` | Partida de prueba en el despacho. También `menu`, `reto`, `opciones`, `shop`, `start`, `newgame` y `promesas` |
-| `--open=panel` | Abre un panel nada más empezar: `doc`, `contract`, `advisor`, `call`, `nego`, `summit`, `campaign`, `control`, `controlrun`, `controlreply`, `controlzasca`, `hire`, `crisis`, `crisisrun`, `vote`, `press`, `pressrun`, `interview`, `interviewrun`, `speech`, `speechrun`, `convocatoria`, `leyes`, `leyes2`, `debate`, `diary`, `movil`, `movilpub`, `movilchat`, `moviltrend`, `memocall`, `memovisit`, `preface`, `custom`, `custom2`, `promesas`, `night`, `live`, `election`, `ending`... |
+| `--open=panel` | Abre un panel nada más empezar: `doc`, `contract`, `advisor`, `call`, `nego`, `summit`, `campaign`, `control`, `controlrun`, `controlreply`, `controlzasca`, `hire`, `crisis`, `crisisrun`, `crisisdrag`, `vote`, `press`, `pressrun`, `interview`, `interviewrun`, `speech`, `speechrun`, `convocatoria`, `leyes`, `leyes2`, `debate`, `debaterun`, `debatereply`, `diary`, `movil`, `movilpub`, `movilchat`, `moviltrend`, `memocall`, `memovisit`, `preface`, `custom`, `custom2`, `promesas`, `night`, `live`, `election`, `ending`... |
 | `--pngshot=archivo.png` | Guarda una captura del despacho 3D y cierra el juego |
 | `--cam=x,y,z,giro,inclinación` | Pone al presidente de pie en ese punto del despacho 3D |
 | `--stageshot=archivo.png` | Guarda una captura del escenario 3D abierto y cierra el juego (`--stagewait=n`: tras n fotogramas; 90 por defecto) |

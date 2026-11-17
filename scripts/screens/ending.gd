@@ -16,6 +16,7 @@ const HEADS := {
 	"derrota": ["%s PIERDE LAS ELECCIONES", "El presidente reconoce la derrota y felicita a su rival: «El pueblo ha hablado»."],
 	"revolucion": ["EL PRESIDENTE %s HUYE DEL PALACIO", "Tras semanas de protestas masivas, un helicóptero saca al presidente de Santa Aurora."],
 	"censura": ["CAE EL GOBIERNO DE %s", "El Congreso aprueba la moción de censura. La oposición toma el poder."],
+	"confianza": ["%s PIERDE LA CONFIANZA DEL CONGRESO", "El Congreso niega la confianza al Gobierno y el presidente presenta su dimisión."],
 	"golpe": ["GOLPE DE ESTADO: DETENIDO %s", "Una junta militar toma el control del país y suspende la Constitución."],
 	"bancarrota": ["VALDORIA, EN QUIEBRA: DIMITE %s", "El país suspende pagos. El Fondo Monetario Global toma el control de las cuentas."],
 	"casino": ["%s DIMITE POR EL ESCÁNDALO DEL CASINO", "El presidente abandona el Palacio tras confirmarse que se jugó dinero público en el Gran Casino de Santa Aurora."],

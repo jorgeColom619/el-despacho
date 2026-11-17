@@ -90,6 +90,13 @@ var budget_retry_day := 0
 ## Decreto ley pendiente de convalidar {day, db, dt, ideo} y día a partir del cual se puede aprobar otro
 var decree_pending := {}
 var decree_next_day := 0
+## Inflación anual (%) y tipo de interés del Banco Central (%)
+var inflation := 2.0
+var policy_rate := 2.5
+## Pacto de coalición vigente {party, since, law, veto, item, item_from, seat_due, due} ({} si no hay)
+var coalition := {}
+## Reformas encargadas en marcha: {cargo: {id, start, end}}
+var reforms := {}
 var elections_result := {}
 var wear := 0.0
 var _trait_sums := {}
@@ -283,6 +290,10 @@ func new_game(opts: Dictionary) -> void:
 	budget_retry_day = 0
 	decree_pending = {}
 	decree_next_day = 0
+	inflation = 2.0
+	policy_rate = 2.5
+	coalition = {}
+	reforms = {}
 	elections_result = {}
 	wear = 0.0
 	laws_term = 0
@@ -660,6 +671,8 @@ func interest_rate() -> float:
 		r += 1.0
 	# el ministro de Economía da (o quita) confianza a los mercados
 	r += Gobierno.rate_adjust()
+	# y la deuda nueva se paga a los tipos del Banco Central
+	r += (policy_rate - 2.5) * 0.6
 	return maxf(0.5, r)
 
 
@@ -667,7 +680,7 @@ func revenue() -> float:
 	var gm := gdp / 12.0
 	var ef: float = 0.85 + meters["economia"] / 100.0 * 0.3
 	var r := tax_yield("renta") / 100.0 * 0.70 + tax_yield("sociedades") / 100.0 * 0.18 + tax_yield("iva") / 100.0 * 0.55 + 0.094
-	return gm * r * ef * Gobierno.revenue_factor()
+	return gm * r * ef * Gobierno.revenue_factor() * (1.0 + (inflation - 2.0) * 0.004)
 
 
 ## Tipo que se recauda de verdad: por encima del tipo habitual cada punto rinde menos (fraude, economía sumergida,
@@ -683,7 +696,7 @@ func spending() -> float:
 	for b in W.BUDGET.keys():
 		s += W.BUDGET[b]["base"] * budget[b]
 	# El gasto crece con la economía (salarios públicos, pensiones e inflación)
-	return s * gdp / 1200000.0 * (1.0 + float(_trait_sums.get("_spend", 0.0)))
+	return s * gdp / 1200000.0 * (1.0 + float(_trait_sums.get("_spend", 0.0))) * (1.0 + maxf(0.0, inflation - 2.0) * (0.004 if "pensiones_subida" in policies else 0.003))
 
 
 func interest() -> float:
@@ -697,7 +710,7 @@ func monthly_balance() -> float:
 func _economy_daily() -> void:
 	balance = monthly_balance()
 	debt -= balance / 30.0
-	var nominal := growth() + 1.6
+	var nominal := growth() + inflation
 	gdp *= 1.0 + nominal / 36500.0
 
 
@@ -736,11 +749,11 @@ func _update_targets() -> void:
 	for t in treaties:
 		if t["type"] in ["comercio", "inversion", "energia"]:
 			econ_treaties += 1
-	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + multiplier + cycle * 9.0 + (fac["empresarios"] - 50.0) * 0.12 - maxf(0.0, 35.0 - fac["empresarios"]) * 0.15 + soft_mod("economia") + diff * 0.5
+	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + multiplier - maxf(0.0, policy_rate - 3.0) * 1.2 + maxf(0.0, 2.0 - policy_rate) * 0.6 + cycle * 9.0 + (fac["empresarios"] - 50.0) * 0.12 - maxf(0.0, 35.0 - fac["empresarios"]) * 0.15 + soft_mod("economia") + diff * 0.5
 	mtarget["bienestar"] = 48.0 + (b["sanidad"] - 1.0) * 28.0 + (b["educacion"] - 1.0) * 14.0 + (b["social"] - 1.0) * 16.0 + (b["pensiones"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.15 + soft_mod("bienestar") + diff * 0.5
 	mtarget["seguridad"] = 52.0 + (b["seguridad"] - 1.0) * 32.0 + (b["defensa"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.1 + (m["bienestar"] - 50.0) * 0.1 + soft_mod("seguridad") + diff * 0.5
 	var support := (supporting_seats() - 175.0) / 350.0 * 40.0
-	mtarget["estabilidad"] = 32.0 + approval * 0.35 + support + (m["seguridad"] - 50.0) * 0.1 + (fac["trabajadores"] - 50.0) * 0.06 - corruption * 0.2 + soft_mod("estabilidad") + diff * 0.5
+	mtarget["estabilidad"] = 32.0 + approval * 0.35 + support + (4.0 if not coalition.is_empty() else 0.0) + (m["seguridad"] - 50.0) * 0.1 + (fac["trabajadores"] - 50.0) * 0.06 - corruption * 0.2 + soft_mod("estabilidad") + diff * 0.5
 	var avg_rel := 0.0
 	for c in countries.keys():
 		avg_rel += countries[c]["rel"]
@@ -757,6 +770,11 @@ func _update_targets() -> void:
 	ftarget["jovenes"] = 50.0 + (b["educacion"] - 1.0) * 25.0 + (m["ambiente"] - 50.0) * 0.3 + (m["economia"] - 50.0) * 0.25 + (b["social"] - 1.0) * 12.0
 	ftarget["jubilados"] = 50.0 + (b["pensiones"] - 1.0) * 40.0 + (b["sanidad"] - 1.0) * 20.0 + (m["seguridad"] - 50.0) * 0.25 - (t["iva"] - 21.0) * 0.8
 	ftarget["militares"] = 50.0 + (b["defensa"] - 1.0) * 45.0 + (m["prestigio"] - 50.0) * 0.3 + (m["seguridad"] - 50.0) * 0.2
+	var pp := Gobierno.price_pain()
+	ftarget["jubilados"] -= pp * (0.8 if "pensiones_subida" in policies else 2.0)
+	ftarget["trabajadores"] -= pp * 1.5
+	ftarget["clase_media"] -= pp * 1.2
+	ftarget["jovenes"] -= pp * 0.8
 	for f in FACTIONS:
 		ftarget[f] += bonus.get(f, 0.0) + soft_mod(f) + diff
 		ftarget[f] = clampf(ftarget[f], 2.0, 98.0)
@@ -881,7 +899,7 @@ func _expire_mods() -> void:
 
 func _monthly(dd: Dictionary) -> void:
 	last_balance = monthly_balance()
-	pc = clampf(pc + 4.0 + approval * 0.07 + meters["estabilidad"] * 0.04 + [1.5, 0.0, -1.0][difficulty] + Gobierno.monthly_pc(), 0.0, 100.0)
+	pc = clampf(pc + Gobierno.pc_income(), 0.0, 100.0)
 	Gobierno.monthly()
 	# La corrupción se diluye con el tiempo... salvo que alguien tire del hilo (ver escándalos)
 	corruption = maxf(0.0, corruption * (0.93 if flags.has("transparencia") else 0.95) - 0.4)
@@ -1339,7 +1357,7 @@ func _expire(item: Dictionary) -> void:
 
 func _strip_interactive(fx: Dictionary) -> Dictionary:
 	var out := fx.duplicate(true)
-	for k in ["nego", "speech", "debate", "press", "control", "casino", "pick"]:
+	for k in ["nego", "speech", "debate", "press", "control", "casino", "pick", "pact"]:
 		out.erase(k)
 	return out
 
@@ -1454,6 +1472,8 @@ func resolve_crisis(item: Dictionary, score: float, unit_fx: Dictionary, cost: f
 		fx[k] = float(fx.get(k, 0.0)) + float(unit_fx[k])
 	fx["money"] = float(fx.get("money", 0.0)) - cost
 	fx["stress"] = 8.0
+	if score >= 0.62:
+		fx["pc"] = float(fx.get("pc", 0.0)) + 3.0
 	var out := apply_fx(fx, cr["title"])
 	remember("crisis_ok" if score >= 0.62 else ("crisis_mal" if score < 0.38 else "crisis_regular"), {"crisis": str(cr["title"]).to_lower()})
 	log_history(cr["title"], "Crisis gestionada (%d%%)" % int(score * 100))
@@ -1601,6 +1621,10 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				_fire_minister(str(v))
 			"pick":
 				open_request.emit("cabinet", {"pick": str(v)})
+			"pact":
+				Gobierno.sign_pact(str(v))
+			"inflation":
+				inflation = clampf(inflation + float(v), -2.0, 18.0)
 			"reshuffle":
 				var keys := ministers.keys()
 				keys.erase("jefa")
@@ -1780,6 +1804,8 @@ func vote_forecast(law: Dictionary, lobby: Dictionary) -> Dictionary:
 		else:
 			# En difícil los socios exigen más; en fácil se dejan convencer antes
 			prob -= [-0.04, 0.0, 0.07][difficulty]
+		if p == Gobierno.pact_partner():
+			prob += 0.15
 		prob += float(lobby.get(p, 0.0))
 		out[p] = clampf(prob, 0.02, 0.98)
 	return out
@@ -2104,7 +2130,7 @@ func compute_election() -> Dictionary:
 			continue
 		var dist := absf(W.PARTIES[p]["ideo"] - W.PARTIES[own]["ideo"])
 		# un socio con la relación justa puede preferir otro pacto: cuanto mejor la relación, más seguro es su apoyo
-		var sure := clampf((float(parties[p]["rel"]) - 55.0) / 30.0, 0.0, 1.0)
+		var sure := clampf((float(parties[p]["rel"]) - 55.0) / 30.0 + (0.3 if p == Gobierno.pact_partner() else 0.0), 0.0, 1.0)
 		if parties[p]["rel"] >= 60.0 and dist <= 50.0 and rng.randf() < sure:
 			allies += int(seats[p])
 			ally_list.append(p)
@@ -2244,7 +2270,7 @@ var save_path := SAVE_PATH
 const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "approval", "approval_bonus", "pc", "stress", "gdp", "debt", "taxes", "budget", "monthly_adj",
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
-	"debate_done", "last_law", "tutorial", "budget_year_done", "budget_passed_year", "budget_retry_day", "decree_pending", "decree_next_day", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
+	"debate_done", "last_law", "tutorial", "budget_year_done", "budget_passed_year", "budget_retry_day", "decree_pending", "decree_next_day", "inflation", "policy_rate", "coalition", "reforms", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
 	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino"]
 
 
@@ -2332,6 +2358,8 @@ func load_game() -> bool:
 	budget_passed_year = int(budget_passed_year)
 	budget_retry_day = int(budget_retry_day)
 	decree_next_day = int(decree_next_day)
+	inflation = float(inflation)
+	policy_rate = float(policy_rate)
 	# partidas de antes de la Vicepresidencia y de la competencia de los ministros
 	for k in W.CABINET:
 		if not ministers.has(k):

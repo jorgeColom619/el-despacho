@@ -124,7 +124,7 @@ func _card(w: float, h: float) -> PanelContainer:
 func _resumen(v: VBoxContainer) -> void:
 	var row := UI.hbox(16)
 	v.add_child(row)
-	var ac := _card(860, 330)
+	var ac := _card(860, 392)
 	row.add_child(ac)
 	var chart := Control.new()
 	chart.custom_minimum_size = Vector2(820, 290)
@@ -145,12 +145,12 @@ func _resumen(v: VBoxContainer) -> void:
 		chart.draw_line(Vector2(r.position.x, r.position.y + r.size.y * 0.5), Vector2(r.end.x, r.position.y + r.size.y * 0.5), Color(1, 1, 1, 0.25), 1.0)
 		chart.draw_string(UI.f_sans, Vector2(r.position.x, r.end.y + 18), "Evolución mensual", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.DIM))
 	ac.add_child(chart)
-	var ec := _card(480, 330)
+	var ec := _card(480, 392)
 	row.add_child(ec)
 	var ev := UI.vbox(8)
 	ec.add_child(ev)
 	ev.add_child(UI.lbl("ECONOMÍA Y HACIENDA", UI.f_sans_b, 14, UI.DIM))
-	for spec in [["PIB", UI.money(GS.gdp)], ["Crecimiento anual", UI.pct(GS.growth())], ["Paro", UI.pct(GS.unemployment())], ["Deuda pública", UI.pct(GS.debt_ratio()) + " del PIB"], ["Ingresos mensuales", UI.money(GS.revenue())], ["Gasto mensual", UI.money(GS.spending())], ["Intereses de la deuda", UI.money(GS.interest()) + "/mes"], ["Saldo mensual", UI.money(GS.monthly_balance(), true)]]:
+	for spec in [["PIB", UI.money(GS.gdp)], ["Crecimiento anual", UI.pct(GS.growth())], ["Paro", UI.pct(GS.unemployment())], ["Deuda pública", UI.pct(GS.debt_ratio()) + " del PIB"], ["Ingresos mensuales", UI.money(GS.revenue())], ["Gasto mensual", UI.money(GS.spending())], ["Intereses de la deuda", UI.money(GS.interest()) + "/mes"], ["Saldo mensual", UI.money(GS.monthly_balance(), true)], ["Inflación", UI.pct(GS.inflation)], ["Tipos del Banco Central", UI.pct(GS.policy_rate)]]:
 		var h := UI.hbox(0)
 		var l := UI.lbl(spec[0], UI.f_sans, 18, UI.TEXT)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -158,6 +158,8 @@ func _resumen(v: VBoxContainer) -> void:
 		var col := UI.TEXT
 		if spec[0] == "Saldo mensual":
 			col = UI.GREEN if GS.monthly_balance() >= 0 else UI.RED
+		elif spec[0] == "Inflación":
+			col = UI.GREEN if GS.inflation <= 3.0 else (UI.AMBER if GS.inflation <= 5.0 else UI.RED)
 		h.add_child(UI.lbl(spec[1], UI.f_cond_b, 20, col))
 		ev.add_child(h)
 	var grid := GridContainer.new()
@@ -369,7 +371,61 @@ func _congreso(v: VBoxContainer) -> void:
 				_show("congreso"))
 			h.add_child(b)
 		v.add_child(c)
-	v.add_child(UI.lbl("Tras las elecciones, solo los partidos con relación ≥ 60 y afinidad ideológica apoyarán su investidura.", UI.f_sans, 15, UI.DIM))
+	_pact_card(v)
+	v.add_child(UI.lbl("Tras las elecciones, los partidos afines con relación de 60 o más pueden apoyar su investidura: cuanto más alta la relación (o si gobiernan con usted), más seguro.", UI.f_sans, 15, UI.DIM))
+
+
+## Pacto de gobierno (socio, condiciones y plazos) y cuestión de confianza
+func _pact_card(v: VBoxContainer) -> void:
+	var G = GS.Gobierno
+	var c := _card(1340, 0)
+	var cv := UI.vbox(8)
+	c.add_child(cv)
+	cv.add_child(UI.lbl("PACTO DE GOBIERNO", UI.f_sans_b, 14, UI.DIM))
+	var partner: String = G.pact_partner()
+	if partner != "":
+		cv.add_child(UI.lbl("En coalición con %s (desde hace %d días). Vota con usted las leyes y los Presupuestos y da estabilidad." % [W.PARTIES[partner]["name"], GS.day - int(GS.coalition.get("since", GS.day))], UI.f_sans_b, 19, UI.GREEN))
+		for d in G.pact_status():
+			var left: int = int(d["due"]) - GS.day
+			var txt: String = ("✓ " if d["done"] else "· ") + String(d["t"]) + ("" if d["done"] else "  (quedan %d días)" % maxi(0, left))
+			cv.add_child(UI.lbl(txt, UI.f_sans_m, 17, UI.GREEN if d["done"] else (UI.RED if left < 45 else UI.TEXT)))
+		var veto := str(GS.coalition.get("veto", ""))
+		if veto != "":
+			cv.add_child(UI.lbl("Línea roja: «%s». Si la aprueba, romperán el pacto." % W.LAWS[veto]["name"], UI.f_sans_m, 16, UI.AMBER))
+		var rb := UI.btn("Romper el pacto", "ghost", 15)
+		rb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		rb.pressed.connect(func():
+			G.break_pact("", true)
+			_show("congreso"))
+		cv.add_child(rb)
+	else:
+		var cands: Array = G.pact_candidates()
+		if cands.is_empty():
+			cv.add_child(UI.lbl("Ningún partido afín tiene ahora relación suficiente (50) para negociar un pacto de gobierno. Reúnase con ellos.", UI.f_sans, 17, UI.TEXT))
+		else:
+			cv.add_child(UI.lbl("Un socio en el Gobierno vota con usted y da estabilidad, pero pone condiciones (una cartera, una ley, una partida) y una línea roja. Firmarlo cuesta %d CP." % G.PACT_CP, UI.f_sans, 17, UI.TEXT))
+			var hb := UI.hbox(12)
+			cv.add_child(hb)
+			for p in cands:
+				var pp: String = p
+				var queued: bool = GS._is_queued("pacto_" + pp)
+				var b := UI.btn(("Negociar con %s" if not queued else "%s: esperando respuesta") % W.PARTIES[pp]["short"], "normal", 15)
+				b.disabled = queued or GS.pc < G.PACT_CP
+				b.pressed.connect(func():
+					G.offer_pact(pp)
+					GS.toast.emit("La Vicepresidencia le traerá las condiciones de %s" % W.PARTIES[pp]["name"], "info", "empresarios")
+					_show("congreso"))
+				hb.add_child(b)
+	var qb := UI.btn("Plantear una cuestión de confianza", "normal", 15)
+	qb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	qb.tooltip_text = "El Congreso vota si respalda a su Gobierno: necesita más votos a favor que en contra. Si la gana: Estabilidad +10, capital político y un año sin mociones de censura. Si la pierde, tendrá que dimitir. Una vez por legislatura."
+	qb.disabled = G.confidence_used()
+	qb.pressed.connect(func():
+		close()
+		if main != null:
+			main.call_deferred("open_overlay", "vote", {"mode": "confianza"}))
+	cv.add_child(qb)
+	v.add_child(c)
 
 
 func _agenda(v: VBoxContainer) -> void:

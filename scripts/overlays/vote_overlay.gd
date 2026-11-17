@@ -42,6 +42,8 @@ func build() -> void:
 			needed = 234
 	elif mode == "mocion":
 		law = {"name": "Moción de censura", "desc": "La oposición ha presentado una moción de censura contra su Gobierno. Si obtiene 176 votos a favor, caerá usted y su Gobierno. Consiga que los grupos voten en contra.", "ideo": 0.0}
+	elif mode == "confianza":
+		law = {"name": "Cuestión de confianza", "desc": "Usted pide al Congreso que respalde a su Gobierno. Necesita más votos a favor que en contra; si la pierde, tendrá que dimitir.", "ideo": float(W.PARTIES[GS.pres["party"]]["ideo"])}
 	elif mode == "budget":
 		law = {"name": "Presupuestos Generales del Estado", "desc": data.get("desc", "Proyecto de Presupuestos para el próximo ejercicio."), "ideo": data.get("ideo", 0.0)}
 	_build_seats()
@@ -148,16 +150,21 @@ func _prob() -> Dictionary:
 			var pr := clampf(1.05 - rel / 70.0, 0.02, 0.97)
 			if p == GS.pres["party"]:
 				pr = 0.02
+			if p == GS.Gobierno.pact_partner():
+				pr -= 0.3
 			pr -= float(lobby.get(p, 0.0))
 			out[p] = clampf(pr, 0.01, 0.99)
 		return out
-	var base := GS.vote_forecast(law, lobby)
-	if mode == "budget":
-		var bal := GS.monthly_balance()
-		for p in base.keys():
+	# los Presupuestos se votan por lo que contienen (impuestos, partidas, déficit), no solo por su ideología
+	if mode == "confianza":
+		var cf := GS.vote_forecast(law, lobby)
+		for p in cf.keys():
 			if p != GS.pres["party"]:
-				base[p] = clampf(base[p] - (0.1 if bal < -4000 else 0.0), 0.02, 0.98)
-	return base
+				cf[p] = clampf(float(cf[p]) - maxf(0.0, 45.0 - GS.approval) * 0.008, 0.02, 0.98)
+		return cf
+	if mode == "budget":
+		return GS.Gobierno.budget_probs(data.get("budget", GS.budget), data.get("taxes", GS.taxes), lobby)
+	return GS.vote_forecast(law, lobby)
 
 
 func _sharp(p: float) -> float:
@@ -323,6 +330,8 @@ func _process(delta: float) -> void:
 func _conclude() -> void:
 	done = true
 	var passed := yes >= needed
+	if mode == "confianza":
+		passed = yes > no
 	await get_tree().create_timer(0.5).timeout
 	Sfx.play("gavel", 0.0)
 	var text := ""
@@ -362,6 +371,16 @@ func _conclude() -> void:
 				GS.apply_fx({"estabilidad": 8, "pc": 5}, "Moción de censura")
 				Perfil.unlock("superviviente")
 				GS.push_news("El Gobierno sobrevive a la moción de censura", 3)
+		"confianza":
+			good = passed
+			text = "CONFIANZA OTORGADA" if passed else "CONFIANZA DENEGADA"
+			GS.flags["confianza_term"] = GS.term_index
+			if passed:
+				GS.mocion_until = GS.day + 365
+				GS.apply_fx({"estabilidad": 10, "pc": 6}, "Cuestión de confianza")
+				GS.push_news("El Congreso respalda al presidente en la cuestión de confianza", 3)
+			else:
+				GS.push_news("El Congreso niega la confianza al presidente %s" % GS.pres["name"], 3)
 		"budget":
 			good = passed
 			text = "PRESUPUESTOS APROBADOS" if passed else "PRESUPUESTOS RECHAZADOS"
@@ -384,6 +403,9 @@ func _conclude() -> void:
 	await get_tree().create_timer(2.2).timeout
 	if mode == "mocion" and passed:
 		GS.end_game("censura")
+		return
+	if mode == "confianza" and not passed:
+		GS.end_game("confianza")
 		return
 	var b2 := UI.btn("Volver al despacho", "gold", 20)
 	b2.position = Vector2(400, 980)

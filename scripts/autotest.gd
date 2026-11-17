@@ -380,6 +380,30 @@ func _act() -> void:
 		if best != "":
 			GS.pc -= 6
 			GS.apply_fx({"party": {best: 7.0}}, "Reunión", false)
+	if strategy == "player" and GS.day % 30 == 20:
+		var G = GS.Gobierno
+		for k in GS.ministers.keys():
+			if not GS.reforms.has(k) and GS.pc >= 18.0 and G.skill(k) >= 55.0:
+				var rs: Array = W.REFORMS.get(k, [])
+				if not rs.is_empty() and G.start_reform(k, str(rs[randi() % rs.size()]["id"])):
+					break
+		if G.pact_partner() != "" and GS.pc >= 12.0:
+			var has_seat := false
+			for d in G.pact_status():
+				if String(d["t"]).begins_with("Una cartera") and d["done"]:
+					has_seat = true
+			if not has_seat:
+				var worst := ""
+				for k in GS.ministers.keys():
+					if k != "vice" and k != "jefa" and (worst == "" or G.skill(k) < G.skill(worst)):
+						worst = k
+				var cs2: Array = GS.gen_candidates(worst)
+				GS.pc -= 6.0
+				GS.hire_minister(worst, cs2[2])
+		if G.pact_partner() == "" and GS.pc >= 25.0:
+			var cs: Array = G.pact_candidates()
+			if not cs.is_empty():
+				G.offer_pact(cs[0])
 	_try_law()
 
 
