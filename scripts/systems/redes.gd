@@ -5,6 +5,7 @@ extends RefCounted
 
 const D := preload("res://scripts/data/social_data.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Pais := preload("res://scripts/systems/pais.gd")
 
 const FEED_MAX := 60
 const POST_COOLDOWN := 6
@@ -114,7 +115,7 @@ static func _tag(text: String) -> String:
 		n += 1
 		if n >= 3:
 			break
-	return "#" + out if out != "" else "#Valdoria"
+	return "#" + out if out != "" else "#" + W.COUNTRY_NAME
 
 
 static func _trend_from_news(text: String, mood: String) -> void:
@@ -161,7 +162,7 @@ static func _refresh_trends(force: bool = false) -> void:
 	if GS.approval < 35.0:
 		_push_trend("#DimisionYa", "oposicion", -1.0)
 	elif GS.approval > 62.0:
-		_push_trend("#OrgulloValdoriano", "orgullo", 1.0)
+		_push_trend("#Orgullo" + Pais.gent(0).capitalize(), "orgullo", 1.0)
 	if GS.corruption > 15.0:
 		_push_trend("#LosSobres", "escandalo", -1.0)
 	if GS.Promesas.broken().size() > 0:

@@ -2,7 +2,7 @@ extends RefCounted
 ## Eventos de las tramas (historias largas que se sortean en cada partida) y de los escenarios iniciales.
 ## Todos son "chain_only": solo aparecen cuando su trama o su escenario los programa.
 
-const EVENTS := [
+static var EVENTS := [
 	# =====================================================================  TRAMA · Huelga de controladores
 	{"id": "controladores_aviso", "type": "advisor", "who": "economia", "chain_only": true, "title": "Los controladores amenazan",
 		"text": "Presidente, el sindicato de controladores aéreos amenaza con una huelga en plena temporada alta. Piden un 20% más de sueldo y jubilarse a los 52 años con el salario íntegro. Si paran, se cierra el espacio aéreo y el turismo se hunde.",

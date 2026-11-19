@@ -2,7 +2,7 @@ extends RefCounted
 ## Modo meme: política de chiste. Eventos absurdos y guiños a la política de siempre,
 ## con personajes y partidos inventados. Ningún parecido con la realidad es casual... ni intencionado.
 
-const EVENTS := [
+static var EVENTS := [
 	{"id": "bienvenida_meme", "type": "advisor", "who": "jefa", "chain_only": true, "meme": true, "title": "Bienvenido al circo",
 		"text": "Bienvenido a su despacho, presidente {pres}. Soy {jefa}, su Jefa de Gabinete. Le advierto: este país está un poco loco. Ayer el Congreso votó si la tortilla lleva cebolla, el exministro de Industria trabaja de 'consejero de la energía de la energía' y hay palomas con más poder que la oposición. Usted pulse ▶ cuando esté listo... y que sea lo que Dios quiera.",
 		"choices": [
@@ -296,7 +296,7 @@ const EVENTS := [
 ]
 
 ## Leyes generadas para la bandeja en el modo meme
-const BILLS := [
+static var BILLS := [
 	{"t": "Ley de Protección del Botijo", "fx": {"jubilados": 2, "ambiente": 1}},
 	{"t": "Ley del Puente Perpetuo", "fx": {"trabajadores": 2, "empresarios": -2}},
 	{"t": "Ley del Derecho Universal al Chiringuito", "fx": {"jovenes": 2, "ambiente": -1}},
@@ -314,7 +314,7 @@ const BILLS := [
 	{"t": "Ley del Toldo Verde Obligatorio", "fx": {"empresarios": 1, "ambiente": 1}},
 ]
 
-const RIDERS := [
+static var RIDERS := [
 	{"t": "Disp. adicional 3ª: el presidente tendrá plaza de aparcamiento reservada en todas las playas del país.", "fx": {"clase_media": -2, "corr": 1}},
 	{"t": "Disp. final 1ª: se declara festivo nacional el cumpleaños del ministro de Hacienda.", "fx": {"trabajadores": 1, "economia": -1}},
 	{"t": "Anexo IV: el bar del Congreso será de barra libre los jueves.", "fx": {"clase_media": -2, "money": -10}},
@@ -322,7 +322,7 @@ const RIDERS := [
 	{"t": "Art. 44 bis: el himno nacional se versionará en reggaetón para los actos oficiales.", "fx": {"jovenes": 2, "jubilados": -2, "militares": -2}},
 ]
 
-const LETTERS := [
+static var LETTERS := [
 	{"from": "Un señor de Cuenca", "t": "Le escribo para quejarme de que en mi pueblo no hay cobertura de móvil, pero sí hay wifi en el bar. Exijo que pongan el wifi del bar en toda la comarca.", "fx_yes": {"jubilados": 1, "money": -10}, "yes": "AYUDAR"},
 	{"from": "El grupo de WhatsApp '4ºB Padres y Madres'", "t": "Estimado señor presidente: llevamos 400 mensajes discutiendo quién compra el regalo de la profesora. Solicitamos que el Gobierno decida por decreto.", "fx_yes": {"clase_media": 1, "stress": 2}, "yes": "DECRETAR"},
 	{"from": "Asociación de Cuñados de Valdoria", "t": "Queremos denunciar el acoso que sufrimos en las cenas familiares. Nosotros solo opinamos de todo con mucha seguridad. Pedimos respeto.", "fx_yes": {"clase_media": -1, "jovenes": 1}, "yes": "RESPONDER"},
@@ -332,7 +332,7 @@ const LETTERS := [
 	{"from": "Doña Pura, presidenta de la comunidad de vecinos", "t": "El del tercero tiende las toallas y gotean a mi ropa. Como nadie me hace caso, me dirijo a la más alta autoridad del Estado.", "fx_yes": {"jubilados": 1, "stress": 2}, "yes": "MEDIAR"},
 ]
 
-const CRIMES := [
+static var CRIMES := [
 	{"c": "Robo de 400 rollos de papel higiénico de un ministerio", "y": 1, "note": "Alega que 'en el ministerio no se notaría'.", "fx_yes": {"clase_media": -1}, "fx_no": {}},
 	{"c": "Hacer la ola en un funeral de Estado", "y": 1, "note": "Dice que pensaba que era un partido de fútbol.", "fx_yes": {"jovenes": 1, "jubilados": -1}, "fx_no": {}},
 	{"c": "Aparcar un tractor en la escalinata del Congreso", "y": 2, "note": "Asegura que estaba 'en doble fila, pero con los intermitentes'.", "fx_yes": {"trabajadores": 1, "jubilados": 1}, "fx_no": {}},
@@ -341,7 +341,7 @@ const CRIMES := [
 ]
 
 ## Frases extra de discurso (se mezclan con las normales)
-const SPEECH := {
+static var SPEECH := {
 	"apertura": [
 		{"t": "Valdorianos: los valdorianos son muy valdorianos y mucho valdorianos.", "fx": {"jubilados": 1.5, "jovenes": 1.0}},
 		{"t": "Buenas noches. O buenos días, según donde estén. Es difícil todo esto.", "fx": {"jovenes": 1.5}},
@@ -361,7 +361,7 @@ const SPEECH := {
 }
 
 ## Preguntas extra de prensa
-const QUESTIONS := [
+static var QUESTIONS := [
 	{"q": "Presidente, ¿es verdad que ha pedido que el Consejo de Ministros se haga con sobremesa?",
 		"a": [
 			{"t": "Las mejores decisiones se toman con el café y la copa.", "tone": "humor", "s": 4, "fx": {"jovenes": 1}},

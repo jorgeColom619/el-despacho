@@ -1,10 +1,10 @@
 extends RefCounted
 ## Datos estáticos del mundo: partidos, países, regiones, personajes, leyes y crisis.
 
-const COUNTRY_NAME := "Valdoria"
-const CAPITAL := "Santa Aurora"
+static var COUNTRY_NAME := "Valdoria"
+static var CAPITAL := "Santa Aurora"
 
-const METER_INFO := {
+static var METER_INFO := {
 	"economia": {"name": "Economía", "icon": "economia", "desc": "Crecimiento, empleo e ingresos fiscales."},
 	"bienestar": {"name": "Bienestar", "icon": "bienestar", "desc": "Sanidad, educación y servicios sociales."},
 	"seguridad": {"name": "Seguridad", "icon": "seguridad", "desc": "Orden público, delincuencia y defensa."},
@@ -13,7 +13,7 @@ const METER_INFO := {
 	"ambiente": {"name": "Medio ambiente", "icon": "ambiente", "desc": "Calidad ambiental y transición ecológica."},
 }
 
-const FACTION_INFO := {
+static var FACTION_INFO := {
 	"trabajadores": {"name": "Trabajadores", "icon": "trabajadores", "w": 0.26, "desc": "Asalariados y sindicatos. Quieren empleo, salarios y servicios públicos."},
 	"empresarios": {"name": "Empresarios", "icon": "empresarios", "w": 0.08, "desc": "Patronal e inversores. Quieren impuestos bajos y estabilidad."},
 	"clase_media": {"name": "Clase media", "icon": "clase_media", "w": 0.30, "desc": "El votante decisivo. Economía, seguridad e impuestos moderados."},
@@ -22,7 +22,7 @@ const FACTION_INFO := {
 	"militares": {"name": "Fuerzas Armadas", "icon": "militares", "w": 0.0, "desc": "No deciden elecciones, pero sí golpes de Estado."},
 }
 
-const BUDGET := {
+static var BUDGET := {
 	"sanidad": {"name": "Sanidad", "icon": "hospital", "base": 7200.0},
 	"educacion": {"name": "Educación", "icon": "jovenes", "base": 4600.0},
 	"pensiones": {"name": "Pensiones", "icon": "jubilados", "base": 12500.0},
@@ -33,13 +33,13 @@ const BUDGET := {
 	"ambiente": {"name": "Medio Ambiente y Energía", "icon": "ambiente", "base": 1400.0},
 }
 
-const TAXES := {
+static var TAXES := {
 	"renta": {"name": "IRPF (renta)", "base": 22.0, "min": 12.0, "max": 36.0, "laffer": 0.042},
 	"sociedades": {"name": "Impuesto de Sociedades", "base": 25.0, "min": 12.0, "max": 38.0, "laffer": 0.0625},
 	"iva": {"name": "IVA", "base": 21.0, "min": 10.0, "max": 27.0, "laffer": 0.1},
 }
 
-const PARTIES := {
+static var PARTIES := {
 	"FS": {"name": "Frente Social", "short": "FS", "ideo": -75.0, "color": "9b1c1c", "leader": "Nuria Campos"},
 	"VV": {"name": "Verdes de Valdoria", "short": "VV", "ideo": -45.0, "color": "3a9d5d", "leader": "Iker Solano"},
 	"MP": {"name": "Movimiento Progresista", "short": "MP", "ideo": -28.0, "color": "e2574c", "leader": "Irene Sotomayor"},
@@ -49,24 +49,24 @@ const PARTIES := {
 	"PO": {"name": "Patria y Orden", "short": "PyO", "ideo": 80.0, "color": "6a4a9c", "leader": "Bruno Valverde"},
 }
 
-const PARTY_ORDER := ["FS", "VV", "MP", "CR", "CC", "AR", "PO"]
+static var PARTY_ORDER := ["FS", "VV", "MP", "CR", "CC", "AR", "PO"]
 
-const SEATS := {
+static var SEATS := {
 	"MP": {"FS": 30, "VV": 18, "MP": 138, "CR": 16, "CC": 42, "AR": 92, "PO": 14},
 	"AR": {"FS": 22, "VV": 14, "MP": 92, "CR": 16, "CC": 42, "AR": 138, "PO": 26},
 	"CC": {"FS": 22, "VV": 16, "MP": 88, "CR": 16, "CC": 118, "AR": 74, "PO": 16},
 }
 
-const PLAYER_PARTIES := {
+static var PLAYER_PARTIES := {
 	"MP": {"desc": "Centro-izquierda. Fuerte entre trabajadores y jóvenes. Recelo empresarial.", "bonus": {"trabajadores": 8.0, "jovenes": 5.0, "empresarios": -6.0, "militares": -3.0}, "opp": "AR"},
 	"CC": {"desc": "Centro liberal. Gusta a la clase media; debe pactar a izquierda o derecha.", "bonus": {"clase_media": 6.0, "empresarios": 3.0}, "opp": "AR"},
 	"AR": {"desc": "Centro-derecha. Apoyo de empresarios, jubilados y militares.", "bonus": {"empresarios": 8.0, "militares": 6.0, "jubilados": 4.0, "jovenes": -5.0, "trabajadores": -6.0}, "opp": "MP"},
 }
 
-const SKIN := ["f1d3bd", "e6bc98", "d4a276", "b67f56", "8d5a3b", "5e3b26"]
-const HAIR_COL := ["1c1816", "3b2a20", "6b4a2f", "8a4b2a", "c9a46a", "9a9a98", "dcd8d0"]
+static var SKIN := ["f1d3bd", "e6bc98", "d4a276", "b67f56", "8d5a3b", "5e3b26"]
+static var HAIR_COL := ["1c1816", "3b2a20", "6b4a2f", "8a4b2a", "c9a46a", "9a9a98", "dcd8d0"]
 
-const CHARACTERS := {
+static var CHARACTERS := {
 	"vice": {"name": "Inés Aranda", "role": "Vicepresidenta del Gobierno", "look": {"g": "f", "skin": 2, "hair": "long", "hc": 2, "glasses": 0, "suit": "5a2b3c", "shirt": "f2ece4", "tie": "", "age": 1, "eyes": "4a3426"}},
 	"jefa": {"name": "Elena Márquez", "role": "Jefa de Gabinete", "look": {"g": "f", "skin": 1, "hair": "bob", "hc": 1, "glasses": 2, "suit": "243653", "shirt": "e8e4dc", "tie": "", "age": 1, "eyes": "5a4632"}},
 	"economia": {"name": "Tomás Ferrer", "role": "Ministro de Economía", "look": {"g": "m", "skin": 0, "hair": "balding", "hc": 5, "glasses": 1, "suit": "3a3d44", "shirt": "f2f2f2", "tie": "7a1f2b", "age": 2, "beard": "none", "eyes": "4d6a80"}},
@@ -83,7 +83,7 @@ const CHARACTERS := {
 }
 
 ## Rasgos de los ministros: modifican objetivos, saldo, aprobación o minijuegos.
-const TRAITS := {
+static var TRAITS := {
 	"negociador": {"name": "Negociador", "desc": "En las negociaciones de su área, el límite del rival sube y su franja se ve con más precisión (Exteriores: con otros países; Economía: con sindicatos y patronal; Vicepresidencia: todas).", "good": true},
 	"austero": {"name": "Austero", "desc": "Gasto público −1,5 % (unos 600 M€ al mes); en las crisis que dirige, gasta un 20 % menos.", "good": true, "spend": -0.015},
 	"tecnocrata": {"name": "Tecnócrata", "desc": "Economía +3.", "good": true, "mods": {"economia": 3.0}},
@@ -103,25 +103,25 @@ const TRAITS := {
 }
 
 ## Área de cada cartera (para el rasgo "inexperto")
-const MINISTRY_AREA := {"vice": "estabilidad", "jefa": "estabilidad", "economia": "economia", "interior": "seguridad", "exteriores": "prestigio", "defensa": "militares", "sanidad": "bienestar"}
+static var MINISTRY_AREA := {"vice": "estabilidad", "jefa": "estabilidad", "economia": "economia", "interior": "seguridad", "exteriores": "prestigio", "defensa": "militares", "sanidad": "bienestar"}
 
-const INITIAL_TRAITS := {"vice": ["negociador"], "jefa": ["leal"], "economia": ["tecnocrata", "polemico"], "interior": ["mano_dura"], "exteriores": ["diplomatico"], "defensa": ["veterano"], "sanidad": ["gestor"]}
+static var INITIAL_TRAITS := {"vice": ["negociador"], "jefa": ["leal"], "economia": ["tecnocrata", "polemico"], "interior": ["mano_dura"], "exteriores": ["diplomatico"], "defensa": ["veterano"], "sanidad": ["gestor"]}
 
 ## Miembros del Gobierno, en el orden en que se muestran
-const CABINET := ["vice", "jefa", "economia", "interior", "exteriores", "defensa", "sanidad"]
+static var CABINET := ["vice", "jefa", "economia", "interior", "exteriores", "defensa", "sanidad"]
 ## Competencia inicial (0-100) de cada cargo en la partida estándar
-const INITIAL_SKILL := {"vice": 64, "jefa": 72, "economia": 74, "interior": 60, "exteriores": 66, "defensa": 70, "sanidad": 58}
+static var INITIAL_SKILL := {"vice": 64, "jefa": 72, "economia": 74, "interior": 60, "exteriores": 66, "defensa": 70, "sanidad": 58}
 ## Qué ministro se hace cargo de cada crisis si el presidente la delega
-const CRISIS_MINISTER := {"migrantes": "interior", "huelga_sanitaria": "sanidad", "incendios": "interior", "disturbios": "interior",
+static var CRISIS_MINISTER := {"migrantes": "interior", "huelga_sanitaria": "sanidad", "incendios": "interior", "disturbios": "interior",
 	"pandemia": "sanidad", "inundaciones": "interior", "terrorismo": "interior", "apagon": "defensa", "huelga_general": "economia",
 	"golpe": "defensa", "guerra": "defensa", "palomas": "sanidad", "patinetes": "interior", "wifi": "economia", "sequia": "economia",
 	"terremoto": "interior", "marea_negra": "defensa", "ciber_bancos": "economia", "temporal_nieve": "interior", "plaga": "economia"}
 ## Rasgos que ayudan (+) o estorban (−) al ministro que dirige una crisis delegada (eficacia, de 0 a 1)
-const CRISIS_TRAITS := {"veterano": 0.06, "gestor": 0.05, "mano_dura": 0.03, "tecnocrata": 0.02, "inexperto": -0.08, "polemico": -0.03}
+static var CRISIS_TRAITS := {"veterano": 0.06, "gestor": 0.05, "mano_dura": 0.03, "tecnocrata": 0.02, "inexperto": -0.08, "polemico": -0.03}
 ## Encargos a los ministros: dos reformas por cargo. pc y money se pagan al empezar; days es lo que tardan.
 ## ok: efectos si sale bien (a medias, la mitad); bad: si fracasa. flag: marca que dejan (ayuda en ciertas crisis).
 ## «mods» son permanentes. «@all» = todos los países; «@opp» = el partido de la oposición.
-const REFORMS := {
+static var REFORMS := {
 	"vice": [
 		{"id": "coordinacion", "name": "Plan de coordinación del Gobierno", "desc": "Comisiones delegadas y un calendario común para todos los ministerios.", "days": 120, "pc": 8, "money": 0.0,
 			"ok": {"mods": {"estabilidad": 4}}, "bad": {"estabilidad": -2}},
@@ -166,7 +166,7 @@ const REFORMS := {
 	],
 }
 
-const COUNTRIES := {
+static var COUNTRIES := {
 	"norland": {"name": "Norland", "full": "Estados Federados de Norland", "leader": "Harrison Kade", "title": "Presidente", "pers": "orgulloso", "power": 95.0, "rel": 25.0, "map": 7, "color": "3b6fb6",
 		"desc": "La superpotencia occidental. Aliado histórico que exige lealtad a cambio de protección.",
 		"look": {"g": "m", "skin": 0, "hair": "side", "hc": 4, "glasses": 0, "suit": "1a2440", "shirt": "ffffff", "tie": "b8262e", "age": 2, "beard": "none", "eyes": "4d6a80"}},
@@ -190,7 +190,7 @@ const COUNTRIES := {
 		"look": {"g": "f", "skin": 5, "hair": "bun", "hc": 0, "glasses": 0, "suit": "2f6b4a", "shirt": "f2e6c8", "tie": "", "age": 1, "eyes": "2a1c14"}},
 }
 
-const PERSONALITIES := {
+static var PERSONALITIES := {
 	"orgulloso": {"name": "Orgulloso", "desc": "Le encantan los halagos; la presión le ofende.", "arg": 0.9, "pres": 0.8, "flat": 1.8, "threat_mood": 1.5, "patience": 6, "thr": -5.0},
 	"agresivo": {"name": "Agresivo", "desc": "Responde a la fuerza con fuerza. Respeta la firmeza.", "arg": 0.7, "pres": 1.1, "flat": 0.6, "threat_mood": 1.2, "patience": 5, "thr": -12.0},
 	"pragmatico": {"name": "Pragmático", "desc": "Se deja convencer con buenos argumentos y datos.", "arg": 1.5, "pres": 0.9, "flat": 0.5, "threat_mood": 1.0, "patience": 6, "thr": 8.0},
@@ -198,7 +198,7 @@ const PERSONALITIES := {
 	"volatil": {"name": "Imprevisible", "desc": "Cambia de humor de un momento a otro.", "arg": 1.0, "pres": 1.2, "flat": 1.2, "threat_mood": 1.6, "patience": 5, "thr": -2.0},
 }
 
-const REGIONS := {
+static var REGIONS := {
 	1: {"key": "capital", "name": "Santa Aurora", "sub": "Capital", "pop": 0.19, "demo": {"trabajadores": 0.22, "empresarios": 0.12, "clase_media": 0.36, "jovenes": 0.2, "jubilados": 0.1}},
 	2: {"key": "norte", "name": "Ferrosa", "sub": "Norte Industrial", "pop": 0.16, "demo": {"trabajadores": 0.42, "empresarios": 0.06, "clase_media": 0.24, "jovenes": 0.13, "jubilados": 0.15}},
 	3: {"key": "este", "name": "Marvella", "sub": "Costa Este", "pop": 0.15, "demo": {"trabajadores": 0.24, "empresarios": 0.1, "clase_media": 0.3, "jovenes": 0.22, "jubilados": 0.14}},
@@ -209,7 +209,7 @@ const REGIONS := {
 	8: {"key": "islas", "name": "Islas Cordales", "sub": "Islas", "pop": 0.07, "demo": {"trabajadores": 0.26, "empresarios": 0.08, "clase_media": 0.3, "jovenes": 0.18, "jubilados": 0.18}},
 }
 
-const LAWS := {
+static var LAWS := {
 	"salario_minimo": {"name": "Subida del Salario Mínimo", "icon": "trabajadores", "ideo": -40.0, "pc": 12, "desc": "Eleva el salario mínimo un 12%. Los sindicatos lo celebran; la patronal advierte de despidos.", "fx": {"trabajadores": 8, "empresarios": -8}, "mods": {"trabajadores": 10, "jovenes": 4, "empresarios": -10, "economia": -2}},
 	"fortunas": {"name": "Impuesto a las Grandes Fortunas", "icon": "dinero", "ideo": -55.0, "pc": 15, "desc": "Nuevo tributo sobre patrimonios superiores a 3 millones. Recauda, pero ahuyenta capitales.", "fx": {"empresarios": -10, "trabajadores": 5}, "mods": {"empresarios": -14, "trabajadores": 6, "economia": -2, "clase_media": 2}, "monthly": 700.0},
 	"rebaja_fiscal": {"name": "Rebaja General de Impuestos", "icon": "dinero", "ideo": 40.0, "pc": 14, "desc": "Baja el IRPF y Sociedades. Alegría inmediata en los bolsillos... y agujero en las cuentas.", "fx": {"clase_media": 6, "empresarios": 6}, "mods": {"clase_media": 8, "empresarios": 8, "economia": 4, "trabajadores": 2}, "monthly": -1500.0},
@@ -238,7 +238,7 @@ const LAWS := {
 	"ampliar_mandato": {"name": "Reforma Constitucional: mandato de 6 años", "icon": "candado", "ideo": 40.0, "pc": 40, "desc": "Amplía el mandato presidencial dos años más. Requiere mayoría de dos tercios (234 escaños).", "fx": {"jovenes": -10, "clase_media": -8, "prestigio": -12}, "mods": {"estabilidad": -8, "prestigio": -15, "jovenes": -10, "clase_media": -8}, "term": 730, "super": true},
 }
 
-const OUTLETS := [
+static var OUTLETS := [
 	{"name": "El Heraldo", "bias": 40.0, "tag": "Conservador"},
 	{"name": "Diario Libre", "bias": -40.0, "tag": "Progresista"},
 	{"name": "La Crónica", "bias": 0.0, "tag": "Centro"},
@@ -249,11 +249,11 @@ const OUTLETS := [
 	{"name": "Voz Digital", "bias": -10.0, "tag": "Digital"},
 ]
 
-const NAMES_M := ["Alejandro", "Javier", "Luis", "Diego", "Martín", "Sergio", "Andrés", "Pablo", "Raúl", "Hugo", "Óscar", "Rubén", "Ignacio", "Fernando", "Álvaro", "Mateo", "Gabriel", "Víctor", "Emilio", "Joaquín"]
-const NAMES_F := ["Lucía", "Marta", "Sara", "Paula", "Elena", "Carmen", "Laura", "Ana", "Nerea", "Irene", "Beatriz", "Clara", "Julia", "Noelia", "Alba", "Inés", "Rocío", "Silvia", "Teresa", "Adriana"]
-const SURNAMES := ["García", "Moreno", "Navarro", "Castillo", "Herrera", "Molina", "Ortega", "Delgado", "Vidal", "Serrano", "Ramos", "Iglesias", "Cortés", "Medina", "Fuentes", "Cano", "Prieto", "Marín", "Lozano", "Gallardo", "Esteban", "Pascual", "Aguirre", "Beltrán", "Soler", "Crespo", "Rosales", "Vega", "Robledo", "Salcedo"]
-const COMPANIES := ["Constructora Albatros", "Obras Meridión", "Grupo Castellar", "Consorcio Vértice", "Hidrovalle", "Infraestructuras Lumen", "Grupo Estrella del Norte", "Ingeniería Solvente", "Sistemas Ágora", "Tecnologías Halcón", "Norland Dynamics", "Tsaing Heavy Industries", "Qadar Holdings", "Brisa Capital", "Aceros Ferrosa", "Grupo Atalaya"]
-const PROJECTS := [
+static var NAMES_M := ["Alejandro", "Javier", "Luis", "Diego", "Martín", "Sergio", "Andrés", "Pablo", "Raúl", "Hugo", "Óscar", "Rubén", "Ignacio", "Fernando", "Álvaro", "Mateo", "Gabriel", "Víctor", "Emilio", "Joaquín"]
+static var NAMES_F := ["Lucía", "Marta", "Sara", "Paula", "Elena", "Carmen", "Laura", "Ana", "Nerea", "Irene", "Beatriz", "Clara", "Julia", "Noelia", "Alba", "Inés", "Rocío", "Silvia", "Teresa", "Adriana"]
+static var SURNAMES := ["García", "Moreno", "Navarro", "Castillo", "Herrera", "Molina", "Ortega", "Delgado", "Vidal", "Serrano", "Ramos", "Iglesias", "Cortés", "Medina", "Fuentes", "Cano", "Prieto", "Marín", "Lozano", "Gallardo", "Esteban", "Pascual", "Aguirre", "Beltrán", "Soler", "Crespo", "Rosales", "Vega", "Robledo", "Salcedo"]
+static var COMPANIES := ["Constructora Albatros", "Obras Meridión", "Grupo Castellar", "Consorcio Vértice", "Hidrovalle", "Infraestructuras Lumen", "Grupo Estrella del Norte", "Ingeniería Solvente", "Sistemas Ágora", "Tecnologías Halcón", "Norland Dynamics", "Tsaing Heavy Industries", "Qadar Holdings", "Brisa Capital", "Aceros Ferrosa", "Grupo Atalaya"]
+static var PROJECTS := [
 	{"t": "Hospital comarcal de %s", "kind": "sanidad", "cost": 380.0},
 	{"t": "Línea de alta velocidad %s–Santa Aurora", "kind": "infraestructura", "cost": 1800.0},
 	{"t": "Planta desaladora de %s", "kind": "ambiente", "cost": 520.0},
@@ -265,7 +265,7 @@ const PROJECTS := [
 ]
 
 # Temas de negociación por país. "term": [etiqueta, valor si ganan ellos, valor si ganas tú, unidad]
-const TOPICS := {
+static var TOPICS := {
 	"norland": [
 		{"id": "comercio", "name": "Tratado de libre comercio", "desc": "Norland quiere acceso a nuestro mercado agrícola; nosotros, a su industria tecnológica.", "term": ["Aranceles a nuestras exportaciones", 16.0, 0.0, "%"], "fx_min": {"economia": 1, "rel": {"norland": 6}}, "fx_max": {"economia": 5, "rel": {"norland": 1}, "empresarios": 4}, "treaty": "comercio"},
 		{"id": "bases", "name": "Ampliación de la base naval", "desc": "Norland quiere ampliar su base en Puerto Alba. ¿Cuánto vale nuestra soberanía?", "term": ["Compensación anual", 200.0, 2500.0, " M€"], "fx_min": {"money": 200, "rel": {"norland": 12, "kharovia": -8}, "militares": 3, "jovenes": -4}, "fx_max": {"money": 2500, "rel": {"norland": 4, "kharovia": -8}, "militares": 5, "jovenes": -3}, "treaty": "defensa"},
@@ -299,7 +299,7 @@ const TOPICS := {
 }
 
 # Tipos de crisis para la Sala de Crisis
-const CRISES := {
+static var CRISES := {
 	"migrantes": {"title": "Crisis migratoria en el Estrecho", "icon": "barco", "hot": [4, 8, 3, 7], "start": 2, "growth": 2.3, "spread": false, "spawn": 9.0,
 		"desc": "Cientos de embarcaciones precarias cruzan el Estrecho desde Aldora. Hay que salvar vidas sin perder el control.",
 		"dmg": "Personas en peligro", "dmg_k": 2.2,

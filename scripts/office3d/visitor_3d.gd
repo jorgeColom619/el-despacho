@@ -125,7 +125,7 @@ func _materials(l: Dictionary) -> Dictionary:
 		brow = Color(W.HAIR_COL[5]).darkened(0.2)
 	var tie: String = l.get("tie", "")
 	var gold := Kit.mat(Color("c9a55c"), 0.35, 0.8)
-	var flag: Array = Flags.palette(Flags.current_style())
+	var flag: Array = Flags.palette_propia()
 	return {
 		"Flag0": Kit.mat(flag[0], 0.6),
 		"Flag1": Kit.mat(flag[1], 0.6),

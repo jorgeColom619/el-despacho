@@ -12,14 +12,14 @@ var main: Node
 var data: Dictionary = {}
 
 const HEADS := {
-	"reelegido": ["¡%s REVALIDA LA PRESIDENCIA!", "Los valdorianos le dan otros cuatro años para culminar su proyecto."],
+	"reelegido": ["¡%s REVALIDA LA PRESIDENCIA!", "Los {gent_pl} le dan otros cuatro años para culminar su proyecto."],
 	"derrota": ["%s PIERDE LAS ELECCIONES", "El presidente reconoce la derrota y felicita a su rival: «El pueblo ha hablado»."],
-	"revolucion": ["EL PRESIDENTE %s HUYE DEL PALACIO", "Tras semanas de protestas masivas, un helicóptero saca al presidente de Santa Aurora."],
+	"revolucion": ["EL PRESIDENTE %s HUYE DEL PALACIO", "Tras semanas de protestas masivas, un helicóptero saca al presidente de {cap}."],
 	"censura": ["CAE EL GOBIERNO DE %s", "El Congreso aprueba la moción de censura. La oposición toma el poder."],
 	"confianza": ["%s PIERDE LA CONFIANZA DEL CONGRESO", "El Congreso niega la confianza al Gobierno y el presidente presenta su dimisión."],
 	"golpe": ["GOLPE DE ESTADO: DETENIDO %s", "Una junta militar toma el control del país y suspende la Constitución."],
 	"bancarrota": ["VALDORIA, EN QUIEBRA: DIMITE %s", "El país suspende pagos. El Fondo Monetario Global toma el control de las cuentas."],
-	"casino": ["%s DIMITE POR EL ESCÁNDALO DEL CASINO", "El presidente abandona el Palacio tras confirmarse que se jugó dinero público en el Gran Casino de Santa Aurora."],
+	"casino": ["%s DIMITE POR EL ESCÁNDALO DEL CASINO", "El presidente abandona el Palacio tras confirmarse que se jugó dinero público en el Gran Casino de {cap}."],
 }
 
 
@@ -60,7 +60,7 @@ func _ready() -> void:
 	hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hl.custom_minimum_size = Vector2(840, 0)
 	pv.add_child(hl)
-	var sl := UI.lbl(h[1], UI.f_serif, 22, Color(ink, 0.85), HORIZONTAL_ALIGNMENT_CENTER)
+	var sl := UI.lbl(GS.fmt(h[1]), UI.f_serif, 22, Color(ink, 0.85), HORIZONTAL_ALIGNMENT_CENTER)
 	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sl.custom_minimum_size = Vector2(840, 0)
 	pv.add_child(sl)

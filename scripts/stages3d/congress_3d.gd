@@ -303,7 +303,7 @@ func _walls_and_gallery() -> void:
 		b.rects(sw, [Rect2(MESA_Z * 0.5, 0, -MESA_Z, 2.2)], _m["panel"], 1.0)
 		b.rects(sw, [Rect2(MESA_Z * 0.5, 2.2, -MESA_Z, CEIL - 2.2)], _m["plaster"], 2.0)
 		b.molding(sw * Transform3D(Basis(), Vector3(0, 2.17, 0)), MESA_Z * 0.5, -MESA_Z * 0.5, Kit.PROFILE_RAIL, _m["gold"])
-		flag_pole(Vector3(sx * 4.4, 0.6, MESA_Z + 0.5), "valdoria", 0.0 if sx > 0 else PI, 3.0)
+		flag_pole(Vector3(sx * 4.4, 0.6, MESA_Z + 0.5), "propia", 0.0 if sx > 0 else PI, 3.0)
 		# columnas pareadas a los lados del cuadro
 		for dx in [5.6, 6.4]:
 			b.lathe(Transform3D(Basis(), Vector3(sx * dx, 0, MESA_Z + 0.35)), [Vector2(0.34, 0.0), Vector2(0.34, 0.3), Vector2(0.27, 0.42), Vector2(0.24, 0.5), Vector2(0.22, CEIL - 1.0), Vector2(0.3, CEIL - 0.7), Vector2(0.36, CEIL - 0.5), Vector2(0.0, CEIL - 0.5)], _m["cream"], 24)
@@ -338,7 +338,7 @@ func _painting(xf: Transform3D) -> void:
 			c.draw_circle(Vector2(x, y - 22), 13, Color("c9a07a").darkened(rng.randf_range(0.0, 0.4)))
 		c.draw_rect(Rect2(520, 160, 160, 260), Color("1d2b4a"))
 		c.draw_circle(Vector2(600, 140), 22, Color("d8b08a"))
-		Flags.draw_flag(c, "valdoria", Rect2(700, 120, 180, 120))
+		Flags.draw_flag(c, "propia", Rect2(700, 120, 180, 120))
 		c.draw_rect(Rect2(0, 0, 1200, 680), Color(1.0, 0.85, 0.6, 0.06)))
 	sv.add_child(c)
 	var mi := MeshInstance3D.new()

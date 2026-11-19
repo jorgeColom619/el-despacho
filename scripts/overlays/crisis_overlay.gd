@@ -385,7 +385,7 @@ func _use_special(id: String) -> void:
 			unit_fx["estabilidad"] = unit_fx.get("estabilidad", 0.0) - 3.0
 			GS.toast.emit("Estado de alarma declarado: refuerzos en camino", "warn", "alerta")
 		"ayuda":
-			if GS.countries["union"]["rel"] > 10.0:
+			if float(GS.countries.get("union", {}).get("rel", -100.0)) > 10.0:
 				units.append({"id": "ue", "name": "Ayuda de la Unión", "icon": "prestigio", "n": 2, "left": 2, "cost": 0, "power": 5.5, "fx": {}})
 				unit_fx["prestigio"] = unit_fx.get("prestigio", 0.0) - 1.0
 				GS.toast.emit("La Unión Continental envía refuerzos", "good", "prestigio")

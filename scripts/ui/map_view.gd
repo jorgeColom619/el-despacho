@@ -20,7 +20,7 @@ var labels := true
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	tex = load("res://art/maps/valdoria_ids.png")
+	tex = load("res://art/maps/%s_ids.png" % load("res://scripts/systems/pais.gd").mapa())
 	img = tex.get_image()
 	if img.is_compressed():
 		img.decompress()

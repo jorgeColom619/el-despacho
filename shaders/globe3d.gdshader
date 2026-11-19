@@ -6,6 +6,8 @@ uniform sampler2D map_tex : filter_nearest, repeat_enable;
 uniform sampler2D pal : filter_nearest;
 uniform vec2 tex_size = vec2(1600.0, 900.0);
 uniform int style = 0;
+// id del país que gobierna el presidente (Valdoria = 1)
+uniform int own_id = 1;
 uniform float highlight = 0.0;
 uniform bool flat_map = false;
 
@@ -41,7 +43,7 @@ void fragment() {
 				col = mix(col, vec3(0.75, 0.6, 0.3), 0.55);
 			}
 		}
-		if (id == 1) {
+		if (id == own_id) {
 			col = vec3(0.95, 0.75, 0.35) * 0.8;
 		}
 	} else {

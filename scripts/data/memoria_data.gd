@@ -7,7 +7,7 @@ extends RefCounted
 ## {m_summit} {m_topic} {m_a} {m_date} {m_ago} {ex} (ficha del exministro) {ex_g} (o/a) {periodista} {periodico}
 ## más las de siempre ({pres}, {opo}, {jefa}...). En los efectos, {"rel": {"@": n}} es el país del recuerdo.
 
-const TEMPLATES := [
+static var TEMPLATES := [
 	# ================================================================== exministros cesados
 	{"id": "cese_tertulia", "kind": "cese", "type": "news", "after": 15, "before": 160, "w": 1.0,
 		"text": ["{m_name}, ministr{ex_g} cesad{ex_g}, estrena tertulia en Canal 7: «Este Gobierno improvisa cada mañana»",
@@ -329,7 +329,7 @@ const TEMPLATES := [
 ]
 
 ## Frases con las que un líder extranjero empieza una llamada si recuerda algo
-const PREFACES := {
+static var PREFACES := {
 	"llamada_perdida": ["Vaya, hoy sí contesta. La última vez no me cogió el teléfono, presidente.",
 		"Antes de nada: espero que hoy tenga más tiempo para {m_country} que la última vez que le llamé.",
 		"Mi secretaria apostaba a que tampoco contestaría hoy. Ha perdido la apuesta."],
@@ -353,7 +353,7 @@ const PREFACES := {
 }
 
 ## Ataques de la oposición que se acuerdan de lo que hizo el presidente
-const OPP_ATTACKS := [
+static var OPP_ATTACKS := [
 	{"kind": "cese", "topic": "Su Gobierno", "attack": ["Ha cesado a {m_name}. ¿Quién será el siguiente? ¿O es que el problema es usted?", "{m_name} ya no está en su Gobierno y cuenta cosas muy feas de usted. ¿Miente {m_name}?"], "akind": "personal", "meter": "estabilidad"},
 	{"kind": "ley_tumbada", "topic": "Su agenda", "attack": ["Ni su propia mayoría le aprueba las leyes: ahí está la {m_law}, enterrada en el Congreso.", "La {m_law} murió en esta Cámara. Como su proyecto político."], "akind": "cifras", "meter": "estabilidad"},
 	{"kind": "crisis_mal", "topic": "Gestión de crisis", "attack": ["¿Ya ha olvidado {m_crisis}? Las víctimas no lo han olvidado.", "Durante {m_crisis} su Gobierno llegó tarde, mal y nunca. ¿Va a pedir perdón algún día?"], "akind": "emocional", "meter": "seguridad"},
@@ -377,22 +377,22 @@ const OPP_ATTACKS := [
 ]
 
 ## La periodista incómoda recuerda lo que le contestó
-const PRESS_CALLBACK := [
+static var PRESS_CALLBACK := [
 	"{m_ago}, en esta misma sala, usted me respondió: «{m_a}». ¿Lo sigue manteniendo?",
 	"Le leo una frase suya del {m_date}: «{m_a}». ¿Se arrepiente de haberla dicho?",
 	"Hemeroteca, presidente: «{m_a}». Lo dijo usted, aquí, delante de todos. ¿Qué ha cambiado desde entonces?",
 ]
-const PRESS_CALLBACK_ANSWERS := [
+static var PRESS_CALLBACK_ANSWERS := [
 	{"t": "Hoy lo diría de otra manera. Rectificar también es gobernar.", "tone": "honesto", "s": 5, "fx": {"clase_media": 1}},
 	{"t": "Lo mantengo palabra por palabra.", "tone": "firme", "s": 2, "fx": {}},
 	{"t": "No recuerdo exactamente esa frase.", "tone": "evasivo", "s": -5, "fx": {"clase_media": -1}},
 	{"t": "Veo que usted me lee más que mi propia familia.", "tone": "humor", "s": 1, "fx": {"jovenes": 1}},
 ]
-const PRESS_SCANDAL := [
+static var PRESS_SCANDAL := [
 	"Mi periódico publicó «{m_title}». ¿Va a dar explicaciones o va a seguir escondiéndose?",
 	"Han pasado semanas desde «{m_title}» y no ha comparecido. ¿A qué espera, presidente?",
 ]
-const PRESS_SCANDAL_ANSWERS := [
+static var PRESS_SCANDAL_ANSWERS := [
 	{"t": "Daré todas las explicaciones en el Congreso. Y si hay responsables, se irán.", "tone": "honesto", "s": 5, "fx": {"clase_media": 1, "corr_mult": 0.95}},
 	{"t": "Es una campaña orquestada por quienes perdieron las elecciones.", "tone": "ataque", "s": 1, "fx": {"estabilidad": -1}},
 	{"t": "Hay una investigación en marcha y no voy a interferir.", "tone": "evasivo", "s": -2, "fx": {}},

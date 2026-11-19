@@ -835,6 +835,7 @@ func _back_wall() -> void:
 	map_mat = ShaderMaterial.new()
 	map_mat.shader = load("res://shaders/globe3d.gdshader")
 	map_mat.set_shader_parameter("map_tex", load("res://art/maps/world_ids.png"))
+	map_mat.set_shader_parameter("own_id", load("res://scripts/systems/pais.gd").world_id())
 	map_mat.set_shader_parameter("flat_map", true)
 	map_mesh.material_override = map_mat
 	# lámpara de cuadro sobre el mapa

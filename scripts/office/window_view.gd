@@ -234,7 +234,7 @@ func _draw_dynamic(c: Control) -> void:
 	var night := clampf((tod - 0.45) * 2.0, 0.0, 1.0)
 	if night > 0.3 and int(_t * 1.5) % 2 == 0:
 		c.draw_circle(Vector2(88.5, 80), 2.5, Color(1, 0.2, 0.15))
-	var fcol: Array = Flags.palette(Flags.current_style())
+	var fcol: Array = Flags.palette_propia()
 	for i in 3:
 		var wave := sin(_t * 3.0 + i) * 1.5
 		c.draw_rect(Rect2(288, 210 + i * 3 + wave * 0.2, 14 + wave, 3), fcol[i])

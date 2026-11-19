@@ -4,6 +4,8 @@ uniform sampler2D map_tex : filter_nearest;
 uniform float rot = 0.0;
 uniform float highlight = 0.0;
 uniform int style = 0;
+// id del país que gobierna el presidente (Valdoria = 1)
+uniform int own_id = 1;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -31,7 +33,7 @@ void fragment() {
 			float city = step(0.93, hash(floor(tuv * vec2(260.0, 160.0))));
 			col += vec3(1.0, 0.8, 0.45) * city * 0.9;
 		}
-		if (abs(id - 1.0) < 0.1) {
+		if (abs(id - float(own_id)) < 0.1) {
 			col = vec3(0.95, 0.75, 0.35) * 0.8;
 		}
 		col *= 0.55 + 0.6 * light;
@@ -43,7 +45,7 @@ void fragment() {
 		if (id > 0.5) {
 			col = land;
 		}
-		if (abs(id - 1.0) < 0.1) {
+		if (abs(id - float(own_id)) < 0.1) {
 			col = vec3(0.98, 0.72, 0.25);
 		}
 		col *= 0.32 + 0.8 * light;

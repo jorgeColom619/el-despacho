@@ -39,8 +39,8 @@ var _pet_cd := 0.0
 var _pet_happy := 0.0
 var _parrot_line := ""
 var _parrot_t := 12.0
-const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!",
-	"¡Siguiente pregunta!", "¡Sin comentarios!", "¡Lo que diga la ministra!", "¡Pío, pío, que no se diga!", "¡Café! ¡Café!", "¡Que hable la oposición!", "¡Señorías!", "¡Esto lo arreglamos!", "¡Hasta las urnas!", "¡Prima de riesgo!", "¡Gracias, Valdoria!", "¡Rueda de prensa! ¡Rrrueda!"]
+const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva {pais}!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!",
+	"¡Siguiente pregunta!", "¡Sin comentarios!", "¡Lo que diga la ministra!", "¡Pío, pío, que no se diga!", "¡Café! ¡Café!", "¡Que hable la oposición!", "¡Señorías!", "¡Esto lo arreglamos!", "¡Hasta las urnas!", "¡Prima de riesgo!", "¡Gracias, {pais}!", "¡Rueda de prensa! ¡Rrrueda!"]
 const PARROT_MEME := ["¡Un vaso es un vaso!", "¡Sé fuerte!", "¡Con cebolla!", "¡Sin cebolla!", "¡Me gusta la fruta!", "¡Plasma! ¡Plasma!", "¡Bueno... eso!", "¡Es muy difícil todo esto!"]
 
 
@@ -132,6 +132,7 @@ func _ready() -> void:
 	globe_mat = ShaderMaterial.new()
 	globe_mat.shader = load("res://shaders/globe.gdshader")
 	globe_mat.set_shader_parameter("map_tex", load("res://art/maps/world_ids.png"))
+	globe_mat.set_shader_parameter("own_id", load("res://scripts/systems/pais.gd").world_id())
 	sphere.material = globe_mat
 	globe.add_child(sphere)
 	globe.move_child(sphere, 0)
@@ -426,7 +427,7 @@ func _on_object(key: String) -> void:
 				GS.stress = maxf(0.0, GS.stress - 3.0)
 				GS.toast.emit({"gato": "Decreto ronronea. Estrés −3.", "perro": "Tribuno mueve la cola. Estrés −3.", "loro": "Senador: «¡Presidente guapo!». Estrés −3.", "pez": "El pez da una vuelta. Estrés −3.", "tortuga": "Trámite echa burbujas de alegría. Estrés −3."}.get(pet_kind, ""), "good", "bienestar")
 			if pet_kind == "loro":
-				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
+				_parrot_line = GS.fmt((PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random())
 				_parrot_t = 4.0
 			Sfx.play("notify", -10.0, 1.6 if pet_kind != "perro" else 0.7)
 
@@ -466,7 +467,7 @@ func _process(delta: float) -> void:
 		_parrot_t -= delta
 		if _parrot_t <= 0.0:
 			if _parrot_line == "":
-				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
+				_parrot_line = GS.fmt((PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random())
 				_parrot_t = 3.5
 			else:
 				_parrot_line = ""
@@ -561,7 +562,7 @@ func _draw_newspaper(o: Control) -> void:
 	o.draw_set_transform(Vector2(14, 10), -0.045, Vector2.ONE)
 	o.draw_string(UI.f_goth, Vector2(0, 26), "El Diario", HORIZONTAL_ALIGNMENT_CENTER, w - 20, 24, Color(0.1, 0.1, 0.1))
 	o.draw_line(Vector2(4, 32), Vector2(w - 24, 32), Color(0.1, 0.1, 0.1), 1.0)
-	var hl := "Nuevo Gobierno en Valdoria"
+	var hl := GS.fmt("Nuevo Gobierno en {pais}")
 	if GS.news_feed.size() > 0:
 		hl = GS.news_feed[0]["t"]
 	o.draw_multiline_string(UI.f_serif_b, Vector2(4, 50), hl, HORIZONTAL_ALIGNMENT_LEFT, w - 30, 13, 3, Color(0.08, 0.08, 0.08))

@@ -3,14 +3,14 @@ extends RefCounted
 ## y los chats privados (ministros, su madre, la oposición, la periodista incómoda, líderes extranjeros...).
 ## Todos los nombres y cuentas son inventados.
 
-const HANDLE_FIRST := ["Mari", "Paco", "Lore", "Javi", "Nuria", "Toni", "Charo", "Dani", "Bea", "Rafa", "Inma", "Quique", "Susi",
+static var HANDLE_FIRST := ["Mari", "Paco", "Lore", "Javi", "Nuria", "Toni", "Charo", "Dani", "Bea", "Rafa", "Inma", "Quique", "Susi",
 	"Manolo", "Rocio", "Edu", "Pili", "Sergi", "Vane", "Juanma", "Lola", "Pepe", "Marta", "Kike", "Ana", "Ivan", "Fran", "Encarni",
 	"Josele", "Tere", "Alvarito", "Merche", "Chema", "Yoli", "Raul", "Sandra", "Moises", "Puri", "Nacho", "Gema"]
-const HANDLE_TAIL := ["_88", "Valdoria", "Oficial", "DeBarrio", "_SA", "Ferrosa", "1975", "Opina", "SinFiltro", "_Libre", "Cordal",
+static var HANDLE_TAIL := ["_88", "Valdoria", "Oficial", "DeBarrio", "_SA", "Ferrosa", "1975", "Opina", "SinFiltro", "_Libre", "Cordal",
 	"Montes", "_Real", "Tuitea", "QueOpina", "Riera", "_Norte", "DelSur", "2001", "Calablanca", "Rioseco", "PuertoAlba", "_Ok", "Vallegrande"]
 
 ## Cuentas conocidas: [usuario, nombre, tipo]
-const FAMOUS := [
+static var FAMOUS := [
 	["@CanalSiete", "Canal 7 Noticias", "medio"], ["@ElHeraldo", "El Heraldo", "medio"], ["@DiarioLibre", "Diario Libre", "medio"],
 	["@LaCronica", "La Crónica", "medio"], ["@VozDigital", "Voz Digital", "medio"], ["@RadioPopular", "Radio Popular", "medio"],
 	["@ElChicoDeLosDatos", "El chico de los datos", "influencer"], ["@AbuelaTuitera", "Abuela Tuitera", "influencer"],
@@ -22,7 +22,7 @@ const FAMOUS := [
 ]
 
 ## Reacciones de la gente a una noticia ({h} es el titular)
-const REACT := {
+static var REACT := {
 	"pos": ["Por fin una buena noticia: «{h}».", "«{h}». Así sí, presidente.", "Hoy no me quejo. «{h}». Mañana ya veremos.",
 		"Mi abuela ha leído «{h}» y ha dicho: ya era hora.", "Lo de «{h}» me ha alegrado el día, para qué negarlo.",
 		"«{h}». Que alguien enmarque este día.", "Y luego dicen que no se hace nada. «{h}».",
@@ -42,7 +42,7 @@ const REACT := {
 }
 
 ## Publicaciones sueltas según cómo va el país
-const AMBIENT := {
+static var AMBIENT := {
 	"good": ["Hoy he salido a cenar y la gente estaba contenta. Qué raro se me hace.", "Mi hijo ha encontrado trabajo de lo suyo. Lo escribo por si da suerte.",
 		"Hace un año no me lo creía, pero las cosas van mejor.", "Hoy el metro venía a su hora. Lo dejo aquí como prueba histórica.",
 		"Cola en la inmobiliaria para comprar. Antes había cola para emigrar.", "Mi panadera dice que este año vende más. Fuente: mi panadera."],
@@ -55,14 +55,14 @@ const AMBIENT := {
 }
 
 ## Etiquetas de relleno cuando no hay mucho que contar
-const FILLER_TRENDS := ["#LunesDeLlorar", "#CosasQueSoloPasanEnValdoria", "#ValdoriaTieneTalento", "#PrecioDelAceite", "#ApagonEnElMetro",
+static var FILLER_TRENDS := ["#LunesDeLlorar", "#CosasQueSoloPasanEnValdoria", "#ValdoriaTieneTalento", "#PrecioDelAceite", "#ApagonEnElMetro",
 	"#MiPrimerTrabajo", "#ElClasico", "#ConcursoDeCocina", "#VeranoEnCalablanca", "#AtascoEnLaA1", "#FeriaDeFerrosa", "#NocheDeEstrellas",
 	"#LaVueltaAlCole", "#SinCoberturaEnElPueblo", "#RecetasDeLaAbuela", "#ElGatoDelMetro", "#FestivalDePuertoAlba", "#OposicionesYa"]
-const FILLER_TRENDS_MEME := ["#TortillaConCebolla", "#TortillaSinCebolla", "#UnVasoEsUnVaso", "#SeFuerte", "#ElPlasma", "#BuenoEso",
+static var FILLER_TRENDS_MEME := ["#TortillaConCebolla", "#TortillaSinCebolla", "#UnVasoEsUnVaso", "#SeFuerte", "#ElPlasma", "#BuenoEso",
 	"#MeGustaLaFruta", "#CaidaDelWifi", "#PalomasDelCongreso", "#MasterFantasma"]
 
 ## Tipo de tema → cómo encaja cada tono al publicar sobre él (suma a la nota de la publicación)
-const TONE_FIT := {
+static var TONE_FIT := {
 	"crisis": {"sincero": 2.0, "firme": 1.0, "humor": -4.5, "ataque": -2.5, "emotivo": 3.0},
 	"ley": {"sincero": 1.0, "firme": 2.0, "humor": 0.0, "ataque": 0.0, "emotivo": 1.0},
 	"escandalo": {"sincero": 2.5, "firme": -1.0, "humor": -3.5, "ataque": -1.5, "emotivo": -1.0},
@@ -74,7 +74,7 @@ const TONE_FIT := {
 	"economia": {"sincero": 1.0, "firme": 1.5, "humor": -1.0, "ataque": 0.0, "emotivo": 0.0},
 	"internacional": {"sincero": 0.5, "firme": 2.0, "humor": -0.5, "ataque": -1.0, "emotivo": 0.5},
 }
-const TONES := {
+static var TONES := {
 	"sincero": {"name": "Sincero", "icon": "sonrisa", "desc": "Reconocer lo que hay, sin adornos."},
 	"firme": {"name": "Firme", "icon": "escudo_x", "desc": "Mensaje de autoridad: el Gobierno no se mueve."},
 	"humor": {"name": "Con humor", "icon": "sonrisa", "desc": "Arriesgado: o te quieren o te crucifican."},
@@ -83,7 +83,7 @@ const TONES := {
 }
 
 ## Texto de la publicación del presidente según el tono ({tema} es la etiqueta o el asunto)
-const POST_TEXT := {
+static var POST_TEXT := {
 	"sincero": ["Sobre {tema}: no todo se ha hecho bien y lo sé. Seguimos trabajando.", "{tema}. Os debo una explicación y la tendréis, sin rodeos.",
 		"Leo todo lo que decís de {tema}. Tenéis parte de razón. Vamos a corregirlo.", "{tema}: esto es lo que sabemos, lo que no sabemos y lo que vamos a hacer."],
 	"firme": ["{tema}: este Gobierno no va a dar un paso atrás.", "Sobre {tema}, que nadie tenga dudas: vamos a cumplir.",
@@ -95,21 +95,21 @@ const POST_TEXT := {
 	"emotivo": ["{tema}. Hoy pienso en cada familia de Valdoria. Estamos con vosotros.", "{tema}. Detrás de cada titular hay personas. No lo olvido.",
 		"{tema}. Me emociona ver cómo responde este país cuando hace falta.", "Hoy no toca hablar de política. {tema}. Un abrazo enorme."],
 }
-const POST_RESULT := {
+static var POST_RESULT := {
 	"viral": ["¡Viral! Medio país lo está compartiendo.", "Arrasa: hasta sus críticos le dan la razón.", "Es lo más compartido del día."],
 	"bien": ["Buena acogida. Los comentarios son, en general, amables.", "Funciona: más apoyos que críticas."],
 	"nada": ["Pasa sin pena ni gloria.", "Unos cuantos «me gusta» y poco más."],
 	"polemica": ["Polémica: los comentarios están que arden.", "No ha sentado bien. Le acusan de frivolidad."],
 	"desastre": ["Desastre: ya hay capturas en todos los medios.", "Incendio en las redes. Su equipo pide que lo borre."],
 }
-const REPLIES_GOOD := ["¡Así se habla, presidente!", "Esto sí. Más de esto.", "Le voté y hoy no me arrepiento.", "Por fin un político que habla claro.",
+static var REPLIES_GOOD := ["¡Así se habla, presidente!", "Esto sí. Más de esto.", "Le voté y hoy no me arrepiento.", "Por fin un político que habla claro.",
 	"Mi madre dice que es usted muy majo.", "Guardado. Para cuando digan que no hace nada.", "No le voté, pero chapó."]
-const REPLIES_BAD := ["¿Y esto lo ha escrito usted o su becario?", "Menos redes y más gobernar.", "Dimisión.", "Qué vergüenza ajena.",
+static var REPLIES_BAD := ["¿Y esto lo ha escrito usted o su becario?", "Menos redes y más gobernar.", "Dimisión.", "Qué vergüenza ajena.",
 	"Captura hecha, por si lo borra.", "¿De verdad no tenía nada mejor que hacer?", "Este tuit va a envejecer fatal."]
 
 ## Chats privados. who: quién escribe (ministros, "madre", "comunicacion", "opo", "periodista_inc" o un país)
 ## replies: [{t (lo que contesta), fx, back (lo que le responden)}]; expire: lo que pasa si lo deja en visto
-const CHATS := [
+static var CHATS := [
 	# --- su madre
 	{"id": "madre_comer", "who": "madre", "w": 1.0, "text": ["{Hijo}, ¿has comido? Te vi en la tele muy delgado.", "{Hijo}, ¿comes bien? En la tele se te ve paliducho."],
 		"replies": [{"t": "Sí, mamá. Un bocadillo entre reunión y reunión.", "fx": {"stress": -2}, "back": "¡Un bocadillo! Este domingo vienes a comer a casa y no hay más que hablar."},
@@ -272,7 +272,7 @@ const CHATS := [
 
 
 ## Más chats (se suman a CHATS)
-const CHATS2 := [
+static var CHATS2 := [
 	# --- su madre
 	{"id": "madre_vecina", "who": "madre", "w": 0.8, "text": ["La vecina del cuarto dice que te ha visto adelgazar. ¿Estás bien? Te mando lentejas.", "Me ha llamado tu tía Encarni para que te pida un trabajo para su nieto. Le he dicho que no, que tú eres muy recto."],
 		"replies": [{"t": "Gracias, mamá. Estoy bien, de verdad.", "fx": {"stress": -2}, "back": "Eso dices siempre. Las lentejas llegan mañana."},

@@ -4,7 +4,7 @@ extends RefCounted
 ## Los ataques llevan «cond» para salir solo cuando tienen sentido (por cómo está el país o lo que ha hecho).
 ## Tipos de ataque: cifras (mejor: datos), emocional (empatía), personal (elegancia), promesa (¿y quién lo paga?)
 
-const DEBATE := [
+static var DEBATE := [
 	# --- economía
 	{"topic": "Paro", "attack": "El paro está en el {paro} %. Detrás de cada punto hay miles de familias. ¿Cuántos más necesita para despertarse?", "kind": "cifras", "meter": "economia", "cond": {"gt": {"paro": 11.0}}},
 	{"topic": "Paro juvenil", "attack": "Uno de cada tres jóvenes no tiene trabajo. Mis hijos y los suyos se van a Norland. ¿Qué les dice?", "kind": "emocional", "meter": "economia", "cond": {"lt": {"jovenes": 50}}},
@@ -89,7 +89,7 @@ const DEBATE := [
 ]
 
 ## Réplicas del presidente según el tipo de respuesta (se suman a las de press_data)
-const DEBATE_LINES := {
+static var DEBATE_LINES := {
 	"datos": ["Le leo los datos de este mes, que usted no se ha leído: mejores que cuando ustedes gobernaban.", "Las cifras no son de mi partido; son del instituto de estadística. Y le desmienten.",
 		"Usted habla de sensaciones; yo le traigo hechos. Y los hechos están de nuestro lado.", "Tome nota del dato, señoría: es la mejor cifra de la década. La segunda mejor también es nuestra.",
 		"Si quiere le paso el informe. Tiene dibujos, para que no se pierda.",
@@ -113,7 +113,7 @@ const DEBATE_LINES := {
 		"Me habla de herencia; la que recibimos de ustedes aún la estamos pagando.", "Le recuerdo que su última propuesta la retiró usted mismo a los tres días."],
 }
 
-const OPP_REACTIONS := {
+static var OPP_REACTIONS := {
 	"good": ["Eso no es lo que le he preguntado.", "Muy bonito el discurso. Pero los problemas siguen ahí.", "Ya veremos qué opinan los ciudadanos.",
 		"Siempre con los mismos datos de siempre.", "Le salva el reloj, presidente.", "Otra respuesta de manual.", "Qué bien se le dan las frases hechas.",
 		"Aplauden los suyos, que para eso cobran.", "Se nota que le han preparado bien la chuleta.", "Hoy ha tenido suerte. El próximo miércoles, ya veremos.",
@@ -124,7 +124,7 @@ const OPP_REACTIONS := {
 		"Gracias por confirmarlo, presidente.", "Ni un argumento. Ni uno."],
 }
 
-const ORDER_LINES := ["¡Señorías, por favor, guarden silencio!", "Les recuerdo que están en el Congreso, no en un mercado.", "Quien vuelva a interrumpir abandonará el hemiciclo.",
+static var ORDER_LINES := ["¡Señorías, por favor, guarden silencio!", "Les recuerdo que están en el Congreso, no en un mercado.", "Quien vuelva a interrumpir abandonará el hemiciclo.",
 	"Señorías, los micrófonos están abiertos. Todo el país les escucha.", "¡Silencio! El presidente tiene la palabra.", "Por favor, señorías, dejen terminar al orador.",
 	"Señorías, el que quiera aplaudir que lo haga al final.", "Les ruego un poco de decoro: hay colegios viendo la sesión.", "Llamo al orden por primera vez. No me hagan llamarles por segunda.",
 	"Señorías, esto es una pregunta, no un partido de tenis."]
@@ -132,7 +132,7 @@ const ORDER_LINES := ["¡Señorías, por favor, guarden silencio!", "Les recuerd
 ## Erratas del teleprompter en los discursos: el becario de comunicación cambia palabras (clave en minúsculas, sin
 ## signos) por otras que no deberían decirse en directo, o mete coletillas que sobran. Hay que hacer clic en ellas
 ## antes de que el presidente las lea.
-const TELEPROMPTER_SWAPS := {
+static var TELEPROMPTER_SWAPS := {
 	"valdoria": ["Norland", "Qadar", "Kharovia"], "valdorianos": ["norlandeses", "contribuyentes"], "valdorianas": ["contribuyentes"],
 	"valdoriano": ["norlandés"], "compatriotas": ["contribuyentes", "votantes indecisos"], "queridos": ["pobres", "sufridos"],
 	"prometo": ["prometí", "olvido"], "noches": ["tardes", "madrugadas"], "noche": ["madrugada", "resaca"], "gracias": ["perdón", "lo siento"],
@@ -160,12 +160,12 @@ const TELEPROMPTER_SWAPS := {
 	"amigos": ["socios"], "presupuesto": ["presupuesto B"], "hijos": ["sobrinos"], "campo": ["campo de golf"], "costas": ["urbanizaciones"],
 }
 
-const TELEPROMPTER_INSERTS := ["(toser)", "patata", "[CHISTE AQUÍ]", "(guiño a cámara)", "ejem", "jajaja", "(no leer esto)", "[NOMBRE DEL PAÍS]",
+static var TELEPROMPTER_INSERTS := ["(toser)", "patata", "[CHISTE AQUÍ]", "(guiño a cámara)", "ejem", "jajaja", "(no leer esto)", "[NOMBRE DEL PAÍS]",
 	"(pausa dramática)", "bla, bla, bla", "(sonreír)", "xD", "(aplausos)", "[INSERTAR CIFRA]", "zzz", "y tal", "o sea", "en plan", "¿vale?",
 	"(acordarse de respirar)", "(mirar a la cámara 2)", "#TeLoExplico", "(lágrima)", "(SUBIR EL TONO)"]
 
 ## Frases para los discursos (se suman a las de press_data por sección)
-const SPEECH := {
+static var SPEECH := {
 	"apertura": [
 		{"t": "Esta noche no vengo a pedirles nada. Vengo a rendirles cuentas.", "fx": {"clase_media": 1.0, "estabilidad": 0.5}},
 		{"t": "Hay noches en las que un presidente debe hablar claro. Esta es una de ellas.", "fx": {"estabilidad": 1.0, "jubilados": 0.5}},
@@ -231,7 +231,7 @@ const SPEECH := {
 }
 
 ## Preguntas de la prensa (se suman a las de press_data). Tonos: honesto, evasivo, firme, humor, ataque
-const QUESTIONS := [
+static var QUESTIONS := [
 	{"q": "¿Por qué la luz es más cara en Valdoria que en cualquier país vecino?",
 		"a": [{"t": "Porque dependemos del gas importado. Por eso apostamos por las renovables.", "tone": "honesto", "s": 4, "fx": {"jovenes": 1}},
 			{"t": "Hemos bajado el IVA y lo seguiremos bajando si hace falta.", "tone": "firme", "s": 2, "fx": {"clase_media": 1}},

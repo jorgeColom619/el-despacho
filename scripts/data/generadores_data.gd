@@ -2,7 +2,7 @@ extends RefCounted
 ## Más piezas para los documentos generados de la bandeja (leyes menores, anexos con trampa, cartas de ciudadanos,
 ## indultos, notas de los concursos y obras públicas). Se suman a las de scripts/autoload/db.gd.
 
-const BILLS := [
+static var BILLS := [
 	{"t": "Ley de Bibliotecas Públicas", "fx": {"jovenes": 1, "money": -30}},
 	{"t": "Ley de Protección del Consumidor", "fx": {"clase_media": 2, "empresarios": -1}},
 	{"t": "Ley de Comercio Electrónico", "fx": {"empresarios": 1, "jovenes": 1}},
@@ -120,7 +120,7 @@ const BILLS := [
 	{"t": "Ley de Transporte Escolar Rural", "fx": {"clase_media": 1, "money": -15}},
 ]
 
-const RIDERS := [
+static var RIDERS := [
 	{"t": "Disp. adicional 4ª: se condonan las multas de tráfico de los altos cargos.", "fx": {"clase_media": -3, "corr": 2}},
 	{"t": "Disp. final 6ª: el presidente del Congreso tendrá coche oficial vitalicio.", "fx": {"clase_media": -2, "corr": 1}},
 	{"t": "Anexo III: 80 M€ para un museo del jamón en un municipio de 900 habitantes.", "fx": {"money": -80, "corr": 1, "jubilados": 1}},
@@ -142,7 +142,7 @@ const RIDERS := [
 ]
 
 ## Cartas de ciudadanos: quién escribe, qué dice, qué pasa si se le ayuda y la palabra del sello
-const LETTERS := [
+static var LETTERS := [
 	{"from": "Pilar, maestra de Robledal", "t": "En mi escuela quedan seis alumnos. Si bajan de cinco, la cierran, y con ella el pueblo. Le pido que no deje morir las escuelas rurales.", "fx_yes": {"jovenes": 1, "money": -10}, "yes": "AYUDAR"},
 	{"from": "Andrés, camionero de Aduana Vieja", "t": "Llevo tres días parado en la frontera sin ducha ni baño. Somos los que llenamos sus supermercados. ¿Alguien piensa en nosotros?", "fx_yes": {"trabajadores": 1, "money": -10}, "yes": "AYUDAR"},
 	{"from": "La peña ciclista de Trigales", "t": "Queremos invitarle a la marcha cicloturista del pueblo. Son solo 40 km. Bueno, 60. Le dejamos una bici.", "fx_yes": {"jovenes": 1, "stress": -3}, "yes": "ACEPTAR"},
@@ -205,7 +205,7 @@ const LETTERS := [
 	{"from": "Bernardo, último zapatero de Santa Aurora", "t": "Cierro el taller después de cincuenta años. Me suben el alquiler un 80 %. Le dejo mi último par de zapatos arreglados, por si le hacen falta.", "fx_yes": {"clase_media": 1, "stress": -1}, "yes": "AGRADECER"},
 ]
 
-const CRIMES := [
+static var CRIMES := [
 	{"c": "Agresión a un árbitro de fútbol juvenil", "y": 2, "note": "Es entrenador del equipo y padre de dos jugadores. Pidió perdón públicamente.", "fx_yes": {"jovenes": -1}, "fx_no": {}},
 	{"c": "Cultivo de marihuana para uso medicinal", "y": 3, "note": "Tiene esclerosis múltiple y cultivaba para ella y otros dos enfermos.", "fx_yes": {"jovenes": 2, "jubilados": -1}, "fx_no": {"jovenes": -1}},
 	{"c": "Estafa a ancianos con falsos seguros", "y": 6, "note": "Engañó a más de doscientas personas mayores. Ha devuelto el 10 % del dinero.", "fx_yes": {"jubilados": -4, "clase_media": -2}, "fx_no": {"jubilados": 1}},
@@ -261,7 +261,7 @@ const CRIMES := [
 	{"c": "Sobornar a un inspector sanitario", "y": 3, "note": "Su restaurante tiene una estrella y era el favorito de varios ministros.", "fx_yes": {"corr": 2, "clase_media": -1}, "fx_no": {}},
 ]
 
-const BID_NOTES := [
+static var BID_NOTES := [
 	{"t": "Ha terminado sus tres últimas obras antes de plazo.", "fx": {"clase_media": 1}},
 	{"t": "Su presidente cenó con el ministro del ramo la semana de la licitación.", "fx": {"corr": 3}},
 	{"t": "Usa materiales reciclados y tiene certificado ambiental.", "fx": {"ambiente": 1}},
@@ -276,7 +276,7 @@ const BID_NOTES := [
 	{"t": "Tuvo un accidente laboral mortal hace dos años en una obra similar.", "fx": {"trabajadores": -1}},
 ]
 
-const PROJECTS := [
+static var PROJECTS := [
 	{"t": "Centro de salud de %s", "kind": "sanidad", "cost": 60.0},
 	{"t": "Circunvalación de %s", "kind": "infraestructura", "cost": 420.0},
 	{"t": "Depuradora de aguas de %s", "kind": "ambiente", "cost": 140.0},

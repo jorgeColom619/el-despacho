@@ -531,7 +531,7 @@ func _draw_scene() -> void:
 		scene.draw_rect(Rect2(0, 100, 1920, 980), Color("0c1020"))
 		for i in 8:
 			scene.draw_circle(Vector2(240 * i + 120, 140), 220, Color(1, 0.85, 0.5, 0.035))
-		Flags.draw_flag(scene, "valdoria", Rect2(760, 150, 400, 240))
+		Flags.draw_flag(scene, "propia", Rect2(760, 150, 400, 240))
 		for p in crowd:
 			var bob := absf(sin(_t * 3.0 + p["ph"])) * 6.0
 			var pos: Vector2 = p["p"] - Vector2(0, bob)
@@ -539,10 +539,10 @@ func _draw_scene() -> void:
 			scene.draw_circle(pos + Vector2(0, -16), 18, (p["c"] as Color).lightened(0.2))
 			if p["flag"]:
 				scene.draw_line(pos + Vector2(18, 0), pos + Vector2(26, -70), Color(0.3, 0.3, 0.3), 3.0)
-				Flags.draw_flag(scene, "valdoria", Rect2(pos + Vector2(26, -70), Vector2(50, 30)))
+				Flags.draw_flag(scene, "propia", Rect2(pos + Vector2(26, -70), Vector2(50, 30)))
 	else:
 		scene.draw_rect(Rect2(0, 100, 1920, 980), Color("0d1320"))
-		Flags.draw_flag(scene, "valdoria", Rect2(440, 150, 380, 600))
+		Flags.draw_flag(scene, "propia", Rect2(440, 150, 380, 600))
 		scene.draw_rect(Rect2(440, 150, 380, 600), Color(0, 0, 0, 0.35))
 		for i in 12:
 			var bx := 1150.0 + i * 38.0

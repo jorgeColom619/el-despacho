@@ -40,8 +40,8 @@ func _rebuild_ticker() -> void:
 	for n in GS.news_feed.slice(0, 8):
 		parts.append(n["t"])
 	if parts.is_empty():
-		parts.append("Valdoria estrena Gobierno")
-	parts.append("Bolsa de Santa Aurora: %s" % ("▲ " + UI.num(randf_range(0.1, 1.8), 2) + "%" if GS.meters.get("economia", 50.0) > 50.0 else "▼ " + UI.num(randf_range(0.1, 1.8), 2) + "%"))
+		parts.append(W.COUNTRY_NAME + " estrena Gobierno")
+	parts.append(("Bolsa de " + W.CAPITAL + ": %s") % ("▲ " + UI.num(randf_range(0.1, 1.8), 2) + "%" if GS.meters.get("economia", 50.0) > 50.0 else "▼ " + UI.num(randf_range(0.1, 1.8), 2) + "%"))
 	_ticker = "   ●   ".join(parts) + "   ●   "
 
 

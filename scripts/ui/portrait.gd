@@ -51,7 +51,7 @@ static func _defaults(l: Dictionary) -> Dictionary:
 
 
 static func texture_for(l: Dictionary, scale: float) -> Texture2D:
-	var key := JSON.stringify(l) + str(scale) + (Flags.current_style() if l.get("acc", "") != "" else "")
+	var key := JSON.stringify(l) + str(scale) + (Flags.propia_key() if l.get("acc", "") != "" else "")
 	if _cache.has(key):
 		return _cache[key]
 	var svg := build_svg(l)
@@ -130,7 +130,7 @@ static func build_svg(l: Dictionary) -> String:
 	# accesorios
 	var acc: String = l.get("acc", "")
 	if acc != "":
-		var fp: Array = Flags.palette(Flags.current_style())
+		var fp: Array = Flags.palette_propia()
 		match acc:
 			"pin":
 				s.append("<rect x='118' y='392' width='22' height='14' fill='%s' stroke='#c9a55c' stroke-width='1.5'/>" % _hex(fp[0]))

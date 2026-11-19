@@ -315,7 +315,7 @@ static func chip_face(ci: CanvasItem, size: float, value: int, col: Color) -> vo
 	ci.draw_rect(Rect2(0, 0, size, size), Color("f2efe6"))
 	ci.draw_arc(c, size * 0.44, 0, TAU, 40, col, size * 0.05)
 	_text(ci, UI.f_cond_b, Vector2(0, size * 0.6), str(value), int(size * (0.42 if value < 100 else 0.34)), col, size, HORIZONTAL_ALIGNMENT_CENTER)
-	_text(ci, UI.f_sans_b, Vector2(0, size * 0.8), "M€", int(size * 0.13), col.darkened(0.2), size, HORIZONTAL_ALIGNMENT_CENTER)
+	_text(ci, UI.f_sans_b, Vector2(0, size * 0.8), UI.eur("M€"), int(size * 0.13), col.darkened(0.2), size, HORIZONTAL_ALIGNMENT_CENTER)
 
 
 # ------------------------------------------------------------------ blackjack
@@ -343,7 +343,7 @@ static func bj_felt(ci: CanvasItem, size: Vector2, px: float) -> void:
 	var p := c + Vector2(0, 0.8 * px)
 	ci.draw_arc(p, 0.075 * px, 0, TAU, 48, ink, 5.0)
 	ci.draw_arc(p, 0.088 * px, 0, TAU, 48, Color(ink, 0.6), 2.0)
-	_text(ci, UI.f_serif_b, Vector2(0, size.y * 0.24), "GRAN CASINO DE SANTA AURORA", 34, Color(ink, 0.45), size.x, HORIZONTAL_ALIGNMENT_CENTER)
+	_text(ci, UI.f_serif_b, Vector2(0, size.y * 0.24), GS.fmt("GRAN CASINO DE {cap}").to_upper(), 34, Color(ink, 0.45), size.x, HORIZONTAL_ALIGNMENT_CENTER)
 
 
 ## Texto a lo largo de un arco (centrado abajo del todo del arco, leído desde fuera)

@@ -179,7 +179,7 @@ func _build_hud() -> void:
 	_lbl_clock = UI.lbl("22:30", UI.f_cond_b, 22, UI.CREAM)
 	top.add_child(_lbl_clock)
 	v.add_child(top)
-	_lbl_chips = UI.lbl("0 M€", UI.f_serif_b, 40, UI.CREAM)
+	_lbl_chips = UI.lbl(UI.eur("0 M€"), UI.f_serif_b, 40, UI.CREAM)
 	v.add_child(_lbl_chips)
 	_lbl_info = UI.lbl("", UI.f_sans, 15, UI.DIM)
 	_lbl_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -269,7 +269,7 @@ func _cards(specs: Array, on_pick: Callable, small := false) -> void:
 func _intro() -> void:
 	where = "caja"
 	busy = true
-	stage.title_card(hd["title"], "Gran Casino de Santa Aurora", "La noche empieza a las 22:30 y a las 3:00 le llamará la Jefa de Gabinete. Todo lo que juegue será dinero público.", 6.0)
+	stage.title_card(hd["title"], GS.fmt("Gran Casino de {cap}"), "La noche empieza a las 22:30 y a las 3:00 le llamará la Jefa de Gabinete. Todo lo que juegue será dinero público.", 6.0)
 	_say("host", hd["greet"][rng.randi() % hd["greet"].size()], 0.8)
 	_say("cashier", "Buenas noches, señor presidente. ¿De qué partida sacamos el dinero para las fichas?", 0.3)
 	stage.after_lines(_offer_sources)
@@ -915,7 +915,7 @@ func _enter_slot(i: int) -> void:
 	var root: Node3D = s["root"]
 	_table_picks.append(stage.add_pick(lever, AABB(Vector3(-0.04, -0.06, -0.06), Vector3(0.16, 0.56, 0.12)), "Tirar de la palanca (o pulse espacio)", _slot_spin))
 	# los tres botones del pupitre (un punto vacío en cada uno: al señalarlo no brilla la máquina entera)
-	var btns := [[0.15, "Girar", _slot_spin], [-0.17, "Cambiar la apuesta (5, 25 o 100 M€)", _slot_bet.bind(false)], [-0.02, "Apuesta máxima (100 M€)", _slot_bet.bind(true)]]
+	var btns := [[0.15, "Girar", _slot_spin], [-0.17, UI.eur("Cambiar la apuesta (5, 25 o 100 M€)"), _slot_bet.bind(false)], [-0.02, UI.eur("Apuesta máxima (100 M€)"), _slot_bet.bind(true)]]
 	for bdef in btns:
 		var spot := Node3D.new()
 		root.add_child(spot)

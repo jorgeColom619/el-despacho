@@ -153,7 +153,7 @@ func _intro() -> void:
 		stage.notice("Haga clic en la tarjeta cuando esté listo")
 		# (si comparecer o no se decidió antes, en el despacho)
 		stage.deal_cards([
-			{"tag": "Comparecencia", "title": "Empezar la rueda de prensa" if rueda else "Empezar la entrevista", "desc": "Contestar a las preguntas de los periodistas." if rueda else "Contestar en directo ante toda Valdoria.", "col": UI.GOLD, "icon": "microfono"},
+			{"tag": "Comparecencia", "title": "Empezar la rueda de prensa" if rueda else "Empezar la entrevista", "desc": "Contestar a las preguntas de los periodistas." if rueda else GS.fmt("Contestar en directo ante toda {pais}."), "col": UI.GOLD, "icon": "microfono"},
 		], stage.top_center(), stage.top_normal(), 0.25, _on_intro_card, Vector2(0.22, 0.14), 0.4))
 
 

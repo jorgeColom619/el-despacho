@@ -170,7 +170,7 @@ static func _polemica() -> Dictionary:
 	var b: Array = c["b"]
 	return {"id": id, "type": "advisor", "who": "jefa", "gen": true, "tpl": true,
 		"title": _rand(["El debate que divide al país", "La polémica de la semana", "Todo el país discute", "Sobremesas incendiadas"]),
-		"text": "Presidente, %s. Las tertulias no hablan de otra cosa, en Pío ya hay dos bandos y la prensa quiere saber qué opina el presidente. Diga lo que diga, media Valdoria se enfadará." % c["what"],
+		"text": "Presidente, %s. Las tertulias no hablan de otra cosa, en Pío ya hay dos bandos y la prensa quiere saber qué opina el presidente. Diga lo que diga, media {pais} se enfadará." % c["what"],
 		"choices": [
 			{"t": "%s." % a[0], "fx": {a[1]: 2, b[1]: -1}},
 			{"t": "%s." % b[0], "fx": {b[1]: 2, a[1]: -1}},
@@ -259,7 +259,7 @@ static func _diplo() -> Dictionary:
 		"title": "%s tiene una propuesta" % leader,
 		"text": "%s Le propongo %s. Mi Gobierno lo tiene estudiado y mis ministros están deseando empezar. ¿Qué me dice?" % [_rand(D.DIPLO_OPEN), it["t"]],
 		"choices": [
-			{"t": "Me parece una gran idea. Adelante.", "fx": yes, "news": "Valdoria y %s acuerdan %s" % [W.COUNTRIES[c]["name"], it["t"]]},
+			{"t": "Me parece una gran idea. Adelante.", "fx": yes, "news": "%s y %s acuerdan %s" % [W.COUNTRY_NAME, W.COUNTRIES[c]["name"], it["t"]]},
 			{"t": "Lo estudiaremos con calma.", "fx": {"rel": {c: 1}}},
 			{"t": "No nos interesa, gracias.", "fx": {"rel": {c: -round(rel / 2.0)}}},
 		], "default": 1}

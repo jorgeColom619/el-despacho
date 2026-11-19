@@ -1,7 +1,7 @@
 extends RefCounted
 ## Eventos nuevos (versión 3): visitas y documentos. Mismo formato que events_data.gd.
 
-const EVENTS := [
+static var EVENTS := [
 	# =====================================================================  VISITAS
 	{"id": "v3_presa_grietas", "type": "advisor", "who": "economia", "title": "Grietas en la presa de Robledal",
 		"text": "Presidente, los ingenieros han encontrado grietas en la presa de Robledal. No es seguro que vaya a romper, pero si rompe, el agua llegaría a Vallegrande en cuarenta minutos. Desalojar a 30.000 personas sin una certeza es un escándalo... y no hacerlo podría ser una tragedia.",

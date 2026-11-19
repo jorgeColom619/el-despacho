@@ -18,7 +18,7 @@ extends RefCounted
 ## ideo: ideología de la promesa (-100 izquierda .. 100 derecha): las afines a su partido salen más
 ## fx: lo que gana nada más prometerlo · groups: a quién le importa (lo que se pierde si la rompe)
 
-const PROMISES := {
+static var PROMISES := {
 	# ------------------------------------------------------------------ «nunca»
 	"no_iva": {"name": "No subiré el IVA", "kind": "nunca", "icon": "dinero", "ideo": -10.0,
 		"desc": "El impuesto que pagan todos en la caja del súper no subirá ni un punto.",
@@ -129,7 +129,7 @@ const PROMISES := {
 }
 
 ## En el modo meme hay alguna más... de las que nadie cumple
-const PROMISES_MEME := {
+static var PROMISES_MEME := {
 	"meme_tortilla": {"name": "Zanjaré el debate de la tortilla", "kind": "meta", "icon": "sonrisa", "ideo": 0.0, "meme": true,
 		"desc": "Con o sin cebolla, pero que el país deje de discutir. Tres leyes antes de la campaña cuentan como zanjarlo.",
 		"check": {"laws_n": 2}, "fx": {"jubilados": 1, "jovenes": 1}, "groups": ["jubilados", "jovenes"]},
@@ -142,8 +142,8 @@ const PROMISES_MEME := {
 }
 
 ## Votos (puntos de intención de voto) por cada promesa al llegar la campaña
-const VOTES_KEPT := 2.0
-const VOTES_FAILED := -2.0
+static var VOTES_KEPT := 2.0
+static var VOTES_FAILED := -2.0
 ## Castigo inmediato al romper una promesa de «nunca»
-const BROKEN_APPROVAL := -3.0
-const BROKEN_GROUP := -4.0
+static var BROKEN_APPROVAL := -3.0
+static var BROKEN_GROUP := -4.0

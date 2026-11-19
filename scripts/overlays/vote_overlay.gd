@@ -83,7 +83,7 @@ func build() -> void:
 	right.size = Vector2(720, 900)
 	root.add_child(right)
 	right.add_child(Widgets.section("Grupos parlamentarios · negocie los apoyos"))
-	var cap := UI.lbl("Capital político: %d   ·   Enmiendas: −8 CP (+20%%)   ·   Inversión regional: −1.500 M€ (+25%%)   ·   Presión: −5 CP (+10%%, relación ▼)" % int(GS.pc), UI.f_sans, 14, UI.DIM)
+	var cap := UI.lbl(UI.eur("Capital político: %d   ·   Enmiendas: −8 CP (+20%%)   ·   Inversión regional: −1.500 M€ (+25%%)   ·   Presión: −5 CP (+10%%, relación ▼)") % int(GS.pc), UI.f_sans, 14, UI.DIM)
 	cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cap.custom_minimum_size = Vector2(720, 0)
 	cap_lbl = cap
@@ -217,7 +217,7 @@ func _build_parties() -> void:
 		party_box.add_child(h)
 	forecast.queue_redraw()
 	if cap_lbl != null:
-		cap_lbl.text = "Capital político: %d   ·   Enmiendas: −8 CP (+20%%)   ·   Inversión regional: −1.500 M€ (+25%%)   ·   Presión: −5 CP (+10%%, relación ▼)" % int(GS.pc)
+		cap_lbl.text = UI.eur("Capital político: %d   ·   Enmiendas: −8 CP (+20%%)   ·   Inversión regional: −1.500 M€ (+25%%)   ·   Presión: −5 CP (+10%%, relación ▼)") % int(GS.pc)
 
 
 func _lobby(p: String, act: String) -> void:

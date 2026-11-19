@@ -114,7 +114,7 @@ static func apply(rules: Array) -> void:
 				GS.meters["ambiente"] = clampf(GS.meters["ambiente"] - 12.0, 0.0, 100.0)
 				GS.add_memory("ambiente", -12.0, 250.0)
 				GS.fac["trabajadores"] = clampf(GS.fac["trabajadores"] - 4.0, 0.0, 100.0)
-				GS.push_news("Los embalses de Valdoria, al 18 %: el peor año de sequía en décadas", 3)
+				GS.push_news(GS.fmt("Los embalses de {pais}, al 18 %: el peor año de sequía en décadas"), 3)
 	GS._update_targets()
 	GS._update_approval()
 

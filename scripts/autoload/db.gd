@@ -14,6 +14,7 @@ const E_V3A := preload("res://scripts/data/events_v3a.gd")
 const E_V3B := preload("res://scripts/data/events_v3b.gd")
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
+const Pais := preload("res://scripts/systems/pais.gd")
 ## Días que tarda en volver a salir en el Congreso la misma promesa rota o el mismo recuerdo
 const SPECIAL_ATTACK_CD := 180
 
@@ -23,7 +24,7 @@ var all_events := []
 var world_map_info := {}
 var region_info := {}
 
-const DOMESTIC := {
+static var DOMESTIC := {
 	"sindicato": {"pers": "paciente", "power": 55.0, "topics": {
 		"profes": {"id": "profes", "name": "Salarios de los docentes", "desc": "Los sindicatos de enseñanza quieren una subida salarial y más plantilla.", "term": ["Subida salarial", 9.0, 2.0, "%"], "fx_min": {"money": -2200, "jovenes": 5, "trabajadores": 5}, "fx_max": {"money": -600, "jovenes": 2, "trabajadores": 1}, "nodeal": {"trabajadores": -5, "jovenes": -4, "estabilidad": -2}},
 		"salarios": {"id": "salarios", "name": "Pacto salarial", "desc": "Los sindicatos exigen subidas salariales generalizadas.", "term": ["Subida salarial pactada", 8.0, 2.5, "%"], "fx_min": {"trabajadores": 8, "empresarios": -6, "economia": -1}, "fx_max": {"trabajadores": 3, "empresarios": 1}, "nodeal": {"trabajadores": -6, "crisis": "huelga_general"}},
@@ -40,7 +41,7 @@ const DOMESTIC := {
 }
 
 ## Cumbres internacionales: negociación con varios líderes a la vez (el acuerdo debe convencer a todos)
-const SUMMITS := {
+static var SUMMITS := {
 	"clima": {"name": "Cumbre del Clima de Marvella", "leaders": ["union", "tsaing", "norland"],
 		"invite": "Presidente, la Unión, Tsaing y Norland celebran una cumbre climática en Marvella y nos invitan a liderar un pacto común. Si lo logramos, nuestro prestigio se disparará.",
 		"desc": "Hay que fijar un objetivo común de reducción de emisiones que acepten los tres.",
@@ -59,7 +60,7 @@ const SUMMITS := {
 		"term": ["Aranceles a nuestras exportaciones", 18.0, 0.0, "%"], "fx_min": {"economia": 2}, "fx_max": {"economia": 6, "empresarios": 5}, "deal_rel": 5, "treaty": "comercio"},
 }
 
-const BILLS := [
+static var BILLS := [
 	{"t": "Ley de Protección de Datos Digitales", "fx": {"jovenes": 2, "empresarios": -1}},
 	{"t": "Ley de Caza y Pesca", "fx": {"jubilados": 1, "ambiente": -2, "jovenes": -1}},
 	{"t": "Ley de Horarios Comerciales", "fx": {"empresarios": 2, "trabajadores": -2}},
@@ -80,7 +81,7 @@ const BILLS := [
 	{"t": "Ley de Montes y Bosques", "fx": {"ambiente": 2, "trabajadores": -1}},
 ]
 
-const RIDERS := [
+static var RIDERS := [
 	{"t": "Disp. adicional 7ª: exención fiscal para los clubes de golf.", "fx": {"empresarios": 1, "clase_media": -2, "corr": 1}},
 	{"t": "Disp. final 3ª: los diputados podrán jubilarse con pensión máxima a los 7 años.", "fx": {"clase_media": -3, "trabajadores": -2}},
 	{"t": "Anexo II: se autoriza la construcción de un hotel en la playa protegida de Calablanca.", "fx": {"ambiente": -3, "empresarios": 1, "corr": 2}},
@@ -89,7 +90,7 @@ const RIDERS := [
 	{"t": "Disp. transitoria 1ª: las eléctricas quedan exentas de la tasa medioambiental.", "fx": {"ambiente": -2, "empresarios": 1}},
 ]
 
-const LETTERS := [
+static var LETTERS := [
 	{"from": "Marisa, enfermera de Puerto Alba", "t": "Llevo tres años encadenando contratos de un mes. Somos las que sostuvimos el país en la pandemia. ¿Nadie se acuerda de nosotras?", "fx_yes": {"trabajadores": 1, "bienestar": 1, "money": -20}, "yes": "AYUDAR"},
 	{"from": "Joaquín, pequeño empresario de Ferrosa", "t": "Tengo un taller con ocho empleados. Entre impuestos y papeleo, dedico más tiempo a la burocracia que a trabajar. Por favor, simplifiquen.", "fx_yes": {"empresarios": 1, "clase_media": 1, "pc": -2}, "yes": "RESPONDER"},
 	{"from": "Clase de 4º B del colegio Miramar", "t": "Hemos estudiado la Constitución y queremos invitarle a nuestro colegio para hacerle preguntas. Prometemos portarnos bien. Casi todos.", "fx_yes": {"jovenes": 1, "clase_media": 1, "stress": -3}, "yes": "ACEPTAR"},
@@ -100,7 +101,7 @@ const LETTERS := [
 	{"from": "Protectora de animales Huellas", "t": "Necesitamos ayuda: acogemos a 300 perros abandonados y no llegamos a pagar el pienso de este mes.", "fx_yes": {"jovenes": 1, "money": -2}, "yes": "DONAR"},
 ]
 
-const CRIMES := [
+static var CRIMES := [
 	{"c": "Robo con fuerza en una joyería", "y": 5, "note": "Tiene tres hijos y participa en un programa de reinserción.", "fx_yes": {"seguridad": -1, "clase_media": -1}, "fx_no": {}},
 	{"c": "Tráfico de drogas a pequeña escala", "y": 4, "note": "Fue captado por una red criminal con 17 años.", "fx_yes": {"jovenes": 1, "seguridad": -1, "jubilados": -1}, "fx_no": {}},
 	{"c": "Desórdenes públicos en una manifestación", "y": 2, "note": "El vídeo de la detención muestra una actuación policial desproporcionada.", "fx_yes": {"jovenes": 2, "seguridad": -1}, "fx_no": {"jovenes": -1}},
@@ -110,7 +111,7 @@ const CRIMES := [
 	{"c": "Ocupación de una vivienda de un banco", "y": 1, "note": "Madre soltera desahuciada con dos hijos pequeños.", "fx_yes": {"jovenes": 1, "trabajadores": 1, "clase_media": -1}, "fx_no": {"trabajadores": -1}},
 ]
 
-const BID_NOTES := [
+static var BID_NOTES := [
 	{"t": "Empresa con 15 años de obra pública sin incidencias.", "fx": {}},
 	{"t": "Su consejero delegado es el cuñado de un alto cargo del partido.", "fx": {"corr": 5, "clase_media": -1}},
 	{"t": "Prevé 'modificados' del 45% sobre el precio de adjudicación.", "fx": {"money_pct": 0.45}},
@@ -123,14 +124,24 @@ const BID_NOTES := [
 
 
 func _ready() -> void:
+	reconstruir()
+	world_map_info = _load_json("res://art/maps/world.json")
+
+
+## Vuelve a leer los eventos y el mapa de regiones (al empezar o cargar una partida, después de Pais.aplicar). Los
+## eventos que el país aparta (Pais.apartados) siguen localizables por id pero no salen al azar
+func reconstruir() -> void:
+	events_by_id = {}
+	all_events = []
+	var fuera: Dictionary = Pais.apartados.get("eventos", {})
 	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS, E_MEME.EVENTS, E_V3A.EVENTS, E_V3B.EVENTS]:
 		for e in list:
 			if events_by_id.has(e["id"]):
 				push_warning("Evento duplicado: " + e["id"])
 			events_by_id[e["id"]] = e
-			all_events.append(e)
-	world_map_info = _load_json("res://art/maps/world.json")
-	region_info = _load_json("res://art/maps/valdoria.json")
+			if not fuera.has(e["id"]):
+				all_events.append(e)
+	region_info = _load_json("res://art/maps/%s.json" % Pais.mapa())
 
 
 func _load_json(path: String) -> Dictionary:

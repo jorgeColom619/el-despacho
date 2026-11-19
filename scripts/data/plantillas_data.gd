@@ -3,7 +3,7 @@ extends RefCounted
 ## Cada pieza tiene un id: lo que sale en una partida se evita en las siguientes.
 
 ## Pueblos y ciudades de Valdoria (inventados) con su región (1-8, ver world_data REGIONS)
-const PLACES := [
+static var PLACES := [
 	["Santa Aurora", 1], ["Villaclara", 1], ["Torrebaja", 1], ["Los Olmos", 1],
 	["Ferrosa", 2], ["Altoforno", 2], ["Minas de Cobre", 2], ["Puente Hierro", 2],
 	["Marvella", 3], ["Calablanca", 3], ["Punta Coral", 3], ["Benisal", 3],
@@ -16,7 +16,7 @@ const PLACES := [
 
 # ================================================================== alcaldes que piden algo
 ## what: lo que piden · short: para el título · why: por qué · cost (M€) · group / meter: a quién beneficia · who: quién lo trae
-const PETITIONS := [
+static var PETITIONS := [
 	{"id": "hospital", "what": "un hospital comarcal", "short": "un hospital", "why": "la ambulancia tarda cincuenta minutos en llegar", "cost": 320, "group": "jubilados", "meter": "bienestar", "who": "sanidad"},
 	{"id": "tren", "what": "que vuelva el tren de cercanías que se cerró hace diez años", "short": "el tren", "why": "los jóvenes se van porque no hay forma de ir a trabajar", "cost": 260, "group": "trabajadores", "meter": "economia", "who": "economia"},
 	{"id": "instituto", "what": "un instituto nuevo", "short": "un instituto", "why": "los chavales estudian en barracones desde hace siete años", "cost": 60, "group": "jovenes", "meter": "bienestar", "who": "jefa"},
@@ -70,7 +70,7 @@ const PETITIONS := [
 	{"id": "unidad_ictus", "what": "una unidad de ictus en el hospital", "short": "una unidad de ictus", "why": "en un ictus cada minuto cuenta y el más cercano está a una hora", "cost": 8, "group": "jubilados", "meter": "bienestar", "who": "sanidad"},
 	{"id": "skatepark", "what": "un parque de skate", "short": "un skatepark", "why": "los chavales patinan en la plaza del ayuntamiento y los vecinos se quejan", "cost": 1, "group": "jovenes", "meter": "bienestar", "who": "jefa"},
 ]
-const MAYOR_LINES := [
+static var MAYOR_LINES := [
 	"Ha salido en todas las radios y amenaza con encerrarse en el ayuntamiento hasta que le recibamos.",
 	"Es de nuestro partido, presidente, y si no le ayudamos nos lo va a recordar en cada mitin.",
 	"Es de la oposición y nos acusa de castigar a su ciudad por el color de su alcaldía.",
@@ -81,7 +81,7 @@ const MAYOR_LINES := [
 
 # ================================================================== empresas que quieren invertir
 ## who_c: país de la empresa ("" si es nacional) · jobs: empleos · env: daño ambiental (0-3) · ask: ayudas que piden (M€)
-const INVESTMENTS := [
+static var INVESTMENTS := [
 	{"id": "datos", "what": "un centro de datos gigante", "jobs": 400, "env": 2, "ask": 120, "con": "consumirá tanta agua como una ciudad de cincuenta mil habitantes"},
 	{"id": "baterias", "what": "una gigafactoría de baterías", "jobs": 3500, "env": 1, "ask": 600, "con": "piden suelo gratis y diez años sin impuestos"},
 	{"id": "macrogranja", "what": "una macrogranja de veinte mil cerdos", "jobs": 150, "env": 3, "ask": 30, "con": "los vecinos temen por los acuíferos y el olor"},
@@ -113,12 +113,12 @@ const INVESTMENTS := [
 	{"id": "hospital_privado", "what": "un hospital privado de referencia internacional", "jobs": 1300, "env": 0, "ask": 40, "con": "los médicos de la sanidad pública temen una fuga de profesionales"},
 	{"id": "puerto_seco", "what": "un puerto seco para mercancías", "jobs": 1400, "env": 1, "ask": 90, "con": "partiría en dos una zona de huertas centenarias"},
 ]
-const INVESTORS := [["Grupo Atalaya", ""], ["Brisa Capital", ""], ["Industrias Lumen", ""], ["Norland Dynamics", "norland"], ["Kade Ventures", "norland"],
+static var INVESTORS := [["Grupo Atalaya", ""], ["Brisa Capital", ""], ["Industrias Lumen", ""], ["Norland Dynamics", "norland"], ["Kade Ventures", "norland"],
 	["Tsaing Heavy Industries", "tsaing"], ["Hao Electronics", "tsaing"], ["Qadar Holdings", "qadar"], ["Fondo Soberano de Qadar", "qadar"],
 	["Unión Energética", "union"], ["Vaelsen & Söhne", "union"], ["Corporación Cobalto", ""], ["Grupo Meridión", ""]]
 
 # ================================================================== protestas y colectivos
-const PROTESTS := [
+static var PROTESTS := [
 	{"id": "taxistas", "who": "Los taxistas", "group": "trabajadores", "why": ["las plataformas de coches con conductor les están arruinando", "les han subido las licencias un 40 %", "no les dejan entrar en el nuevo carril de la autovía"]},
 	{"id": "agricultores", "who": "Los agricultores", "group": "trabajadores", "why": ["venden por debajo de lo que les cuesta producir", "las importaciones de Sarvenia hunden los precios", "la nueva norma de pesticidas les obliga a cambiar toda la maquinaria"]},
 	{"id": "mir", "who": "Los médicos residentes", "group": "jovenes", "why": ["hacen guardias de treinta horas", "cobran menos que un becario en Norland", "no les reconocen las horas extra"]},
@@ -155,7 +155,7 @@ const PROTESTS := [
 
 # ================================================================== polémicas culturales y debates de sobremesa
 ## a: lo que apoya un bando (y a quién gusta) · b: lo contrario
-const CONTROVERSIES := [
+static var CONTROVERSIES := [
 	{"id": "toros", "what": "Una comunidad quiere declarar las corridas de toros patrimonio cultural", "a": ["Apoyar la tradición", "jubilados"], "b": ["Defender el bienestar animal", "jovenes"]},
 	{"id": "estatua", "what": "Un ayuntamiento quiere retirar la estatua de un general de la guerra de hace un siglo", "a": ["Retirarla: la historia está en los museos", "jovenes"], "b": ["Dejarla con una placa explicativa", "jubilados"]},
 	{"id": "eurovision", "what": "La canción elegida para el Festival Internacional habla de un político corrupto que se parece mucho a usted", "a": ["Reírse: «Me parece pegadiza»", "jovenes"], "b": ["Pedir a la televisión pública que la cambie", "jubilados"]},
@@ -195,7 +195,7 @@ const CONTROVERSIES := [
 ]
 
 # ================================================================== sucesos
-const INCIDENTS := [
+static var INCIDENTS := [
 	{"id": "nave", "what": "Un incendio arrasa una nave industrial", "who": "interior", "victims": "Doce trabajadores heridos", "group": "trabajadores"},
 	{"id": "tren", "what": "Descarrila un tren regional", "who": "economia", "victims": "Treinta heridos, dos de ellos graves", "group": "trabajadores"},
 	{"id": "granizo", "what": "Una granizada destroza la cosecha", "who": "economia", "victims": "Mil agricultores pierden el año", "group": "trabajadores"},
@@ -232,7 +232,7 @@ const INCIDENTS := [
 
 # ================================================================== propuestas de los ministros
 ## who: ministro · t: la medida · yes / no: efectos de aprobarla o rechazarla
-const MEASURES := [
+static var MEASURES := [
 	{"id": "inspectores", "who": "economia", "t": "contratar dos mil inspectores de Hacienda", "why": "el fraude fiscal se estima en el 4 % del PIB", "yes": {"monthly": 40, "empresarios": -2, "clase_media": 1}, "no": {}},
 	{"id": "factura_luz", "who": "economia", "t": "bajar el IVA de la luz durante el invierno", "why": "las familias no pueden pagar la calefacción", "yes": {"monthly": -60, "clase_media": 2, "jubilados": 2}, "no": {"jubilados": -1}},
 	{"id": "ventanilla_unica", "who": "economia", "t": "crear una ventanilla única para abrir empresas en un día", "why": "hoy se tarda tres meses", "yes": {"money": -40, "empresarios": 3, "economia": 1}, "no": {}},
@@ -282,7 +282,7 @@ const MEASURES := [
 ]
 
 # ================================================================== visitas ilustres
-const CELEBRITIES := [
+static var CELEBRITIES := [
 	{"id": "tenista", "who": "Carla Montes, número uno del tenis mundial", "ask": "que el Gobierno pague las pistas públicas de su barrio de toda la vida", "cost": 10, "group": "jovenes"},
 	{"id": "chef", "who": "el chef con tres estrellas Ramón Esparza", "ask": "que la cocina valdoriana sea patrimonio de la humanidad", "cost": 3, "group": "clase_media"},
 	{"id": "astronauta", "who": "la astronauta Inés Robles, recién llegada de la estación espacial", "ask": "una agencia espacial nacional", "cost": 90, "group": "jovenes"},
@@ -311,7 +311,7 @@ const CELEBRITIES := [
 ]
 
 # ================================================================== propuestas de otros países (llamadas)
-const DIPLO := [
+static var DIPLO := [
 	{"id": "vuelos", "t": "abrir una ruta aérea directa entre nuestras capitales", "yes": {"economia": 1, "empresarios": 1}, "rel": 5},
 	{"id": "becas", "t": "un programa de intercambio de estudiantes", "yes": {"jovenes": 1, "prestigio": 1, "money": -15}, "rel": 4},
 	{"id": "extradicion", "t": "un tratado de extradición «para perseguir a los delincuentes de ambos países»", "yes": {"seguridad": 1, "jovenes": -1}, "rel": 6},
@@ -407,4 +407,4 @@ const DIPLO := [
 	{"id": "voto_union", "t": "que apoyemos su ingreso en la Unión Continental", "yes": {"prestigio": 1}, "rel": 7},
 	{"id": "ballenas", "t": "un santuario de ballenas compartido en el océano", "yes": {"ambiente": 1, "trabajadores": -1}, "rel": 3},
 ]
-const DIPLO_OPEN := ["Presidente, le llamo con una propuesta.", "Querido amigo, tengo una idea que nos conviene a los dos.", "Presidente, sé que está ocupado, así que iré al grano.", "Le llamo personalmente porque esto prefiero hablarlo sin intermediarios."]
+static var DIPLO_OPEN := ["Presidente, le llamo con una propuesta.", "Querido amigo, tengo una idea que nos conviene a los dos.", "Presidente, sé que está ocupado, así que iré al grano.", "Le llamo personalmente porque esto prefiero hablarlo sin intermediarios."]

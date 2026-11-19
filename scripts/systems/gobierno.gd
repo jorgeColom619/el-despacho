@@ -234,6 +234,9 @@ static func deficit_pct() -> float:
 ## Cuatro meses seguidos por encima del 3 %: expediente. Seis meses más sin corregirlo: multa (y otra cada medio año).
 ## Un plan de ajuste congela el contador ocho meses; una prórroga lo pone a cero.
 static func _deficit_rule() -> void:
+	# la regla de déficit es de la Unión Continental: solo para sus socios (Valdoria)
+	if GS.pais != "valdoria":
+		return
 	var f: Dictionary = GS.flags
 	if f.has("prorroga_ue"):
 		f.erase("prorroga_ue")
@@ -253,7 +256,7 @@ static func _deficit_rule() -> void:
 		f["deficit_meses"] = 4
 		var fine := roundf(GS.gdp * 0.002)
 		GS.apply_fx({"money": -fine, "rel": {"union": -8}, "prestigio": -4}, "Sanción de la Unión Continental")
-		GS.push_news("La Unión Continental multa a Valdoria con %s por incumplir las reglas de déficit" % UI.money(fine), 3)
+		GS.push_news("La Unión Continental multa a %s con %s por incumplir las reglas de déficit" % [W.COUNTRY_NAME, UI.money(fine)], 3)
 		GS.toast.emit("Multa de la Unión Continental por el déficit: %s" % UI.money(fine), "bad", "dinero")
 
 
@@ -266,7 +269,7 @@ static func _expediente() -> void:
 		"choices": [
 			{"t": "Presentar un plan de ajuste: recortes y lucha contra el fraude.", "fx": {"monthly": 900, "trabajadores": -3, "bienestar": -2, "rel": {"union": 6}, "flag": "plan_ajuste"}, "rec": "economia"},
 			{"t": "Pedir una prórroga: la economía no aguanta más recortes.", "fx": {"pc": -6, "rel": {"union": -4}, "flag": "prorroga_ue"}},
-			{"t": "Plantar cara: Valdoria no recibe órdenes de fuera.", "fx": {"rel": {"union": -12}, "prestigio": -3, "trabajadores": 2, "flag": "prima"}, "news": "El Gobierno desafía a la Comisión Continental y los mercados castigan la deuda"}],
+			{"t": "Plantar cara: %s no recibe órdenes de fuera." % W.COUNTRY_NAME, "fx": {"rel": {"union": -12}, "prestigio": -3, "trabajadores": 2, "flag": "prima"}, "news": "El Gobierno desafía a la Comisión Continental y los mercados castigan la deuda"}],
 		"default": 1})
 
 

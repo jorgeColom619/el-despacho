@@ -18,7 +18,7 @@ func build() -> void:
 	if new_term:
 		items = GS.news_feed.slice(0, 6)
 	elif intro:
-		items = [{"t": "%s jura su cargo como presidente de Valdoria" % GS.pres["name"], "imp": 3}]
+		items = [{"t": "%s jura su cargo como presidente de %s" % [GS.pres["name"], W.COUNTRY_NAME], "imp": 3}]
 		var sc: Dictionary = GS.SC.SCENARIOS.get(GS.scenario, {})
 		if sc.has("headline"):
 			items.append({"t": sc["headline"], "imp": 2})
@@ -75,9 +75,9 @@ func build() -> void:
 	var ed := UI.hbox(0)
 	ed.add_child(UI.lbl("Año CXVI · Nº %s" % UI.num(34512 + GS.day, 0), UI.f_serif, 16, INK))
 	ed.add_child(UI.spacer(0, 0, true))
-	ed.add_child(UI.lbl("Santa Aurora, %s" % UI.date_long(GS.day), UI.f_serif_b, 16, INK))
+	ed.add_child(UI.lbl("%s, %s" % [W.CAPITAL, UI.date_long(GS.day)], UI.f_serif_b, 16, INK))
 	ed.add_child(UI.spacer(0, 0, true))
-	ed.add_child(UI.lbl("Precio: 1,80 €", UI.f_serif, 16, INK))
+	ed.add_child(UI.lbl(UI.eur("Precio: 1,80 €"), UI.f_serif, 16, INK))
 	v.add_child(ed)
 	v.add_child(_rule(1))
 	# titular
@@ -185,8 +185,8 @@ func _caption(h: String) -> String:
 
 func _lead(h: String) -> String:
 	if intro:
-		return "SANTA AURORA · %s asumió ayer la Presidencia de Valdoria con un discurso en el que prometió estabilidad, reformas y mano tendida. Su partido, %s, cuenta con %d escaños y necesitará socios para sacar adelante sus leyes. Los mercados reaccionaron con prudencia y los sindicatos ya han pedido una reunión." % [GS.pres["name"], W.PARTIES[GS.pres["party"]]["name"], int(GS.parties[GS.pres["party"]]["seats"])]
-	var parts := ["SANTA AURORA · ", h, ". Fuentes del Palacio aseguran que el presidente sigue de cerca la situación. "]
+		return W.CAPITAL.to_upper() + " · " + "%s asumió ayer la Presidencia de " + W.COUNTRY_NAME + " con un discurso en el que prometió estabilidad, reformas y mano tendida. Su partido, %s, cuenta con %d escaños y necesitará socios para sacar adelante sus leyes. Los mercados reaccionaron con prudencia y los sindicatos ya han pedido una reunión." % [GS.pres["name"], W.PARTIES[GS.pres["party"]]["name"], int(GS.parties[GS.pres["party"]]["seats"])]
+	var parts := [W.CAPITAL.to_upper() + " · ", h, ". Fuentes del Palacio aseguran que el presidente sigue de cerca la situación. "]
 	if GS.approval < 40:
 		parts.append("El malestar social crece y la oposición huele la sangre. ")
 	elif GS.approval > 60:

@@ -2,7 +2,7 @@ extends RefCounted
 ## Más eventos: reacciones al estado del país, consecuencias de las leyes aprobadas,
 ## sucesos nuevos, documentos, llamadas y noticias. Amplían la variedad entre partidas.
 
-const EVENTS := [
+static var EVENTS := [
 	# =====================================================================  EL PAÍS REACCIONA (según cómo vaya la partida)
 	{"id": "paro_juvenil", "type": "advisor", "who": "economia", "title": "Una generación perdida",
 		"text": "El paro juvenil supera el 30%. Los jóvenes mejor formados de nuestra historia se van a Norland a servir mesas. 'Nos habéis robado el futuro', dicen las pancartas frente al Congreso.",

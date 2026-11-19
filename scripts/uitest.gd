@@ -38,7 +38,7 @@ func run(m: Node) -> void:
 	main = m
 	# --solo-casino: solo la noche en el casino (mucho más rápido que la prueba entera)
 	if "--solo-casino" in OS.get_cmdline_user_args():
-		GS.new_game({"name": "Prueba", "party": "MP", "difficulty": 1, "years": 1, "look": {}})
+		GS.new_game({"name": "Prueba", "party": "MP", "difficulty": 1, "years": 1, "look": {}, "pais": _pais()})
 		GS.no_save = true
 		main._show_office()
 		GS.set_speed(0)
@@ -52,7 +52,7 @@ func run(m: Node) -> void:
 		get_tree().quit()
 		return
 	for party in ["MP", "AR", "CC"]:
-		GS.new_game({"name": "Prueba", "party": party, "difficulty": 1, "years": 1, "look": {}})
+		GS.new_game({"name": "Prueba", "party": party, "difficulty": 1, "years": 1, "look": {}, "pais": _pais()})
 		GS.no_save = true
 		main._show_office()
 		GS.set_speed(0)
@@ -225,7 +225,9 @@ func _suite() -> void:
 	await _wait(0.6)
 	await _close_current()
 	# negociaciones: país y doméstica
-	for spec in [["norland", "comercio"], ["kharovia", "gas"], ["sindicato", "salarios"], ["opo", "pacto"], ["patronal", "sociedades"]]:
+	# la gran potencia (o Valdoria, si se gobierna Norland)
+	var potencia: Array = ["norland", "comercio"] if GS.pais != "norland" else ["valdoria", "agricola"]
+	for spec in [potencia, ["kharovia", "gas"], ["sindicato", "salarios"], ["opo", "pacto"], ["patronal", "sociedades"]]:
 		o = await _open("nego", {"who": spec[0], "topic": spec[1]})
 		if o == null or o.closing:
 			print("AVISO negociación sin tema ", spec)
@@ -447,3 +449,11 @@ func _suite() -> void:
 	await _close_current()
 	GS.game_ended = false
 	GS.active = true
+
+
+## --pais=norland: la prueba se juega con ese país
+func _pais() -> String:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--pais="):
+			return a.substr(7)
+	return "valdoria"

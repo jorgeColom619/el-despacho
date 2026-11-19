@@ -285,7 +285,7 @@ func _folder(pos: Vector3, yaw: float, col: Color) -> void:
 func _long_table() -> void:
 	var p: Dictionary = parties[0] if parties.size() > 0 else {}
 	var country: String = p.get("country", "")
-	var flag_id := country if country != "" else "valdoria"
+	var flag_id := country if country != "" else "propia"
 	# tablero de caoba con un paño de cuero verde, faldón y patas torneadas
 	var tw := 4.6
 	var td := FAR_Z - 0.62
@@ -314,12 +314,12 @@ func _long_table() -> void:
 	_folder(Vector3(0.05, TABLE_H, FAR_Z - 0.62), 0.06, Color("3a1a12"))
 	# banderitas de las dos delegaciones, a un lado del centro de la mesa (sin tapar al líder)
 	_desk_flag(Vector3(-0.72, TABLE_H, tz + 0.1), flag_id)
-	_desk_flag(Vector3(-0.5, TABLE_H, tz + 0.1), "valdoria")
+	_desk_flag(Vector3(-0.5, TABLE_H, tz + 0.1), "propia")
 	# banderas grandes detrás de cada parte
 	flag_pole(Vector3(-0.85, 0, Z1 - 0.7), flag_id, PI)
-	flag_pole(Vector3(0.85, 0, Z1 - 0.7), "valdoria" if country == "" else flag_id, 0.0)
-	flag_pole(Vector3(-2.2, 0, Z1 - 0.75), "valdoria", PI)
-	flag_pole(Vector3(2.2, 0, Z1 - 0.75), "valdoria", 0.0)
+	flag_pole(Vector3(0.85, 0, Z1 - 0.7), "propia" if country == "" else flag_id, 0.0)
+	flag_pole(Vector3(-2.2, 0, Z1 - 0.75), "propia", PI)
+	flag_pole(Vector3(2.2, 0, Z1 - 0.75), "propia", 0.0)
 
 
 func _round_table() -> void:
@@ -341,9 +341,9 @@ func _round_table() -> void:
 		leaders.append(person(p.get("look", {}), pos, yaw, "table"))
 		var country: String = p.get("country", "")
 		_plate(c + dir * (r - 0.2) + Vector3(0, TABLE_H, 0), yaw, String(p.get("name", "")))
-		_desk_flag(c + dir * (r - 0.45) + Vector3(0, TABLE_H, 0) + Vector3(dir.z, 0, -dir.x) * 0.2, country if country != "" else "valdoria")
+		_desk_flag(c + dir * (r - 0.45) + Vector3(0, TABLE_H, 0) + Vector3(dir.z, 0, -dir.x) * 0.2, country if country != "" else "propia")
 		_water(c + dir * (r - 0.35) + Vector3(0, TABLE_H, 0) - Vector3(dir.z, 0, -dir.x) * 0.25)
-		flag_pole(c + dir * (r + 1.45) + Vector3(dir.z, 0, -dir.x) * 0.55, country if country != "" else "valdoria", yaw + PI)
+		flag_pole(c + dir * (r + 1.45) + Vector3(dir.z, 0, -dir.x) * 0.55, country if country != "" else "propia", yaw + PI)
 	_armchair(c - Vector3(0, 0, r + 0.32), 0.0)
 
 

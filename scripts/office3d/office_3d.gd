@@ -34,8 +34,8 @@ const INTERACT_RANGE := 12.0
 ## Capa de render exclusiva del doble del jugador en el espejo: invisible para su propia cámara
 ## en primera persona, visible para la cámara que pinta el reflejo
 const AVATAR_LAYER := 1 << 4
-const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva Valdoria!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!",
-	"¡Siguiente pregunta!", "¡Sin comentarios!", "¡Lo que diga la ministra!", "¡Pío, pío, que no se diga!", "¡Café! ¡Café!", "¡Que hable la oposición!", "¡Señorías!", "¡Esto lo arreglamos!", "¡Hasta las urnas!", "¡Prima de riesgo!", "¡Gracias, Valdoria!", "¡Rueda de prensa! ¡Rrrueda!"]
+const PARROT := ["¡Dimisión! ¡Dimisión!", "¡Viva {pais}!", "¡Más presupuesto!", "¡Recortes no!", "¡Orden! ¡Orden!", "¡Elecciones ya!", "Rrrr... ¡Corrupción!", "¡Presidente guapo!",
+	"¡Siguiente pregunta!", "¡Sin comentarios!", "¡Lo que diga la ministra!", "¡Pío, pío, que no se diga!", "¡Café! ¡Café!", "¡Que hable la oposición!", "¡Señorías!", "¡Esto lo arreglamos!", "¡Hasta las urnas!", "¡Prima de riesgo!", "¡Gracias, {pais}!", "¡Rueda de prensa! ¡Rrrueda!"]
 const PARROT_MEME := ["¡Un vaso es un vaso!", "¡Sé fuerte!", "¡Con cebolla!", "¡Sin cebolla!", "¡Me gusta la fruta!", "¡Plasma! ¡Plasma!", "¡Bueno... eso!", "¡Es muy difícil todo esto!"]
 const HELP := "Ratón: mirar   ·   Clic: usar   ·   Clic derecho: coger / soltar (clic para lanzar)   ·   WASD: levantarse y andar (Mayús: correr)\nF: sentarse (sillón, sillones o sofá) / levantarse   ·   R: ordenar la mesa   ·   Tab: liberar el cursor   ·   Espacio: pausa   ·   1-3: velocidad   ·   H: mostrar u ocultar esta ayuda"
 
@@ -909,6 +909,7 @@ func _globe() -> void:
 	globe_mat = ShaderMaterial.new()
 	globe_mat.shader = load("res://shaders/globe3d.gdshader")
 	globe_mat.set_shader_parameter("map_tex", load("res://art/maps/world_ids.png"))
+	globe_mat.set_shader_parameter("own_id", load("res://scripts/systems/pais.gd").world_id())
 	globe_mat.set_shader_parameter("style", 1 if Perfil.equipped_data("globo").get("globe", "") == "nocturno" else 0)
 	Kit.mesh(globe_spin, Kit.sphere_mesh(0.28, 48), globe_mat)
 	Kit.add_shape(g, Kit.shape_cyl(0.32, 1.3), Vector3(0, 0.65, 0))
@@ -916,7 +917,7 @@ func _globe() -> void:
 
 
 ## Colores de los países (índice = id del mapa): cada uno con su color, suavizado hacia el pergamino;
-## Valdoria en dorado y las tierras sin nombre en tonos de pergamino
+## el país propio en dorado y las tierras sin nombre en tonos de pergamino
 static func _world_palette() -> ImageTexture:
 	var img := Image.create(16, 1, false, Image.FORMAT_RGBA8)
 	var parch := Color(0.86, 0.78, 0.6)
@@ -924,7 +925,7 @@ static func _world_palette() -> ImageTexture:
 		img.set_pixel(i, 0, parch.darkened(0.05 * (i % 4)))
 	for c in W.COUNTRIES.keys():
 		img.set_pixel(int(W.COUNTRIES[c]["map"]), 0, Color(W.COUNTRIES[c]["color"]).lerp(parch, 0.3))
-	img.set_pixel(1, 0, Color(0.97, 0.74, 0.27))
+	img.set_pixel(load("res://scripts/systems/pais.gd").world_id(), 0, Color(0.97, 0.74, 0.27))
 	return ImageTexture.create_from_image(img)
 
 
@@ -934,7 +935,8 @@ func _world_map() -> void:
 	for mt in [room.map_mat, globe_mat]:
 		(mt as ShaderMaterial).set_shader_parameter("pal", pal)
 		(mt as ShaderMaterial).set_shader_parameter("tex_size", Vector2(1600, 900))
-	var names := {1: "VALDORIA"}
+	var own: int = load("res://scripts/systems/pais.gd").world_id()
+	var names := {own: W.COUNTRY_NAME.to_upper()}
 	for c in W.COUNTRIES.keys():
 		names[int(W.COUNTRIES[c]["map"])] = String(W.COUNTRIES[c]["name"]).to_upper()
 	var info: Dictionary = DB.world_map_info.get("countries", {})
@@ -947,7 +949,7 @@ func _world_map() -> void:
 		var at: Vector2 = Vector2(float(info[k]["x"]), float(info[k]["y"])) + nudge.get(id, Vector2.ZERO)
 		var u := at.x / 1600.0
 		var v := at.y / 900.0
-		var l := Kit.label(room.map_mesh, names[id], UI.f_serif_b, 44, Color(1.0, 0.95, 0.82) if id != 1 else Color(1.0, 0.86, 0.45), Vector3((u - 0.5) * 2.64, (0.5 - v) * 1.52, 0.003), Vector3.ZERO, 0.0012)
+		var l := Kit.label(room.map_mesh, names[id], UI.f_serif_b, 44, Color(1.0, 0.95, 0.82) if id != own else Color(1.0, 0.86, 0.45), Vector3((u - 0.5) * 2.64, (0.5 - v) * 1.52, 0.003), Vector3.ZERO, 0.0012)
 		l.outline_size = 14
 		l.outline_modulate = Color(0.08, 0.05, 0.03, 0.9)
 
@@ -1377,7 +1379,7 @@ func _on_object(key: String) -> void:
 				GS.stress = maxf(0.0, GS.stress - 3.0)
 				GS.toast.emit({"gato": "Decreto ronronea. Estrés −3.", "perro": "Tribuno mueve la cola. Estrés −3.", "loro": "Senador: «¡Presidente guapo!». Estrés −3.", "pez": "El pez da una vuelta. Estrés −3.", "tortuga": "Trámite echa burbujas de alegría. Estrés −3."}.get(pet_kind, ""), "good", "bienestar")
 			if pet_kind == "loro":
-				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
+				_parrot_line = GS.fmt((PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random())
 				_parrot_t = 4.0
 			Sfx.play("notify", -10.0, 1.6 if pet_kind != "perro" else 0.7)
 		_:
@@ -1640,7 +1642,7 @@ func _process(delta: float) -> void:
 		_parrot_t -= delta
 		if _parrot_t <= 0.0:
 			if _parrot_line == "":
-				_parrot_line = (PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random()
+				_parrot_line = GS.fmt((PARROT_MEME if GS.mode == "meme" and randf() < 0.7 else PARROT).pick_random())
 				_parrot_t = 3.5
 			else:
 				_parrot_line = ""

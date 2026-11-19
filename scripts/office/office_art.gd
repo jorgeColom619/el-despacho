@@ -38,7 +38,8 @@ static func tex(name: String, scale: float = 1.0, variant: Dictionary = {}) -> T
 			if not v.has("theme"):
 				v["theme"] = pf.office_theme() if pf != null else "clasico"
 			if not v.has("flag"):
-				v["flag"] = pf.flag_style() if pf != null else "clasica"
+				var pa: String = load("res://scripts/systems/pais.gd").actual
+				v["flag"] = (pf.flag_style() if pf != null else "clasica") if pa == "valdoria" else "pais_" + pa
 		"desk":
 			if not v.has("wood"):
 				v["wood"] = pf.wood() if pf != null else "caoba"

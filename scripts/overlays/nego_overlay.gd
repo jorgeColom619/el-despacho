@@ -277,9 +277,9 @@ func _props_3d() -> void:
 	var target: Dictionary = parties[sel]
 	var tn: String = (" → " + String(target["ch"].get("name", ""))) if summit != "" else ""
 	var chance := clampf(0.45 + (my_power - float(target["power"])) / 90.0, 0.2, 0.9)
-	var gift := "−6 CP" if target["country"] == "" else "−400 M€"
+	var gift := "−6 CP" if target["country"] == "" else UI.eur("−400 M€")
 	var specs := {
-		"halagar": "Halagar%s: concederle la Gran Cruz de Valdoria\nSube su límite. Muy eficaz con los orgullosos." % tn,
+		"halagar": "Halagar%s: concederle la Gran Cruz de %s\nSube su límite. Muy eficaz con los orgullosos." % [tn, W.COUNTRY_NAME],
 		"presionar": "Presionar%s con un dosier confidencial\n%d%% de éxito: +12 a su límite. Si falla, −8 y se enfada." % [tn, int(chance * 100)],
 		"regalo": "Ofrecer algo a cambio%s (%s)\n+10 a su límite (más con los pragmáticos)." % [tn, gift],
 	}
@@ -287,7 +287,7 @@ func _props_3d() -> void:
 		var on: bool = not used.has(id) and not ended
 		stage.set_prop(id, specs[id] if on else "", _wildcard.bind(id), on)
 	stage.set_prop("stamp", "Proponer esta oferta (Intro)\nLe quedan %d intentos. Si la rechazan, ya sabrá que su límite está por debajo." % attempts, _propose_input, not ended)
-	stage.set_prop("proposal", "Aceptar su propuesta: %s\nFirma segura, aunque saca menos para Valdoria." % _term_text(_safe()), _accept_safe, not ended)
+	stage.set_prop("proposal", "Aceptar su propuesta: %s\nFirma segura, aunque saca menos para %s." % [_term_text(_safe()), W.COUNTRY_NAME], _accept_safe, not ended)
 
 
 func _safe() -> float:
@@ -483,7 +483,7 @@ func _wild_cards() -> void:
 	var target: Dictionary = parties[sel]
 	var tn: String = String(target["ch"].get("name", "")).split(" ")[0] if summit != "" else ""
 	var chance := clampf(0.45 + (my_power - float(target["power"])) / 90.0, 0.2, 0.9)
-	var gift_cost := "−6 CP" if target["country"] == "" else "−400 M€"
+	var gift_cost := "−6 CP" if target["country"] == "" else UI.eur("−400 M€")
 	var specs := [
 		["halagar", "Halagar", "sonrisa", "Sube su límite. Muy eficaz con los orgullosos."],
 		["presionar", "Presionar", "presion", "%d%% de éxito: +12 a su límite. Si falla, −8 y se enfada." % int(chance * 100)],
@@ -609,7 +609,7 @@ func _draw_meter() -> void:
 	meter.draw_colored_polygon(PackedVector2Array([Vector2(mx, r.position.y - 8), Vector2(mx - 10, r.position.y - 22), Vector2(mx + 10, r.position.y - 22)]), mark)
 	var ly := r.position.y + total_h + (fs * 2.6 if rows == 1 else fs * 1.6) + 8
 	meter.draw_string(UI.f_sans_m, Vector2(r.position.x, ly), "◀ Lo que quieren ellos: " + _term_text(0), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, dimc)
-	meter.draw_string(UI.f_sans_m, Vector2(r.position.x, ly), "Lo que quiere Valdoria: " + _term_text(100) + " ▶", HORIZONTAL_ALIGNMENT_RIGHT, r.size.x, fs, INK_GOLD if paper else UI.GOLD_L)
+	meter.draw_string(UI.f_sans_m, Vector2(r.position.x, ly), "Lo que quiere " + W.COUNTRY_NAME + ": " + _term_text(100) + " ▶", HORIZONTAL_ALIGNMENT_RIGHT, r.size.x, fs, INK_GOLD if paper else UI.GOLD_L)
 
 
 func _meter_input(e: InputEvent) -> void:
@@ -664,7 +664,7 @@ func _term_text(pos: float) -> String:
 	var term: Array = topic["term"]
 	var val := _term_value(pos)
 	var unit: String = term[3]
-	if unit.begins_with(" M€"):
+	if unit.begins_with(UI.eur(" M€")):
 		return "%s%s" % [UI.money(val), unit.substr(3)]
 	if unit == "%":
 		return "%s%%" % UI.num(val, 0 if (absf(val) >= 10 or absf(val - round(val)) < 0.05) else 1)
@@ -930,7 +930,7 @@ func _end(deal: bool, line: String) -> void:
 		var res_line := ""
 		if deal:
 			var q := int(offer)
-			res_line = "%s: %s · Resultado para Valdoria: %d/100 · %s" % [String(topic["term"][0]), _term_text(offer), q, "magistral" if q >= 85 else ("muy bueno" if q >= 65 else ("razonable" if q >= 40 else "modesto"))]
+			res_line = "%s: %s · Resultado para " + W.COUNTRY_NAME + ": %d/100 · %s" % [String(topic["term"][0]), _term_text(offer), q, "magistral" if q >= 85 else ("muy bueno" if q >= 65 else ("razonable" if q >= 40 else "modesto"))]
 		# (los efectos se montan al sacar el rótulo: si se cierra antes, no queda nada suelto en memoria)
 		_after(2.6 if deal else 2.2, func():
 			if deal:
@@ -946,7 +946,7 @@ func _end(deal: bool, line: String) -> void:
 	if deal:
 		res.add_child(UI.lbl(String(topic["term"][0]) + ": " + _term_text(offer), UI.f_sans_b, 24, UI.TEXT))
 		var q2 := int(offer)
-		res.add_child(UI.lbl("Resultado para Valdoria: %d/100 · %s" % [q2, "magistral" if q2 >= 85 else ("muy bueno" if q2 >= 65 else ("razonable" if q2 >= 40 else "modesto"))], UI.f_sans_m, 18, UI.GOLD_L))
+		res.add_child(UI.lbl("Resultado para " + W.COUNTRY_NAME + ": %d/100 · %s" % [q2, "magistral" if q2 >= 85 else ("muy bueno" if q2 >= 65 else ("razonable" if q2 >= 40 else "modesto"))], UI.f_sans_m, 18, UI.GOLD_L))
 	var chips2 := Widgets.effect_chips(out, 16, 10)
 	chips2.custom_minimum_size = Vector2(minf(880.0, _col_w - 20.0), 0)
 	res.add_child(chips2)

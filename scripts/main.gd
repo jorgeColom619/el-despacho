@@ -132,6 +132,15 @@ func _ready() -> void:
 		tm.autostart = true
 		tm.timeout.connect(func(): print("FPS: ", Engine.get_frames_per_second()))
 		add_child(tm)
+	# depuración: --capt=<ruta.png> guarda lo que se ve tras --captwait fotogramas (90 por defecto) y cierra
+	for a in args:
+		if a.begins_with("--capt="):
+			var cpath := a.substr(7)
+			var cwait := 90
+			for b in args:
+				if b.begins_with("--captwait="):
+					cwait = int(b.substr(11))
+			_capture_later(cpath, cwait)
 	if "--nograin" in args:
 		grain.visible = false
 	if "--interptest" in args:
@@ -140,6 +149,13 @@ func _ready() -> void:
 		var it = IT.new()
 		add_child(it)
 		it.run()
+		return
+	if "--paistest" in args:
+		GS.no_save = true
+		var PT = load("res://scripts/paistest.gd")
+		var pt = PT.new()
+		add_child(pt)
+		pt.run()
 		return
 	if "--uitest" in args:
 		GS.no_save = true
@@ -461,8 +477,12 @@ func _debug_opts() -> Dictionary:
 			o["mode"] = a.substr(8)
 		elif a.begins_with("--ddiff="):
 			o["difficulty"] = int(a.substr(8))
+		elif a.begins_with("--pais="):
+			o["pais"] = a.substr(7)
 		elif a.begins_with("--dscen="):
 			o["scenario"] = a.substr(8)
+	if o.has("pais"):
+		o["name"] = load("res://scripts/data/paises_data.gd").PAISES.get(o["pais"], {}).get("pres_m", o["name"])
 	return o
 
 
@@ -481,6 +501,8 @@ func _debug_start() -> void:
 		start_new(_debug_opts())
 		return
 	if debug_shot == "newgame" or debug_shot == "promesas":
+		if _debug_opts().has("pais"):
+			GS.usar_pais(_debug_opts()["pais"])
 		var NG = load("res://scripts/screens/new_game.gd")
 		var n = NG.new()
 		n.main = self
@@ -500,9 +522,10 @@ func _debug_start() -> void:
 		"diary":
 			open_overlay("diary", {"seed": 1})
 		"":
-			GS.spawn(DB.event("doc_honor"))
-			GS.spawn(DB.event("fabrica_cierre"))
-			GS.spawn(DB.event("call_kade_acero"))
+			# solo los que existen en el país que se gobierna (en Norland no hay llamada de Kade)
+			for eid in ["doc_honor", "fabrica_cierre", "call_kade_acero"]:
+				if not GS.Pais.apartados.get("eventos", {}).has(eid):
+					GS.spawn(DB.event(eid))
 		"doc":
 			GS.spawn(DB.event(OS.get_environment("DOC") if OS.get_environment("DOC") != "" else "doc_honor"))
 			open_overlay("doc", {})
@@ -708,3 +731,12 @@ func _debug_start() -> void:
 			open_overlay("election", {})
 		_:
 			open_overlay(debug_open, {})
+
+
+func _capture_later(path: String, frames: int) -> void:
+	for i in frames:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path)
+	print("Captura: ", path)
+	get_tree().quit()

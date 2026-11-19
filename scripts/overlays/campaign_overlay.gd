@@ -109,8 +109,8 @@ func _select(id: int) -> void:
 	var acts := [
 		["mitin", "Mitin", "microfono", "1 acto · minijuego de discurso. Mucho efecto si lo hace bien.", 1, 0],
 		["visita", "Visita y baño de masas", "aprobacion", "1 acto · +2,5 en la región.", 1, 0],
-		["anuncio", "Anuncio de inversión", "dinero", "1 acto · −800 M€ · +4 en la región.", 1, 800],
-		["spot", "Spot en la TV nacional", "tv", "2 actos · −1.500 M€ · +1,3 en todas las regiones.", 2, 1500],
+		["anuncio", "Anuncio de inversión", "dinero", UI.eur("1 acto · −800 M€ · +4 en la región."), 1, 800],
+		["spot", "Spot en la TV nacional", "tv", UI.eur("2 actos · −1.500 M€ · +1,3 en todas las regiones."), 2, 1500],
 	]
 	var grid := GridContainer.new()
 	grid.columns = 2

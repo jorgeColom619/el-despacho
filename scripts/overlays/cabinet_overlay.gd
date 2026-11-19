@@ -287,8 +287,8 @@ func _report(k: String) -> Array:
 				t3 += " Cuidado: el malestar social puede acabar en disturbios."
 			return [t3, clampf((s - 45.0) / 20.0, -1.0, 1.0)]
 		"exteriores":
-			var worst_c := "norland"
-			var best_c := "norland"
+			var worst_c := String(GS.countries.keys()[0])
+			var best_c := String(GS.countries.keys()[0])
 			for c in GS.countries.keys():
 				if GS.countries[c]["rel"] < GS.countries[worst_c]["rel"]:
 					worst_c = c

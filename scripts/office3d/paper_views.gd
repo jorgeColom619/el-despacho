@@ -68,7 +68,7 @@ const DIARY_TOPIC_GOOD := {
 	"bienestar": "«La sanidad y los colegios han mejorado, eso sí lo noto.»",
 	"seguridad": "«Ahora salgo de noche más tranquila.»",
 	"estabilidad": "«Qué gusto no abrir el periódico y encontrar un lío político nuevo.»",
-	"prestigio": "«Hasta en el extranjero hablan bien de Valdoria ahora.»",
+	"prestigio": "«Hasta en el extranjero hablan bien de {pais} ahora.»",
 	"ambiente": "«El aire se respira mejor desde que cuidan el río.»",
 }
 const DIARY_TOPIC_BAD := {
@@ -107,7 +107,7 @@ func _draw() -> void:
 		"calendar":
 			_calendar()
 		"flag":
-			Flags.draw_valdoria(self, Rect2(Vector2.ZERO, size), Flags.current_style())
+			Flags.draw_flag(self, "propia", Rect2(Vector2.ZERO, size))
 		"portrait_bg":
 			var top := Color("3a2a1c")
 			var bot := Color("120c08")
@@ -127,7 +127,7 @@ func _newspaper() -> void:
 	draw_line(Vector2(12, 78), Vector2(w - 12, 78), Color(0.1, 0.1, 0.1), 2.0)
 	draw_string(UI.f_sans, Vector2(12, 92), UI.date_long(GS.day) if GS.active else "", HORIZONTAL_ALIGNMENT_LEFT, w - 24, 10, Color(0.2, 0.2, 0.2))
 	draw_line(Vector2(12, 98), Vector2(w - 12, 98), Color(0.1, 0.1, 0.1), 1.0)
-	var hl := "Nuevo Gobierno en Valdoria"
+	var hl := GS.fmt("Nuevo Gobierno en {pais}")
 	if GS.news_feed.size() > 0:
 		hl = GS.news_feed[0]["t"]
 	draw_multiline_string(UI.f_serif_b, Vector2(12, 128), hl, HORIZONTAL_ALIGNMENT_LEFT, w - 24, 25, 4, Color(0.06, 0.06, 0.06))
@@ -268,7 +268,7 @@ static func pick_opinion(seed_v: int) -> Dictionary:
 	elif approval < 40.0:
 		mood = "bad"
 	var job: String = DIARY_JOBS[rng.randi() % DIARY_JOBS.size()]
-	var who := "Vecino de Valdoria"
+	var who := GS.fmt("Vecino de {pais}")
 	if GS.active:
 		who = DB.rand_name(["m", "f"][rng.randi() % 2])
 	var quote := ""

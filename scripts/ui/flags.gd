@@ -13,6 +13,9 @@ static func star_points(c: Vector2, r_out: float, r_in: float, n: int = 5, rot: 
 
 ## Colores principales de cada estilo de bandera nacional (para la bandera colgada del despacho, la banda presidencial, etc.)
 static func palette(style: String) -> Array:
+	# "pais_norland": los colores de la bandera de ese país (el despacho 2D cuando no se gobierna Valdoria)
+	if style.begins_with("pais_"):
+		return COUNTRY_PALETTE.get(style.substr(5), [Color("1d3557"), Color("e9c46a"), Color("1d3557")])
 	match style:
 		"aurora":
 			return [Color("1f4d36"), Color("f4f1e8"), Color("1f4d36")]
@@ -25,6 +28,32 @@ static func palette(style: String) -> Array:
 		"nocturna":
 			return [Color("0e1530"), Color("b8c0d0"), Color("0e1530")]
 	return [Color("1d3557"), Color("e9c46a"), Color("1d3557")]
+
+
+## Colores principales de la bandera de cada país (para pañuelos, bandas, banderitas de la plaza...)
+const COUNTRY_PALETTE := {
+	"norland": [Color("15285a"), Color("f4f4f4"), Color("c1272d")],
+	"union": [Color("24407e"), Color("f2c94c"), Color("24407e")],
+	"kharovia": [Color("8e1b1b"), Color("141414"), Color("e0b54a")],
+	"tsaing": [Color("c8102e"), Color("f5c518"), Color("c8102e")],
+	"sarvenia": [Color("2f6b2f"), Color("e0c341"), Color("b3261e")],
+	"qadar": [Color("7a1f35"), Color("f4f4f4"), Color("d9b36a")],
+	"aldora": [Color("2e7d4f"), Color("e0b54a"), Color("6fb3d9")],
+}
+
+
+## Paleta de la bandera del país que se gobierna (la de Valdoria cambia con la tienda)
+static func palette_propia() -> Array:
+	var p: String = load("res://scripts/systems/pais.gd").actual
+	if p == "valdoria":
+		return palette(current_style())
+	return COUNTRY_PALETTE.get(p, palette("clasica"))
+
+
+## Para las cachés que dependen de la bandera propia (país y, en Valdoria, estilo de la tienda)
+static func propia_key() -> String:
+	var p: String = load("res://scripts/systems/pais.gd").actual
+	return current_style() if p == "valdoria" else p
 
 
 static func current_style() -> String:
@@ -97,8 +126,14 @@ static func draw_flag(ci: CanvasItem, id: String, r: Rect2) -> void:
 	var w := r.size.x
 	var h := r.size.y
 	match id:
+		"propia":
+			# la del país que se gobierna (la de Valdoria, con el estilo de la tienda)
+			var pa: String = load("res://scripts/systems/pais.gd").actual
+			draw_flag(ci, pa, r)
 		"valdoria":
-			draw_valdoria(ci, r, current_style())
+			# con el estilo de la tienda si es el país propio; si es extranjera, la de siempre
+			var p2: String = load("res://scripts/systems/pais.gd").actual
+			draw_valdoria(ci, r, current_style() if p2 == "valdoria" else "clasica")
 		"norland":
 			# azul marino con banda diagonal blanca ribeteada en rojo y estrella
 			ci.draw_rect(Rect2(p, Vector2(w, h)), Color("15285a"))

@@ -93,7 +93,7 @@ func _stage() -> void:
 	b.segment(PODIUM + Vector3(0, 1.15, 0.0), PODIUM + Vector3(0, 1.38, 0.12), 0.008, Kit.mat(Color("2a2a2a"), 0.4, 0.6))
 	# banderas a los lados
 	for sx in [-1.0, 1.0]:
-		flag_pole(Vector3(sx * 4.7, STAGE_H, -3.4), "valdoria", 0.0 if sx < 0.0 else PI, 3.0)
+		flag_pole(Vector3(sx * 4.7, STAGE_H, -3.4), "propia", 0.0 if sx < 0.0 else PI, 3.0)
 	# el presidente y su equipo, ocultos hasta el final
 	president = person(pres_look, PODIUM + Vector3(0, 0, -0.42), 0.0, "", true, 1)
 	president.rest_anim = "lectern"

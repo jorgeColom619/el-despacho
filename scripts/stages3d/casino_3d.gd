@@ -313,7 +313,7 @@ func _room() -> void:
 	# (por debajo de la lámpara de la sala privada, para que se lean desde el vestíbulo)
 	var lbl := Kit.label(world, "SALA PRIVADA", UI.f_serif_b, 96, Color("e9c46a"), Vector3(0, 2.95, Z0 + 0.05), Vector3.ZERO, 0.0028)
 	lbl.shaded = false
-	var lbl2 := Kit.label(world, "GRAN CASINO DE SANTA AURORA", UI.f_serif_b, 72, Color("e9c46a"), Vector3(0, 3.55, Z0 + 0.06), Vector3.ZERO, 0.0042)
+	var lbl2 := Kit.label(world, GS.fmt("GRAN CASINO DE {cap}").to_upper(), UI.f_serif_b, 72, Color("e9c46a"), Vector3(0, 3.55, Z0 + 0.06), Vector3.ZERO, 0.0042)
 	lbl2.shaded = false
 
 
@@ -510,7 +510,7 @@ func _slots() -> void:
 		var sc := Control.new()
 		sc.size = Vector2(540, 240)
 		sv.add_child(sc)
-		var st := {"title": "GRAN PREMIO", "line": "APUESTA 25 M€", "lit": 0.0}
+		var st := {"title": "GRAN PREMIO", "line": UI.eur("APUESTA 25 M€"), "lit": 0.0}
 		sc.draw.connect(func(): Art.slot_sign(sc, sc.size, st["title"], st["line"], st["lit"]))
 		sign_mat.albedo_texture = sv.get_texture()
 		sign_mat.emission_enabled = true

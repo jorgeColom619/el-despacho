@@ -25,10 +25,20 @@ func _init() -> void:
 	relief.fractal_octaves = 4
 	relief.frequency = 0.02
 	var t0 := Time.get_ticks_msec()
-	gen_world()
-	print("Mundo: %d ms" % (Time.get_ticks_msec() - t0))
-	gen_valdoria()
-	print("Valdoria: %d ms" % (Time.get_ticks_msec() - t0))
+	# -- --solo=norland: solo ese mapa (sin volver a escribir los demás)
+	var solo := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--solo="):
+			solo = a.substr(7)
+	if solo == "" or solo == "mundo":
+		gen_world()
+		print("Mundo: %d ms" % (Time.get_ticks_msec() - t0))
+	if solo == "" or solo == "valdoria":
+		gen_valdoria()
+		print("Valdoria: %d ms" % (Time.get_ticks_msec() - t0))
+	if solo == "" or solo == "norland":
+		gen_norland()
+		print("Norland: %d ms" % (Time.get_ticks_msec() - t0))
 	quit()
 
 
@@ -166,14 +176,31 @@ func gen_world() -> void:
 
 
 func gen_valdoria() -> void:
-	var w := 1000
-	var h := 760
 	# Valdoria: gran masa central + islas. Frontera oeste con Sarvenia (id 9), norte con la Unión (id 10)
 	var body := [[500, 370, 420, 300], [300, 300, 260, 220], [640, 470, 300, 220], [520, 180, 300, 150]]
 	var isles := [[868, 640, 48, 30], [930, 598, 26, 18], [805, 690, 22, 15]]
 	var seeds := [
 		[1, 560, 335, 0.62], [2, 540, 160, 1.0], [2, 690, 180, 0.8], [3, 800, 330, 0.95], [3, 780, 450, 0.8],
 		[4, 560, 560, 1.0], [4, 430, 600, 0.8], [5, 390, 410, 1.0], [6, 300, 190, 1.0], [7, 175, 380, 0.9], [7, 200, 520, 0.8], [8, 870, 630, 1.0]]
+	gen_regions("valdoria", body, isles, seeds, true, true)
+
+
+func gen_norland() -> void:
+	# Norland: un continente ancho. Capital en la costa este, cinturón industrial al norte, llanuras en el centro,
+	# montañas al oeste, la región de los lagos junto a la frontera norte (id 10) y las Islas Pacíficas al suroeste
+	var body := [[530, 410, 430, 265], [340, 400, 235, 205], [740, 430, 240, 230], [560, 230, 380, 170]]
+	var isles := [[95, 690, 42, 25], [165, 722, 25, 15], [52, 648, 19, 12]]
+	var seeds := [
+		[1, 830, 360, 0.6], [2, 610, 210, 1.0], [2, 760, 220, 0.8], [3, 870, 470, 0.9], [4, 600, 620, 1.0], [4, 740, 600, 0.8],
+		[5, 470, 420, 1.1], [5, 380, 330, 0.8], [6, 190, 400, 1.0], [6, 250, 520, 0.9], [7, 390, 190, 1.0], [8, 95, 690, 1.0]]
+	gen_regions("norland", body, isles, seeds, false, true)
+
+
+## Mapa de regiones de un país (art/maps/<nombre>_ids.png y <nombre>.json): elipses de tierra, islas y semillas de
+## cada región [id, x, y, peso]; tierra extranjera al oeste (id 9) y/o al norte (id 10)
+func gen_regions(nombre: String, body: Array, isles: Array, seeds: Array, border_west: bool, border_north: bool) -> void:
+	var w := 1000
+	var h := 760
 	var ids := PackedByteArray()
 	ids.resize(w * h)
 	var land := PackedByteArray()
@@ -198,11 +225,11 @@ func gen_valdoria() -> void:
 			var border_w := 95.0 + warp.get_noise_2d(0.0, y * 2.0) * 40.0
 			var border_n := 62.0 + warp.get_noise_2d(x * 2.0, 50.0) * 30.0
 			var foreign := 0
-			if x < border_w and (val > -0.25 or x < border_w - 10.0):
+			if border_west and x < border_w and (val > -0.25 or x < border_w - 10.0):
 				foreign = 9
-			elif y < border_n and (val > -0.25 or y < border_n - 10.0):
+			elif border_north and y < border_n and (val > -0.25 or y < border_n - 10.0):
 				foreign = 10
-			if foreign != 0 and x < 30:
+			if foreign != 0 and x < 30 and border_west:
 				foreign = 9
 			if foreign != 0:
 				land[i] = 1
@@ -251,7 +278,7 @@ func gen_valdoria() -> void:
 		data[i * 3 + 1] = clampi(int(dist[i] * 4.0), 0, 255)
 		data[i * 3 + 2] = clampi(int((relief.get_noise_2d(x * 1.5, y * 1.5) * 0.5 + 0.5) * 255.0), 0, 255)
 	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGB8, data)
-	img.save_png("res://art/maps/valdoria_ids.png")
+	img.save_png("res://art/maps/%s_ids.png" % nombre)
 	var info := {}
 	for k in sums.keys():
 		var s: Array = sums[k]
@@ -260,6 +287,6 @@ func gen_valdoria() -> void:
 	for k in adj.keys():
 		if adj[k] > 25:
 			pairs.append(k)
-	var fa := FileAccess.open("res://art/maps/valdoria.json", FileAccess.WRITE)
+	var fa := FileAccess.open("res://art/maps/%s.json" % nombre, FileAccess.WRITE)
 	fa.store_string(JSON.stringify({"w": w, "h": h, "regions": info, "adjacency": pairs}, "  "))
 	fa.close()

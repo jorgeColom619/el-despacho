@@ -485,8 +485,18 @@ func money(m: float, show_sign: bool = false) -> String:
 	if show_sign and m > 0:
 		sgn = "+"
 	if absf(m) >= 1000.0:
-		return sgn + num(m / 1000.0, 1) + " mil M€"
-	return sgn + num(m, 0) + " M€"
+		return sgn + num(m / 1000.0, 1) + " mil M" + cur()
+	return sgn + num(m, 0) + " M" + cur()
+
+
+## Moneda del país que se gobierna (€, $...)
+func cur() -> String:
+	return load("res://scripts/systems/pais.gd").moneda()
+
+
+## Un texto escrito en euros, con la moneda del país que se gobierna
+func eur(s: String) -> String:
+	return s.replace("€", cur())
 
 
 func pct(v: float, dec: int = 1) -> String:

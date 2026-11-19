@@ -69,6 +69,9 @@ func _play(days: int) -> Dictionary:
 	_next_law_day = 0
 	events_seen.clear()
 	_first_ids.clear()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--pais="):
+			GS.usar_pais(a.substr(7))
 	var party: String = W.PLAYER_PARTIES.keys().pick_random() if quiet else "MP"
 	# los jugadores medios y buenos hacen tres promesas de las seis que se ofrecen
 	var prom := []
@@ -79,6 +82,9 @@ func _play(days: int) -> Dictionary:
 		prom.shuffle()
 		prom = prom.slice(0, 3)
 	var opts := {"name": "Test", "party": party, "difficulty": difficulty, "years": int(ceil(days / 365.0)), "mode": mode, "look": {}, "promises": prom}
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--pais="):
+			opts["pais"] = a.substr(7)
 	# --daily: juega los retos del día de los próximos días (uno por partida)
 	if "--daily" in OS.get_cmdline_user_args():
 		_daily_n += 1

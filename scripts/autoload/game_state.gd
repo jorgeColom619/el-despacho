@@ -15,6 +15,7 @@ signal weather_changed
 signal result_text(text: String)
 
 const W := preload("res://scripts/data/world_data.gd")
+const Pais := preload("res://scripts/systems/pais.gd")
 const DAY_SEC := 1.5
 const SPEED_MULT := [0.0, 1.0, 2.0, 4.0]
 const METERS := ["economia", "bienestar", "seguridad", "estabilidad", "prestigio", "ambiente"]
@@ -138,6 +139,8 @@ var memo_used := {}
 var social := {}
 ## Reto del día que se está jugando (número de día del calendario real) o -1 si es una partida normal
 var daily := -1
+## País que gobierna el presidente (paises_data.gd): adapta textos, partidos, regiones y mundo (Pais.aplicar)
+var pais := "valdoria"
 ## Libro de Leyes: cada ley votada o firmada [{type: "ley"|"menor", day, ok, ...}] (ver law_record)
 var law_log := []
 ## Entradas del Libro de Leyes que el presidente ya ha visto (las demás salen como novedad en el despacho)
@@ -184,7 +187,17 @@ func _ready() -> void:
 
 # ================================================================== nueva partida
 
+## Pone el país que se va a gobernar: adapta los datos (Pais.aplicar) y vuelve a leer eventos y mapa de regiones
+func usar_pais(p: String) -> void:
+	pais = p
+	Pais.aplicar(p)
+	pais = Pais.actual
+	DB.reconstruir()
+
+
 func new_game(opts: Dictionary) -> void:
+	# el país, lo primero: cambia los datos (partidos, regiones, eventos...) con los que se prepara todo lo demás
+	usar_pais(String(opts.get("pais", "valdoria")))
 	# reto del día: el mismo mundo para todos (misma semilla para el sorteo de todo lo que se prepara al empezar)
 	daily = int(opts.get("daily", -1))
 	if opts.has("seed"):
@@ -334,7 +347,7 @@ func new_game(opts: Dictionary) -> void:
 		spawn(DB.event("bienvenida_guiada" if not unlocks.is_empty() else "bienvenida"))
 	schedule("doc_nombramientos", 1)
 	schedule(["call_felicitacion", "call_felicitacion_norland", "call_felicitacion_hao", "call_felicitacion_drogan"][rng.randi() % 4], rng.randi_range(2, 5))
-	push_news("%s jura su cargo como presidente de Valdoria" % pres["name"], 3)
+	push_news("%s jura su cargo como presidente de %s" % [pres["name"], W.COUNTRY_NAME], 3)
 
 
 # ================================================================== variedad entre partidas
@@ -429,7 +442,8 @@ func _apply_scenario(id: String) -> void:
 	if st.has("cycle"):
 		cycle = float(st["cycle"])
 	for c in st.get("rel", {}).keys():
-		countries[c]["rel"] = clampf(countries[c]["rel"] + float(st["rel"][c]), -100.0, 100.0)
+		if countries.has(c):
+			countries[c]["rel"] = clampf(countries[c]["rel"] + float(st["rel"][c]), -100.0, 100.0)
 	var pr: Dictionary = st.get("party_rel", {})
 	for p in parties.keys():
 		if p == pres["party"]:
@@ -1279,7 +1293,7 @@ const CONVOCATORIAS := {
 		"choices": [{"t": "Comparezco. Que pasen los periodistas.", "fx": {"press": "rueda"}, "rec": "jefa"},
 			{"t": "Cancelar la rueda de prensa.", "fx": {"clase_media": -2, "estabilidad": -2}, "news": "El presidente cancela su comparecencia ante los medios"}]},
 	"debate": {"title": "Debate electoral en Canal 7",
-		"text": "Canal 7 ha preparado el cara a cara con {opo} a dos semanas de las elecciones. Media Valdoria lo verá en directo. Si no va, el atril vacío será la foto de la campaña.",
+		"text": "Canal 7 ha preparado el cara a cara con {opo} a dos semanas de las elecciones. Media {pais} lo verá en directo. Si no va, el atril vacío será la foto de la campaña.",
 		"choices": [{"t": "Allí estaré.", "fx": {"debate": "electoral"}, "rec": "jefa"},
 			{"t": "No ir: que debata con un atril vacío.", "fx": {"approval": -3, "clase_media": -2, "jovenes": -2, "campana": -3.0}, "news": "Atril vacío: el presidente planta el debate electoral"}]},
 }
@@ -1763,7 +1777,7 @@ func fmt(s: String) -> String:
 		return s
 	var opp: String = W.PLAYER_PARTIES[pres["party"]]["opp"]
 	var d := {
-		"pres": pres["name"], "pais": "Valdoria", "cap": "Santa Aurora",
+		"pres": pres["name"], "pais": W.COUNTRY_NAME, "cap": W.CAPITAL, "gent": Pais.gent(0), "gent_f": Pais.gent(1), "gent_pl": Pais.gent(2), "gent_fpl": Pais.gent(3),
 		"opo": opo_name(), "opo_party": W.PARTIES[opp]["name"], "party": W.PARTIES[pres["party"]]["name"],
 		"vice": ministers.get("vice", {}).get("name", ""),
 		"vice_rol": "el vicepresidente" if ministers.get("vice", {}).get("look", {}).get("g", "f") == "m" else "la vicepresidenta",
@@ -2271,7 +2285,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "budget_passed_year", "budget_retry_day", "decree_pending", "decree_next_day", "inflation", "policy_rate", "coalition", "reforms", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino"]
+	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino", "pais"]
 
 
 func has_save() -> bool:
@@ -2326,6 +2340,7 @@ func load_game() -> bool:
 	var d = JSON.parse_string(txt)
 	if not (d is Dictionary):
 		return false
+	usar_pais(String(d.get("pais", "valdoria")))
 	unlocks = {}
 	mode = "clasico"
 	term_index = 1

@@ -5,6 +5,7 @@ const Widgets := preload("res://scripts/ui/widgets.gd")
 const Flags := preload("res://scripts/ui/flags.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const Pais := preload("res://scripts/systems/pais.gd")
 
 const MAP_POS := Vector2(50, 150)
 const MAP_SIZE := Vector2(1200, 675)
@@ -55,7 +56,7 @@ func build() -> void:
 	root.add_child(fr)
 	for c in W.COUNTRIES.keys():
 		id_to_c[int(W.COUNTRIES[c]["map"])] = c
-	id_to_c[1] = "valdoria"
+	id_to_c[Pais.world_id()] = "propio"
 	var info: Dictionary = DB.world_map_info.get("countries", {})
 	for k in info.keys():
 		centroids[int(k)] = Vector2(info[k]["x"], info[k]["y"]) / REF * MAP_SIZE
@@ -77,7 +78,8 @@ func build() -> void:
 	root.add_child(pp)
 	panel = UI.vbox(12)
 	pp.add_child(panel)
-	_select("norland")
+	# al abrir, la gran potencia (o el primer país, si la gran potencia es la propia)
+	_select("norland" if W.COUNTRIES.has("norland") else String(W.COUNTRIES.keys()[0]))
 	_update_palette()
 
 
@@ -96,7 +98,7 @@ func _update_palette() -> void:
 		var col := Color(0.28, 0.3, 0.33)
 		if id_to_c.has(i):
 			var c: String = id_to_c[i]
-			if c == "valdoria":
+			if c == "propio":
 				col = Color(0.85, 0.65, 0.25)
 			else:
 				col = _rel_color(GS.countries[c]["rel"])
@@ -119,7 +121,7 @@ func _map_input(event: InputEvent) -> void:
 		if id != hover_id:
 			hover_id = id
 			_update_palette()
-		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and id_to_c.has(id) and id_to_c[id] != "valdoria":
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and id_to_c.has(id) and id_to_c[id] != "propio":
 			Sfx.play("click", -2.0)
 			_select(id_to_c[id])
 
@@ -150,9 +152,9 @@ func _draw_layer() -> void:
 			continue
 		var c2: String = id_to_c[id]
 		var p: Vector2 = centroids[id]
-		var nm: String = "VALDORIA" if c2 == "valdoria" else W.COUNTRIES[c2]["name"].to_upper()
+		var nm: String = W.COUNTRY_NAME.to_upper() if c2 == "propio" else W.COUNTRIES[c2]["name"].to_upper()
 		layer.draw_string(UI.f_sans_b, p + Vector2(-100, 0), nm, HORIZONTAL_ALIGNMENT_CENTER, 200, 14, Color(1, 1, 1, 0.9))
-		if c2 != "valdoria":
+		if c2 != "propio":
 			var rel: float = GS.countries[c2]["rel"]
 			layer.draw_string(UI.f_cond_b, p + Vector2(-100, 20), UI.signed(rel, 0), HORIZONTAL_ALIGNMENT_CENTER, 200, 16, _rel_color(rel).lightened(0.4))
 		else:
@@ -230,7 +232,7 @@ func _select(c: String) -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	panel.add_child(grid)
-	for a in [["visita", "Visita de Estado", "−80 M€ · −5 CP · Relación ▲"], ["ayuda", "Ayuda al desarrollo", "−600 M€ · Relación ▲▲"], ["sanciones", "Sanciones económicas", "Relación ▼▼▼ · Economía ▼"], ["embajador", "Expulsar al embajador", "Relación ▼▼ · Firmeza"]]:
+	for a in [["visita", "Visita de Estado", UI.eur("−80 M€ · −5 CP · Relación ▲")], ["ayuda", "Ayuda al desarrollo", UI.eur("−600 M€ · Relación ▲▲")], ["sanciones", "Sanciones económicas", "Relación ▼▼▼ · Economía ▼"], ["embajador", "Expulsar al embajador", "Relación ▼▼ · Firmeza"]]:
 		var ad: String = a[0]
 		var cdl: int = int(GS.countries[c]["cd"].get(ad, 0)) - GS.day
 		var v := UI.vbox(2)
@@ -256,17 +258,17 @@ func _action(c: String, a: String) -> void:
 			GS.push_news("El presidente realiza una visita de Estado a %s" % nm, 2)
 		"ayuda":
 			fx = {"money": -600, "rel": {c: 11}, "prestigio": 1}
-			GS.push_news("Valdoria aprueba un paquete de ayuda para %s" % nm, 1)
+			GS.push_news("%s aprueba un paquete de ayuda para %s" % [W.COUNTRY_NAME, nm], 1)
 		"sanciones":
 			var p: String = GS.country_pers(c)
 			fx = {"rel": {c: -25}, "economia": -1.5, "prestigio": 2 if p in ["agresivo", "volatil"] else -1}
 			if c == "kharovia":
 				fx["rel"]["union"] = 5
 				fx["rel"]["norland"] = 4
-			GS.push_news("Valdoria impone sanciones económicas a %s" % nm, 3)
+			GS.push_news("%s impone sanciones económicas a %s" % [W.COUNTRY_NAME, nm], 3)
 		"embajador":
 			fx = {"rel": {c: -15}, "militares": 1, "clase_media": 1}
-			GS.push_news("Valdoria expulsa al embajador de %s" % nm, 2)
+			GS.push_news("%s expulsa al embajador de %s" % [W.COUNTRY_NAME, nm], 2)
 	GS.countries[c]["cd"][a] = GS.day + (120 if a == "visita" else 180)
 	GS.apply_fx(fx, "Diplomacia")
 	GS.remember(a, {"who": c})

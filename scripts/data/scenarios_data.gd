@@ -7,7 +7,7 @@ extends RefCounted
 ##   setup.debt: deuda extra en proporción al PIB · setup.cycle: ciclo económico inicial
 ##   setup.rel / setup.party_rel: relaciones con países y partidos · setup.own_seats: escaños propios ±
 ##   schedule: eventos guionizados [id, día] · tramas: tramas que este escenario hace más probables
-const SCENARIOS := {
+static var SCENARIOS := {
 	"estable": {
 		"name": "Legislatura tranquila", "icon": "sol", "w": 1.4,
 		"desc": "Un país sin grandes sobresaltos. Por ahora.",
@@ -91,7 +91,7 @@ const SCENARIOS := {
 
 ## Tramas: historias de varios meses. Cada partida sortea unas pocas y programa su primer evento.
 ##   start: primer evento (chain_only) · window: [día mínimo, día máximo] en una legislatura de 2 años
-const TRAMAS := {
+static var TRAMAS := {
 	"controladores": {"name": "La huelga de los controladores", "start": "controladores_aviso", "window": [60, 400], "w": 1.0},
 	"pegaso": {"name": "Espías en el móvil", "start": "pegaso_descubierto", "window": [40, 350], "w": 1.0},
 	"burbuja": {"name": "La burbuja inmobiliaria", "start": "burbuja_aviso", "window": [50, 250], "w": 0.8},

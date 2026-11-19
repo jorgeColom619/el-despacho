@@ -2,7 +2,7 @@ extends RefCounted
 ## Preguntas de prensa, frases de discurso y contenido del debate electoral.
 ## Tonos: honesto, evasivo, firme, humor, ataque
 
-const QUESTIONS := [
+static var QUESTIONS := [
 	# --- economía
 	{"q": "El paro está en el {paro}%. ¿Cuándo va a notar la gente de la calle su política económica?", "cond": {"lt": {"economia": 45}},
 		"a": [
@@ -151,7 +151,7 @@ const QUESTIONS := [
 		]},
 ]
 
-const SPEECH := {
+static var SPEECH := {
 	"apertura": [
 		{"t": "Queridos compatriotas: hoy me dirijo a ustedes con humildad y con determinación.", "fx": {"clase_media": 1.0, "jubilados": 1.0}},
 		{"t": "Valdorianas y valdorianos: vivimos un momento decisivo para nuestra historia.", "fx": {"militares": 1.0, "clase_media": 0.5}},
@@ -195,7 +195,7 @@ const SPEECH := {
 	],
 }
 
-const DEBATE := [
+static var DEBATE := [
 	{"topic": "Economía", "attack": "Bajo su Gobierno la cesta de la compra está más cara que nunca. Las familias no llegan a fin de mes, presidente. ¿Vive usted en otro país?", "kind": "emocional", "meter": "economia"},
 	{"topic": "Sanidad", "attack": "Las listas de espera se han disparado. Mi vecina lleva ocho meses esperando una operación de cadera. ¿Qué le digo?", "kind": "emocional", "meter": "bienestar"},
 	{"topic": "Seguridad", "attack": "Los datos no mienten: la delincuencia ha subido y su Gobierno mira hacia otro lado.", "kind": "cifras", "meter": "seguridad"},
@@ -207,7 +207,7 @@ const DEBATE := [
 ]
 
 # Respuestas del debate: eficacia según el tipo de ataque
-const DEBATE_REPLIES := [
+static var DEBATE_REPLIES := [
 	{"id": "datos", "name": "Datos y gestión", "icon": "grafico", "desc": "Defiende tu gestión con cifras. Muy eficaz si tus números son buenos.", "vs": {"cifras": 1.0, "emocional": 0.4, "personal": 0.6, "promesa": 0.7}, "uses_meter": true},
 	{"id": "empatia", "name": "Empatía", "icon": "bienestar", "desc": "Conecta con el dolor de la gente. Imbatible contra la emoción.", "vs": {"cifras": 0.4, "emocional": 1.0, "personal": 0.6, "promesa": 0.5}},
 	{"id": "elegancia", "name": "Elegancia", "icon": "capital", "desc": "No entrar al trapo. Desactiva los ataques personales.", "vs": {"cifras": 0.3, "emocional": 0.5, "personal": 1.0, "promesa": 0.4}},
@@ -215,7 +215,7 @@ const DEBATE_REPLIES := [
 	{"id": "contraataque", "name": "Contraataque", "icon": "rayo", "desc": "Golpe al historial del rival. Arriesgado pero puede ser devastador.", "vs": {"cifras": 0.7, "emocional": 0.6, "personal": 0.7, "promesa": 0.7}, "risky": true},
 ]
 
-const DEBATE_LINES := {
+static var DEBATE_LINES := {
 	"datos": ["Los datos oficiales dicen exactamente lo contrario, y usted lo sabe.", "Le invito a mirar las cifras: hoy estamos mejor que cuando llegamos."],
 	"empatia": ["Esa vecina merece respeto, no ser utilizada. Y le digo: no la vamos a abandonar.", "Sé lo que es sufrir. Por eso cada decisión que tomo piensa en esas familias."],
 	"elegancia": ["No voy a entrar en descalificaciones. Los ciudadanos merecen un debate a la altura.", "Usted insulta; yo propongo. Esa es la diferencia entre nosotros."],
@@ -223,7 +223,7 @@ const DEBATE_LINES := {
 	"contraataque": ["Tiene gracia que me lo diga usted, con el historial de su partido.", "Cuando ustedes gobernaron, todo lo que hoy critica era el doble de grave."],
 }
 
-const OPP_REACTIONS := {
+static var OPP_REACTIONS := {
 	"good": ["Eh... bueno, eso habría que matizarlo...", "Usted siempre con sus datos manipulados.", "No me ha respondido a la pregunta."],
 	"bad": ["¿Lo ven? No tiene respuesta.", "Otra vez escurriendo el bulto, presidente.", "Los ciudadanos no son tontos."],
 }

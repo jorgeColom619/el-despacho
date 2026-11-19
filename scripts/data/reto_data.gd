@@ -2,7 +2,7 @@ extends RefCounted
 ## Reto del día: cada día, la misma partida para todos (partido, escenario, mundo y promesas) con dos reglas especiales.
 ## Legislatura de un año en dificultad normal. Se guarda la mejor puntuación del día y la racha de días seguidos.
 
-const RULES := {
+static var RULES := {
 	"congreso_hostil": {"name": "Congreso hostil", "desc": "Todos los grupos parlamentarios desconfían de usted: −15 de relación con cada uno.", "icon": "mazo"},
 	"herencia": {"name": "Herencia envenenada", "desc": "El Gobierno anterior dejó un agujero: la deuda empieza 20 puntos más alta.", "icon": "dinero"},
 	"sin_luna": {"name": "Sin luna de miel", "desc": "Nadie le da cien días de cortesía: todos los grupos sociales empiezan enfadados.", "icon": "corazon_roto"},
@@ -26,7 +26,7 @@ const RULES := {
 }
 
 ## Reglas que no se mezclan entre sí
-const CLASH := [["bonanza", "herencia"], ["bonanza", "sequia"], ["anticipadas", "crisis_cadena"], ["meme", "promesas_duras"],
+static var CLASH := [["bonanza", "herencia"], ["bonanza", "sequia"], ["anticipadas", "crisis_cadena"], ["meme", "promesas_duras"],
 	["jovenes", "jubilados"], ["empresarios", "trabajadores"], ["pc_cero", "congreso_hostil"]]
 
-const NAMES := ["Alejandro Ríos", "Lucía Herrera", "Martín Salcedo", "Clara Vidal", "Andrés Molina", "Elena Robledo", "Sergio Cano", "Irene Pascual"]
+static var NAMES := ["Alejandro Ríos", "Lucía Herrera", "Martín Salcedo", "Clara Vidal", "Andrés Molina", "Elena Robledo", "Sergio Cano", "Irene Pascual"]

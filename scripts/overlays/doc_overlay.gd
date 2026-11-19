@@ -340,7 +340,7 @@ func _build_paper() -> void:
 	rule.color = Color(INK, 0.7)
 	rule.custom_minimum_size = Vector2(0, 2)
 	paper_box.add_child(rule)
-	paper_box.add_child(UI.lbl("Ref. PR-%d/%04d   ·   Santa Aurora, %s" % [UI.date_dict(GS.day)["year"], int(item["uid"]) * 7 + 113, UI.date_mid(GS.day)], UI.f_type, 15, Color(INK, 0.75)))
+	paper_box.add_child(UI.lbl("Ref. PR-%d/%04d   ·   %s, %s" % [UI.date_dict(GS.day)["year"], int(item["uid"]) * 7 + 113, W.CAPITAL, UI.date_mid(GS.day)], UI.f_type, 15, Color(INK, 0.75)))
 	var title := UI.lbl(GS.fmt(ev.get("title", "")), UI.f_serif_b, 34 if kind != "carta" else 30, INK)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.custom_minimum_size = Vector2(720, 0)

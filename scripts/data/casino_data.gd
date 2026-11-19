@@ -4,7 +4,7 @@ extends RefCounted
 
 ## Anfitriones: invitan al presidente, le esperan en la sala y, si pierde, le prestan... a cambio de algo.
 ## country: el país con el que cambia la relación (y el que presta). mode: "meme" solo en ese modo, "serio" fuera de él
-const HOSTS := {
+static var HOSTS := {
 	"magnate": {"name": "Byron Vance", "role": "Dueño de Vance Resorts", "country": "norland", "mode": "serio",
 		"look": {"g": "m", "skin": 0, "hair": "slick", "hc": 6, "glasses": 0, "suit": "1c1c22", "shirt": "ffffff", "tie": "b08a3e", "age": 2, "beard": "none", "eyes": "4d6a80"},
 		"title": "Inauguración del Gran Casino Vance",
@@ -46,7 +46,7 @@ const HOSTS := {
 ## Siempre es dinero público: de dónde sale cambia cuánto se puede sacar, cuánto se nota si falta y a quién le duele
 ## amounts: las tres cantidades que se ofrecen (M€). risk: lo fácil que es tirar del hilo. cut: lo que se nota si hay
 ## que recortar ahí para tapar el agujero. minister: a quién se puede echar la culpa
-const SOURCES := {
+static var SOURCES := {
 	"reservados": {"name": "Fondos reservados", "icon": "candado", "mode": "todos", "amounts": [100, 200, 300], "risk": 0.6,
 		"desc": "Poco dinero y difícil de rastrear: nadie sabe en qué se gastan.", "cut": {"seguridad": -3, "militares": -2}, "minister": "interior"},
 	"infraestructuras": {"name": "Partida de Infraestructuras", "icon": "tren", "mode": "todos", "amounts": [300, 700, 1500], "risk": 1.0,
@@ -58,7 +58,7 @@ const SOURCES := {
 }
 
 ## Fichas (en millones de euros): valor, color del canto, color de las marcas
-const CHIPS := [
+static var CHIPS := [
 	{"v": 5, "col": "b81c2a", "spot": "f2efe6"},
 	{"v": 25, "col": "1f7a3a", "spot": "f2efe6"},
 	{"v": 100, "col": "18181c", "spot": "e9c46a"},
@@ -66,21 +66,21 @@ const CHIPS := [
 ]
 
 ## La noche: empieza a las 22:30 y a las 3:00 llama la Jefa de Gabinete. Minutos que se van en cada jugada
-const NIGHT_START := 22 * 60 + 30
-const NIGHT_END := 27 * 60
-const MINUTES := {"ruleta": 9, "blackjack": 6, "tragaperras": 3}
+static var NIGHT_START := 22 * 60 + 30
+static var NIGHT_END := 27 * 60
+static var MINUTES := {"ruleta": 9, "blackjack": 6, "tragaperras": 3}
 
 ## Límites de las mesas (M€)
-const LIMITS := {"ruleta": [5, 1000], "blackjack": [10, 1000], "tragaperras": [5, 100]}
+static var LIMITS := {"ruleta": [5, 1000], "blackjack": [10, 1000], "tragaperras": [5, 100]}
 
 # ------------------------------------------------------------------ ruleta
 
 ## Orden de las casillas en la rueda (sentido horario empezando por el 0)
-const WHEEL := [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22,
+static var WHEEL := [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22,
 	18, 29, 7, 28, 12, 35, 3, 26]
-const REDS := [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
+static var REDS := [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
 ## Cuánto paga cada apuesta (x a 1) y su nombre en la mesa
-const BETS := {
+static var BETS := {
 	"pleno": {"pay": 35, "name": "Pleno"},
 	"caballo": {"pay": 17, "name": "Caballo"},
 	"transversal": {"pay": 11, "name": "Transversal"},
@@ -99,17 +99,17 @@ const BETS := {
 # ------------------------------------------------------------------ tragaperras
 
 ## Símbolos (en el modo meme, otros dibujos con las mismas probabilidades y premios)
-const SYMBOLS := ["cereza", "limon", "campana", "bar", "siete", "sello"]
-const SYMBOL_NAMES := {"cereza": "Cereza", "limon": "Limón", "campana": "Campana", "bar": "BAR", "siete": "Siete", "sello": "Sello presidencial"}
-const MEME_NAMES := {"cereza": "Cereza", "limon": "Tortilla", "campana": "Paloma", "bar": "Plasma", "siete": "Siete", "sello": "Galbana"}
+static var SYMBOLS := ["cereza", "limon", "campana", "bar", "siete", "sello"]
+static var SYMBOL_NAMES := {"cereza": "Cereza", "limon": "Limón", "campana": "Campana", "bar": "BAR", "siete": "Siete", "sello": "Sello presidencial"}
+static var MEME_NAMES := {"cereza": "Cereza", "limon": "Tortilla", "campana": "Paloma", "bar": "Plasma", "siete": "Siete", "sello": "Galbana"}
 ## Tiras de los rodillos: 12 símbolos cada una (3 cerezas, 3 limones, 2 campanas, 2 BAR, 1 siete, 1 sello)
-const STRIPS := [
+static var STRIPS := [
 	["cereza", "bar", "limon", "campana", "cereza", "siete", "limon", "bar", "cereza", "campana", "limon", "sello"],
 	["limon", "cereza", "campana", "bar", "limon", "sello", "cereza", "campana", "limon", "bar", "cereza", "siete"],
 	["campana", "limon", "cereza", "siete", "bar", "cereza", "limon", "sello", "campana", "cereza", "bar", "limon"],
 ]
 ## Premios (veces la apuesta): tres iguales en la línea, o cerezas en los dos primeros rodillos. Devuelve ~92,7 %
-const PAYTABLE := [
+static var PAYTABLE := [
 	{"combo": ["sello", "sello", "sello"], "x": 300},
 	{"combo": ["siete", "siete", "siete"], "x": 120},
 	{"combo": ["bar", "bar", "bar"], "x": 35},
@@ -118,11 +118,11 @@ const PAYTABLE := [
 	{"combo": ["cereza", "cereza", "cereza"], "x": 10},
 	{"combo": ["cereza", "cereza", "*"], "x": 2},
 ]
-const SLOT_BETS := [5, 25, 100]
+static var SLOT_BETS := [5, 25, 100]
 
 # ------------------------------------------------------------------ frases
 
-const CROUPIER := {
+static var CROUPIER := {
 	"bets": ["Hagan juego, señores.", "Hagan juego.", "Pueden apostar."],
 	"close": ["No va más.", "No va más, señores."],
 	"bj_hello": ["Buenas noches, presidente. Apueste cuando quiera.", "Bienvenido a la mesa. ¿Cuánto juega?"],
@@ -136,11 +136,11 @@ const CROUPIER := {
 }
 
 ## La Jefa de Gabinete al teléfono: a las 3:00 se acaba la noche
-const JEFA_CALL := ["Presidente, son las tres de la mañana. Hay un consejo de ministros a las nueve y fotógrafos en la puerta. Salga ya, por favor.",
+static var JEFA_CALL := ["Presidente, son las tres de la mañana. Hay un consejo de ministros a las nueve y fotógrafos en la puerta. Salga ya, por favor.",
 	"Presidente, ¿dónde está? Son las tres. Si no sale ahora, mañana abre usted todos los telediarios."]
 
 ## Un fotógrafo en la sala (una vez por noche, a veces)
-const PHOTOGRAPHER := {"title": "Un fotógrafo", "text": "Un fotógrafo de El Heraldo ha colado una cámara en la sala y le ha hecho una foto con las fichas en la mano.",
+static var PHOTOGRAPHER := {"title": "Un fotógrafo", "text": "Un fotógrafo de El Heraldo ha colado una cámara en la sala y le ha hecho una foto con las fichas en la mano.",
 	"choices": [
 		{"t": "Comprarle la tarjeta de memoria (50 M€ en fichas)", "chips": -50.0, "corr": 1.5, "exposure": 2.0},
 		{"t": "Sonreír a la cámara: «Es una cena de trabajo»", "exposure": 14.0},
@@ -148,7 +148,7 @@ const PHOTOGRAPHER := {"title": "Un fotógrafo", "text": "Un fotógrafo de El He
 	]}
 
 ## Cómo tapar el agujero (si se ha perdido dinero público)
-const COVERS := {
+static var COVERS := {
 	"contabilidad": {"name": "Contabilidad creativa", "desc": "Se apunta como «gastos de representación» repartidos en varios años. No cuesta nada... hasta que alguien tira del hilo.", "icon": "documento"},
 	"recorte": {"name": "Recortar sin avisar", "desc": "Se tapa con un recorte en esa misma partida. Lo pagan los ciudadanos, pero el rastro casi desaparece.", "icon": "grafico"},
 	"culpar": {"name": "Culpar a un ministro", "desc": "Se cesa al ministro responsable de esa partida y se le echa la culpa del desfase. Él sabe la verdad.", "icon": "salir"},
@@ -156,14 +156,14 @@ const COVERS := {
 }
 
 ## Qué hacer con lo ganado (el principal vuelve a su partida)
-const PROFITS := {
+static var PROFITS := {
 	"tesoro": {"name": "Al Tesoro, sin decir nada", "desc": "Las cuentas cuadran mejor de lo esperado y nadie pregunta por qué.", "icon": "dinero"},
 	"ong": {"name": "Donarlo a una ONG, con foto", "desc": "Buena prensa... y alguien preguntará de dónde salía el dinero.", "icon": "bienestar"},
 	"cuenta": {"name": "A una cuenta en Qadar", "desc": "Nadie lo sabrá nunca. Probablemente.", "icon": "candado"},
 }
 
 ## Cuando sale todo a la luz: titulares según cuánto dinero público se jugó y se perdió (M€)
-const SCANDAL_LEVELS := [
+static var SCANDAL_LEVELS := [
 	{"max": 300.0, "head": "El presidente se jugó %s de dinero público en el casino", "fx": {"approval": -3, "clase_media": -3, "jovenes": -2, "estabilidad": -3}},
 	{"max": 1500.0, "head": "ESCÁNDALO: %s de dinero público, perdidos en la ruleta", "fx": {"approval": -6, "clase_media": -5, "jovenes": -4, "jubilados": -4, "estabilidad": -8, "prestigio": -4}},
 	{"max": 1e12, "head": "%s DE DINERO PÚBLICO EN EL CASINO: VALDORIA, EN SHOCK", "fx": {"approval": -10, "clase_media": -8, "jovenes": -6, "jubilados": -7, "trabajadores": -6, "estabilidad": -14, "prestigio": -8}},

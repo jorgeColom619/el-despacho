@@ -2,7 +2,7 @@ extends RefCounted
 ## Base de datos de eventos. Tipos: advisor (asesor entra por la puerta), doc (documento en la bandeja),
 ## call (llamada telefónica / negociación), crisis (sala de crisis), news (noticia de fondo).
 
-const EVENTS := [
+static var EVENTS := [
 	# =====================================================================  ASESORES
 	{"id": "bienvenida", "type": "advisor", "who": "jefa", "chain_only": true, "title": "Primer día en el Palacio",
 		"text": "Bienvenido a su despacho, presidente {pres}. Soy {jefa}, su Jefa de Gabinete. Tiene {term} para demostrar que merecía el cargo y ganar la reelección. Sus armas: la bandeja de documentos, el teléfono, el ordenador, el globo para la diplomacia y el micrófono para hablar al país. Cuide la aprobación, la estabilidad... y no deje que la deuda nos ahogue. Cuando esté listo, pulse el botón de reproducir arriba (o la barra espaciadora) para que corra el tiempo. Y un consejo: si se limita a esperar, el desgaste del poder acabará con usted. Gobierne: presente leyes desde el ordenador, cuide a sus socios en el Congreso y hable al país.",

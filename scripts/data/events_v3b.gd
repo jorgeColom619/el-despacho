@@ -1,7 +1,7 @@
 extends RefCounted
 ## Eventos nuevos (versión 3): llamadas y noticias de fondo. Mismo formato que events_data.gd.
 
-const EVENTS := [
+static var EVENTS := [
 	# =====================================================================  LLAMADAS
 	{"id": "v3_call_kade_cazas", "type": "call", "who": "norland", "title": "Kade quiere vender aviones",
 		"text": "Presidente, voy al grano: sus cazas tienen cuarenta años. Le ofrezco veinticuatro aviones de última generación a buen precio. Sería una señal de que Valdoria está con sus aliados. Y créame, mi Congreso se fija en estas cosas.",

@@ -45,7 +45,7 @@ func build() -> void:
 	status.draw.connect(func():
 		var mins := int(GS.day_progress() * 600.0) + 8 * 60
 		status.draw_string(UI.f_sans_b, Vector2(40, 30), "%02d:%02d" % [int(mins / 60) % 24, mins % 60], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.WHITE)
-		status.draw_string(UI.f_sans, Vector2(0, 30), "Valdoria Telecom  ▮▮▮▯", HORIZONTAL_ALIGNMENT_RIGHT, SCREEN.size.x - 40, 15, Color(1, 1, 1, 0.75)))
+		status.draw_string(UI.f_sans, Vector2(0, 30), GS.fmt("{pais} Telecom  ▮▮▮▯"), HORIZONTAL_ALIGNMENT_RIGHT, SCREEN.size.x - 40, 15, Color(1, 1, 1, 0.75)))
 	root.add_child(status)
 	content = Control.new()
 	content.position = SCREEN.position + Vector2(0, 50)
@@ -181,7 +181,7 @@ static func _count(n: int) -> String:
 # ------------------------------------------------------------------ inicio: lo que dice la gente
 
 func _feed(v: VBoxContainer) -> void:
-	_header(v, "Inicio", "Lo que se dice en Valdoria")
+	_header(v, "Inicio", GS.fmt("Lo que se dice en {pais}"))
 	var feed: Array = GS.social.get("feed", [])
 	if feed.is_empty():
 		v.add_child(UI.lbl("Todavía no hay nada. Vuelva cuando haya noticias.", UI.f_sans, 17, UI.DIM))
@@ -217,7 +217,7 @@ func _post_card(p: Dictionary) -> Control:
 # ------------------------------------------------------------------ tendencias
 
 func _trends(v: VBoxContainer) -> void:
-	_header(v, "Tendencias", "Lo más comentado en Valdoria")
+	_header(v, "Tendencias", GS.fmt("Lo más comentado en {pais}"))
 	var trends: Array = GS.social.get("trends", [])
 	for i in trends.size():
 		var tr: Dictionary = trends[i]

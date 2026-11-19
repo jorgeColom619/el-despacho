@@ -1,5 +1,5 @@
 extends Control
-## Configuración de la partida: retrato, nombre, partido, dificultad y duración.
+## Configuración de la partida: país, retrato, nombre, partido, dificultad y duración.
 
 const Backdrop := preload("res://scripts/screens/backdrop.gd")
 const Portrait := preload("res://scripts/ui/portrait.gd")
@@ -8,6 +8,8 @@ const Widgets := preload("res://scripts/ui/widgets.gd")
 const W := preload("res://scripts/data/world_data.gd")
 const SC := preload("res://scripts/data/scenarios_data.gd")
 const PromisesScreen := preload("res://scripts/screens/promises_screen.gd")
+const PD := preload("res://scripts/data/paises_data.gd")
+const Pais := preload("res://scripts/systems/pais.gd")
 
 var main: Node
 var look := {"g": "m", "skin": 1, "hair": "side", "hc": 1, "glasses": 0, "beard": "none", "suit": "1b2436", "shirt": "f4f6fa", "tie": "8e2a22", "age": 1, "eyes": "3b2a20"}
@@ -27,6 +29,11 @@ var party_cards := {}
 var diff_btns := []
 var year_btns := []
 var labels := {}
+var pais := "valdoria"
+var pais_name: Label
+var pais_info: Label
+var party_box: HBoxContainer
+var flag_frame: Control
 
 const HAIR_M := ["side", "short", "slick", "wavy", "curly", "buzz", "balding", "bald"]
 const HAIR_F := ["bob", "long", "wavy", "bun", "curly", "ponytail"]
@@ -47,23 +54,49 @@ func _ready() -> void:
 	add_child(head)
 	head.add_child(UI.lbl("TOMA DE POSESIÓN", UI.f_sans_b, 16, UI.GOLD))
 	head.add_child(UI.lbl("Forme su Gobierno", UI.f_serif_b, 56, UI.CREAM))
+	# --- país que gobernará (arriba a la derecha)
+	pais = GS.pais if PD.PAISES.has(GS.pais) else "valdoria"
+	if Pais.actual != pais:
+		GS.usar_pais(pais)
+	var pv := UI.vbox(2)
+	pv.position = Vector2(1180, 34)
+	pv.size = Vector2(640, 110)
+	add_child(pv)
+	pv.add_child(UI.lbl("PAÍS", UI.f_sans_b, 16, UI.GOLD))
+	var prow := UI.hbox(12)
+	pv.add_child(prow)
+	var pprev := UI.btn("◀", "normal", 18)
+	pprev.custom_minimum_size = Vector2(48, 50)
+	pprev.pressed.connect(func(): _cycle_pais(-1))
+	prow.add_child(pprev)
+	pais_name = UI.lbl("", UI.f_serif_b, 36, UI.CREAM, HORIZONTAL_ALIGNMENT_CENTER)
+	pais_name.custom_minimum_size = Vector2(440, 0)
+	prow.add_child(pais_name)
+	var pnext := UI.btn("▶", "normal", 18)
+	pnext.custom_minimum_size = Vector2(48, 50)
+	pnext.pressed.connect(func(): _cycle_pais(1))
+	prow.add_child(pnext)
+	pais_info = UI.lbl("", UI.f_sans_m, 16, UI.GOLD_L)
+	pais_info.mouse_filter = Control.MOUSE_FILTER_PASS
+	pv.add_child(pais_info)
 	# --- columna izquierda: retrato
 	var frame := Control.new()
 	frame.position = Vector2(120, 190)
 	frame.size = Vector2(440, 520)
 	frame.draw.connect(func():
 		frame.draw_rect(Rect2(Vector2.ZERO, frame.size), Color(0.05, 0.08, 0.14))
-		Flags.draw_flag(frame, "valdoria", Rect2(0, 0, frame.size.x, frame.size.y * 0.8))
+		Flags.draw_flag(frame, "propia", Rect2(0, 0, frame.size.x, frame.size.y * 0.8))
 		frame.draw_rect(Rect2(Vector2.ZERO, frame.size), Color(0.02, 0.03, 0.06, 0.55))
 		frame.draw_rect(Rect2(Vector2.ZERO, frame.size), UI.GOLD, false, 3.0))
 	add_child(frame)
+	flag_frame = frame
 	portrait = Portrait.new()
 	portrait.position = Vector2(10, 20)
 	portrait.size = Vector2(420, 500)
 	frame.add_child(portrait)
 	frame.clip_contents = true
 	name_edit = LineEdit.new()
-	name_edit.text = "Alejandro Ríos"
+	name_edit.text = PD.PAISES[pais]["pres_m"]
 	name_edit.placeholder_text = "Nombre del presidente"
 	name_edit.position = Vector2(120, 726)
 	name_edit.size = Vector2(440, 50)
@@ -98,7 +131,8 @@ func _ready() -> void:
 		mh.add_child(mb)
 		mode_btns[mid] = mb
 	right.add_child(Widgets.section("Su partido"))
-	var ph := UI.hbox(18)
+	party_box = UI.hbox(18)
+	var ph := party_box
 	right.add_child(ph)
 	for p in ["MP", "CC", "AR"]:
 		var card := _party_card(p)
@@ -166,6 +200,29 @@ func _ready() -> void:
 	_refresh()
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.6)
+
+
+## Cambia el país: se aplican sus datos (partidos, escenarios, textos) y se rehacen las tarjetas de partido
+func _cycle_pais(d: int) -> void:
+	var antes: Dictionary = PD.PAISES[pais]
+	pais = PD.ORDEN[wrapi(PD.ORDEN.find(pais) + d, 0, PD.ORDEN.size())]
+	Sfx.play("click", -4.0)
+	GS.usar_pais(pais)
+	# el nombre por defecto sigue al país (si no lo ha cambiado el jugador)
+	var nm := name_edit.text.strip_edges()
+	if nm == "" or nm == antes["pres_m"] or nm == antes["pres_f"]:
+		name_edit.text = PD.PAISES[pais]["pres_f" if look["g"] == "f" else "pres_m"]
+	for c in party_box.get_children():
+		c.queue_free()
+	party_cards.clear()
+	for p in ["MP", "CC", "AR"]:
+		var card := _party_card(p)
+		party_box.add_child(card)
+		party_cards[p] = card
+	if scenario != "aleatorio" and not SC.SCENARIOS.has(scenario):
+		scenario = "aleatorio"
+	flag_frame.queue_redraw()
+	_refresh()
 
 
 func _cycle_scenario(d: int) -> void:
@@ -272,6 +329,10 @@ func _style(b: Button, on: bool, col: Color = UI.GOLD) -> void:
 
 
 func _refresh() -> void:
+	var f: Dictionary = PD.PAISES[pais]
+	pais_name.text = String(f["full"])
+	pais_info.text = "%s · Capital: %s" % [f["regime"], f["cap"]]
+	pais_info.tooltip_text = String(f["desc"])
 	portrait.setup(Perfil.apply_outfit(look), true)
 	portrait.mood = 0.35
 	labels["g"].text = "Masculino" if look["g"] == "m" else "Femenino"
@@ -303,9 +364,9 @@ func _refresh() -> void:
 func _start() -> void:
 	var nm := name_edit.text.strip_edges()
 	if nm == "":
-		nm = "Alejandro Ríos"
+		nm = PD.PAISES[pais]["pres_f" if look["g"] == "f" else "pres_m"]
 	Sfx.play("whoosh", -2.0)
-	var opts := {"name": nm, "party": party, "difficulty": difficulty, "years": years, "mode": mode, "scenario": scenario, "look": look.duplicate()}
+	var opts := {"name": nm, "party": party, "difficulty": difficulty, "years": years, "mode": mode, "scenario": scenario, "look": look.duplicate(), "pais": pais}
 	# antes de jurar el cargo: el programa electoral (hasta tres promesas)
 	var ps := PromisesScreen.new()
 	ps.party = party
