@@ -744,7 +744,7 @@ static func spend_ratio() -> float:
 
 ## Hacia dónde van los precios: más gasto, déficit, IVA alto o una economía recalentada los empujan hacia arriba
 static func inflation_target() -> float:
-	return INFL_TARGET + (spend_ratio() - 1.0) * 6.0 + maxf(0.0, deficit_pct() - 2.0) * 0.35 + (float(GS.meters["economia"]) - 55.0) * 0.06 + GS.cycle * 0.8 + (float(GS.taxes["iva"]) - 21.0) * 0.12
+	return INFL_TARGET + GS.Mercado.inflacion_mod() + (spend_ratio() - 1.0) * 6.0 + maxf(0.0, deficit_pct() - 2.0) * 0.35 + (float(GS.meters["economia"]) - 55.0) * 0.06 + GS.cycle * 0.8 + (float(GS.taxes["iva"]) - 21.0) * 0.12
 
 
 ## Cada mes: los precios se mueven y el Banco Central (independiente) ajusta los tipos, como mucho medio punto

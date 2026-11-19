@@ -6,6 +6,7 @@ extends Node
 const PD := preload("res://scripts/data/paises_data.gd")
 const Pais := preload("res://scripts/systems/pais.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const M := preload("res://scripts/systems/mercado.gd")
 
 
 func run() -> void:
@@ -92,3 +93,66 @@ func _buscar(val, prohibidas: Array, donde: String, out: Array) -> void:
 			_buscar(val[k], prohibidas, donde, out)
 			if k is String:
 				_buscar(k, prohibidas, donde + "[clave]", out)
+
+
+## --mercadotest: precios, cortes de suministro, decisiones y embargo con cada país
+func mercado() -> void:
+
+	var fallos := 0
+	for p in PD.ORDEN:
+		GS.new_game({"name": "Prueba", "party": "MP", "difficulty": 1, "years": 2, "look": {}, "pais": p})
+		GS.no_save = true
+		GS.set_speed(0)
+		var base := GS.monthly_balance()
+		print("== %s · precios iniciales %s · comercio %s" % [p, GS.mercado["precios"], UI.money(M.saldo())])
+		# subida del gas: quien lo compra pierde, quien lo vende gana
+		GS.mercado["precios"]["gas"] = 160.0
+		print("   gas a 160: comercio %s · economía %s · inflación %s" % [UI.money(M.saldo(), true), UI.num(M.economia_mod(), 1), UI.num(M.inflacion_mod(), 1)])
+		if (M.perfil("gas") < 0.0) != (M.saldo() < 0.0):
+			print("   FALLO: el signo del comercio no cuadra con el perfil del gas")
+			fallos += 1
+		# el proveedor del recurso que más importamos se enfada y nos lo corta
+		var objetivo := ""
+		for c in M.R.ARMAS.keys():
+			var r: String = M.R.ARMAS[c]
+			if GS.countries.has(c) and r != "agua" and M.perfil(r) < 0.0:
+				objetivo = c
+				break
+		if objetivo == "":
+			print("   (nadie puede cortarnos nada)")
+		else:
+			var rr: String = M.R.ARMAS[objetivo]
+			GS.countries[objetivo]["rel"] = -90.0
+			var antes: float = M.precio(rr)
+			var meses := 0
+			while not GS.mercado["cortes"].has(rr) and meses < 60:
+				for i in 30:
+					GS.advance_day()
+				meses += 1
+				for q in [GS.inbox, GS.calls, GS.visitors, GS.alerts]:
+					q.clear()
+			if not GS.mercado["cortes"].has(rr):
+				print("   FALLO: %s no corta %s ni con la relación a -90" % [objetivo, rr])
+				fallos += 1
+			else:
+				print("   %s corta %s tras %d meses · precio para nosotros %d → %d" % [objetivo, rr, meses, int(antes), int(M.precio(rr))])
+				GS.apply_fx({"mercado": {"diversificar": rr}}, "prueba", false)
+				print("   otros proveedores: precio %d · %s" % [int(M.precio(rr)), GS.mercado["cortes"]])
+				GS.apply_fx({"mercado": {"fin_corte": rr}}, "prueba", false)
+				if GS.mercado["cortes"].has(rr):
+					print("   FALLO: el corte no termina al negociar")
+					fallos += 1
+		# embargo a Kharovia (o Tsaing)
+		var emb := "kharovia" if GS.countries.has("kharovia") else "tsaing"
+		var fx: Dictionary = M.embargar(emb)
+		print("   embargo a %s: %s · cortes ahora %s" % [emb, fx, GS.mercado["cortes"].keys()])
+		# un año entero con el mercado moviéndose
+		GS.countries[objetivo if objetivo != "" else "union"]["rel"] = 20.0
+		for i in 365:
+			GS.advance_day()
+			for q in [GS.inbox, GS.calls, GS.visitors, GS.alerts]:
+				q.clear()
+		print("   un año después: precios %s · comercio %s · inflación %s %%" % [GS.mercado["precios"], UI.money(M.saldo(), true), UI.num(GS.inflation, 1)])
+		print("   saldo mensual al empezar %s, ahora %s" % [UI.money(base, true), UI.money(GS.monthly_balance(), true)])
+	print("MERCADOTEST %s" % ("SIN FALLOS" if fallos == 0 else "CON %d FALLOS" % fallos))
+	get_tree().quit()

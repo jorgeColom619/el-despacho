@@ -155,6 +155,9 @@ func _ready() -> void:
 		var PT = load("res://scripts/paistest.gd")
 		var pt = PT.new()
 		add_child(pt)
+		if "--mercadotest" in args:
+			pt.mercado()
+			return
 		pt.run()
 		return
 	if "--uitest" in args:
@@ -726,6 +729,17 @@ func _debug_start() -> void:
 			# CASINO: el anfitrión (magnate, emir, drogan, galbana); --open=casinoruleta empieza ya sentado en la ruleta
 			var skip: String = {"casino": "","casinoruleta": "ruleta", "casinobj": "blackjack", "casinoslot": "slot", "casinocaja": "caja", "casinosalon": "salon"}[debug_open]
 			open_overlay("casino", {"host": OS.get_environment("HOST"), "skip": skip, "demo": OS.get_environment("DEMO")})
+		"mercado":
+			# el mapa del mundo con el panel del mercado; MERCADO=corte simula que nos cortan el gas (o el agua)
+			if OS.get_environment("MERCADO") == "aviso":
+				GS.Mercado.cortar(OS.get_environment("CORTA") if OS.get_environment("CORTA") != "" else "kharovia", OS.get_environment("RECURSO") if OS.get_environment("RECURSO") != "" else "gas")
+				open_overlay("advisor", {"item": GS.visitors.back()})
+				return
+			if OS.get_environment("MERCADO") == "corte":
+				GS.Mercado.cortar("kharovia" if GS.countries.has("kharovia") else "sarvenia", "gas")
+			open_overlay("world", {})
+			if current_overlay != null and current_overlay.has_method("_mercado"):
+				current_overlay.call_deferred("_mercado")
 		"election":
 			GS.day = GS.term_days
 			open_overlay("election", {})

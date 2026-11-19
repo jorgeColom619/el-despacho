@@ -93,6 +93,8 @@ var decree_pending := {}
 var decree_next_day := 0
 ## Inflación anual (%) y tipo de interés del Banco Central (%)
 var inflation := 2.0
+## Mercado mundial: precios de los recursos, cortes de suministro y embargos (ver systems/mercado.gd)
+var mercado := {}
 var policy_rate := 2.5
 ## Pacto de coalición vigente {party, since, law, veto, item, item_from, seat_due, due} ({} si no hay)
 var coalition := {}
@@ -153,6 +155,7 @@ const Reto := preload("res://scripts/systems/reto.gd")
 const Plantillas := preload("res://scripts/systems/plantillas.gd")
 const Casino := preload("res://scripts/systems/casino.gd")
 const Gobierno := preload("res://scripts/systems/gobierno.gd")
+const Mercado := preload("res://scripts/systems/mercado.gd")
 ## El Gran Casino: invitaciones, el dinero público perdido o escondido y lo que vuelve (ver casino.gd)
 var casino := {}
 
@@ -254,6 +257,7 @@ func new_game(opts: Dictionary) -> void:
 		if p == "CR":
 			rel = 50.0
 		parties[p] = {"seats": seats[p], "rel": rel}
+	mercado = Mercado.nuevo(rng)
 	countries = {}
 	for c in W.COUNTRIES.keys():
 		countries[c] = {"rel": W.COUNTRIES[c]["rel"], "cd": {}}
@@ -718,7 +722,7 @@ func interest() -> float:
 
 
 func monthly_balance() -> float:
-	return revenue() - spending() - interest() + monthly_adj + float(_trait_sums.get("_monthly", 0.0))
+	return revenue() - spending() - interest() + monthly_adj + float(_trait_sums.get("_monthly", 0.0)) + Mercado.saldo()
 
 
 func _economy_daily() -> void:
@@ -763,7 +767,7 @@ func _update_targets() -> void:
 	for t in treaties:
 		if t["type"] in ["comercio", "inversion", "energia"]:
 			econ_treaties += 1
-	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + multiplier - maxf(0.0, policy_rate - 3.0) * 1.2 + maxf(0.0, 2.0 - policy_rate) * 0.6 + cycle * 9.0 + (fac["empresarios"] - 50.0) * 0.12 - maxf(0.0, 35.0 - fac["empresarios"]) * 0.15 + soft_mod("economia") + diff * 0.5
+	mtarget["economia"] = 50.0 + (b["infraestructura"] - 1.0) * 18.0 + (b["educacion"] - 1.0) * 5.0 - tb - maxf(0.0, debt_ratio() - 100.0) * 0.25 + (m["estabilidad"] - 50.0) * 0.12 + econ_treaties * 2.0 + multiplier - maxf(0.0, policy_rate - 3.0) * 1.2 + maxf(0.0, 2.0 - policy_rate) * 0.6 + cycle * 9.0 + (fac["empresarios"] - 50.0) * 0.12 - maxf(0.0, 35.0 - fac["empresarios"]) * 0.15 + Mercado.economia_mod() + soft_mod("economia") + diff * 0.5
 	mtarget["bienestar"] = 48.0 + (b["sanidad"] - 1.0) * 28.0 + (b["educacion"] - 1.0) * 14.0 + (b["social"] - 1.0) * 16.0 + (b["pensiones"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.15 + soft_mod("bienestar") + diff * 0.5
 	mtarget["seguridad"] = 52.0 + (b["seguridad"] - 1.0) * 32.0 + (b["defensa"] - 1.0) * 8.0 + (m["economia"] - 50.0) * 0.1 + (m["bienestar"] - 50.0) * 0.1 + soft_mod("seguridad") + diff * 0.5
 	var support := (supporting_seats() - 175.0) / 350.0 * 40.0
@@ -915,6 +919,8 @@ func _monthly(dd: Dictionary) -> void:
 	last_balance = monthly_balance()
 	pc = clampf(pc + Gobierno.pc_income(), 0.0, 100.0)
 	Gobierno.monthly()
+	# el mercado mundial: precios, sacudidas y cortes de suministro
+	Mercado.monthly(dd)
 	# La corrupción se diluye con el tiempo... salvo que alguien tire del hilo (ver escándalos)
 	corruption = maxf(0.0, corruption * (0.93 if flags.has("transparencia") else 0.95) - 0.4)
 	# Ciclo económico: paseo aleatorio que tiende a volver a la normalidad
@@ -1639,6 +1645,8 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				Gobierno.sign_pact(str(v))
 			"inflation":
 				inflation = clampf(inflation + float(v), -2.0, 18.0)
+			"mercado":
+				Mercado.fx(v)
 			"reshuffle":
 				var keys := ministers.keys()
 				keys.erase("jefa")
@@ -2285,7 +2293,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "budget_passed_year", "budget_retry_day", "decree_pending", "decree_next_day", "inflation", "policy_rate", "coalition", "reforms", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino", "pais"]
+	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino", "pais", "mercado"]
 
 
 func has_save() -> bool:
@@ -2341,6 +2349,8 @@ func load_game() -> bool:
 	if not (d is Dictionary):
 		return false
 	usar_pais(String(d.get("pais", "valdoria")))
+	# partidas de antes del mercado mundial: se crea al primer uso
+	mercado = {}
 	unlocks = {}
 	mode = "clasico"
 	term_index = 1

@@ -18,7 +18,7 @@ imposible a la vez, con el mismo reloj. Los países que no lleva nadie los juega
 | Fase | Qué incluye | Estado |
 |---|---|---|
 | 1. Ficha de país e identidad | Los datos fijos de Valdoria pasan a una ficha por país. Valdoria y Norland jugables. | **Hecha** |
-| 2. Recursos y mercado mundial | Gas, petróleo, alimentos, industria y tecnología con precios. Cortar el gas, embargos, agua del río. | Pendiente |
+| 2. Recursos y mercado mundial | Gas, petróleo, alimentos, industria, tecnología y minerales con precios. Cortes de suministro, embargos, agua del río. | **Hecha** |
 | 3. Regímenes | Marco común y después Kharovia, Tsaing, Qadar, Sarvenia y Aldora. | Pendiente |
 | 4. Multijugador por IP directa | UPnP automático, varios jugadores (probado con dos), reloj común, IA para los libres, diplomacia entre jugadores. | Pendiente |
 | 5. Contenido propio | Eventos, tramas y escenarios escritos para cada país. | Pendiente |
@@ -92,4 +92,34 @@ godot --headless --path . -- --paistest          # MUESTRA=20 imprime frases ada
 godot --headless --path . -- --autotest=730 --runs=4 --strategy=player --difficulty=1 --pais=norland
 godot --path . -- --uitest --pais=norland
 godot --path . -- --shot=newgame --pais=norland --capt=captura.png
+```
+
+## Fase 2: cómo funciona
+
+- `scripts/data/recursos_data.gd`: seis recursos (gas, petróleo, alimentos, industria, tecnología y
+  minerales), el perfil de cada país (+ exporta, − importa), su fuerza y su punto débil, el recurso que cada
+  uno puede cortar y las sacudidas del mercado mundial.
+- `scripts/systems/mercado.gd`: precios con índice 100 = lo normal. Cada mes vuelven poco a poco a lo
+  normal, con ruido, el gas sube en invierno y a veces hay una sacudida (huracán, ola de frío, cosecha récord).
+  El país que se gobierna nota los precios en:
+  - el saldo mensual (`Mercado.saldo()`, dentro de `GS.monthly_balance()`),
+  - el objetivo de la economía (`Mercado.economia_mod()`),
+  - la inflación: el gas, el petróleo y los alimentos empujan los precios de quien los compra
+    (`Mercado.inflacion_mod()`, dentro de `Gobierno.inflation_target()`).
+- **Cortes de suministro:** si la relación con un proveedor baja de −25, puede cortarnos lo que le compramos.
+  Kharovia corta el gas, Qadar el petróleo, Tsaing la industria, Aldora los minerales, Norland la tecnología
+  y Sarvenia el agua del río Seco (solo a Valdoria, que está río abajo; sin agua se pierden cosechas).
+  Ese recurso nos cuesta un 60 % más. Llega un aviso al despacho con cuatro salidas: negociar, buscar otros
+  proveedores (el recargo baja al 20 %), aguantar o responder con sanciones. El corte se acaba si la
+  relación sube de +10 o pasan 5-8 meses.
+- **Embargo comercial:** nueva acción en el mapa del mundo. Dura un año. Hunde la relación, y si ese país era
+  nuestro gran proveedor de algo, a nosotros también nos cuesta.
+- **Mapa del mundo:** cada país muestra lo que exporta e importa, su fuerza y su punto débil. El botón
+  «Mercado mundial» enseña los precios, lo que compramos o vendemos y su efecto en el saldo, la economía y
+  la inflación.
+- La partida guarda el mercado. Las partidas antiguas lo crean al cargarlas.
+
+```
+godot --headless --path . -- --paistest --mercadotest
+MERCADO=corte godot --path . -- --shot=office --open=mercado
 ```
