@@ -2,19 +2,27 @@ extends RefCounted
 ## El móvil del presidente: la red social «Pío» y los chats privados. Estado en GS.social:
 ## {followers, feed: [publicaciones], trends: [tendencias], posts: [las del presidente], chats: [conversaciones],
 ##  last_post, chat_cd, seen_feed (cuántas había al abrir el móvil por última vez)}
+##
+## Chats: una conversación por persona, como en cualquier móvil: {who, name, role, msgs: [{me, t, day}],
+##  state ("nuevo": le han preguntado algo y espera respuesta · "respondido" · "visto" · "charla"),
+##  id (el mensaje con respuestas preparadas que espera respuesta), pregunta (su texto), deadline, day (última
+##  actividad), unread, mood (cómo le cae el presidente, -10..10), fx_day}
 
 const D := preload("res://scripts/data/social_data.gd")
 const W := preload("res://scripts/data/world_data.gd")
 const Pais := preload("res://scripts/systems/pais.gd")
+const Charla := preload("res://scripts/systems/charla.gd")
 
 const FEED_MAX := 60
 const POST_COOLDOWN := 6
 const CHAT_DAYS := 6
+const MSGS_MAX := 80
+const CHATS_MAX := 30
 
 
 static func start(rng: RandomNumberGenerator) -> void:
 	GS.social = {"followers": rng.randi_range(380, 620) * 1000, "feed": [], "trends": [], "posts": [], "chats": [],
-		"last_post": -99, "chat_cd": rng.randi_range(6, 12), "seen_feed": 0, "trend_day": -99}
+		"last_post": -99, "chat_cd": rng.randi_range(6, 12), "seen_feed": 0, "trend_day": -99, "hilos": true}
 	# los personajes del móvil: su madre y su jefe/a de comunicación
 	var g := "f" if rng.randf() < 0.5 else "m"
 	var mlook := DB.rand_look("f")
@@ -185,6 +193,7 @@ static func _refresh_trends(force: bool = false) -> void:
 static func tick() -> void:
 	if not on():
 		return
+	_unificar()
 	_refresh_trends()
 	# alguna publicación suelta según el ambiente
 	if randf() < 0.35:
@@ -203,12 +212,14 @@ static func tick() -> void:
 	GS.social["followers"] = maxi(10000, int(GS.social["followers"]) + int((GS.approval - 45.0) * randf_range(20.0, 120.0)))
 
 
+## Conversaciones con algo sin leer (o una pregunta sin contestar)
 static func unread() -> int:
 	if not on():
 		return 0
+	_unificar()
 	var n := 0
 	for c in GS.social["chats"]:
-		if c["state"] == "nuevo":
+		if c["state"] == "nuevo" or int(c.get("unread", 0)) > 0:
 			n += 1
 	return n
 
@@ -270,16 +281,118 @@ static func _send_chat(pick: Dictionary) -> void:
 	GS.social["used_chats"] = used
 	GS.used["chat_" + str(pick["id"])] = GS.day
 	var who := str(pick["who"])
+	var chat := hilo(who)
+	# si le había preguntado otra cosa y sigue sin contestar, eso se queda en visto
+	if chat["state"] == "nuevo":
+		_expire_chat(chat)
 	var ch := DB.character(who)
+	chat["name"] = ch.get("name", chat["name"])
+	chat["role"] = ch.get("role", chat["role"])
 	var text := _fmt(str((pick["text"] as Array).pick_random() if pick["text"] is Array else pick["text"]))
-	var chat := {"id": pick["id"], "uid": GS.next_uid(), "who": who, "name": ch.get("name", "?"), "role": ch.get("role", ""),
-		"msgs": [{"me": false, "t": text, "day": GS.day}], "state": "nuevo", "deadline": GS.day + CHAT_DAYS, "day": GS.day}
-	GS.social["chats"].push_front(chat)
-	while GS.social["chats"].size() > 30:
-		GS.social["chats"].pop_back()
+	chat["msgs"].append({"me": false, "t": text, "day": GS.day})
+	chat["id"] = pick["id"]
+	chat["pregunta"] = text
+	chat["state"] = "nuevo"
+	chat["deadline"] = GS.day + CHAT_DAYS
+	chat["unread"] = int(chat.get("unread", 0)) + 1
+	_al_dia(chat)
 	Sfx.play("notify", -6.0, 1.3)
 	GS.toast.emit("Mensaje de %s: «%s»" % [chat["name"], text.left(60) + ("…" if text.length() > 60 else "")], "info", "movil")
 	GS.queue_changed.emit()
+
+
+## La conversación con una persona: una sola por persona (la crea si no existe y crear es true)
+static func hilo(who: String, crear := true) -> Dictionary:
+	_unificar()
+	for c in GS.social["chats"]:
+		if String(c["who"]) == who:
+			return c
+	if not crear:
+		return {}
+	var ch := DB.character(who)
+	var t := {"who": who, "uid": GS.next_uid(), "name": ch.get("name", "?"), "role": ch.get("role", ""), "msgs": [], "state": "charla",
+		"id": "", "pregunta": "", "deadline": 0, "day": GS.day, "unread": 0, "mood": 0.0}
+	GS.social["chats"].push_front(t)
+	while GS.social["chats"].size() > CHATS_MAX:
+		GS.social["chats"].pop_back()
+	return t
+
+
+## Conversación con movimiento: arriba del todo y sin pasarse de mensajes
+static func _al_dia(t: Dictionary) -> void:
+	t["day"] = GS.day
+	var msgs: Array = t["msgs"]
+	if msgs.size() > MSGS_MAX:
+		t["msgs"] = msgs.slice(msgs.size() - MSGS_MAX)
+	var chats: Array = GS.social["chats"]
+	var i := chats.find(t)
+	if i > 0:
+		chats.remove_at(i)
+		chats.push_front(t)
+
+
+## Partidas de antes: cada mensaje abría una conversación nueva (salían tres chats de «Mamá»). Se juntan en una
+## por persona, con los mensajes en orden. Solo la pregunta más reciente sigue esperando respuesta.
+static func _unificar() -> void:
+	if not on() or GS.social.get("hilos", false):
+		return
+	GS.social["hilos"] = true
+	var por := {}
+	var orden := []
+	for c in GS.social["chats"]:
+		var w := String(c["who"])
+		if not por.has(w):
+			por[w] = []
+			orden.append(w)
+		por[w].append(c)
+	var out := []
+	for w in orden:
+		var lst: Array = por[w]
+		lst.sort_custom(func(a, b): return int(a.get("day", 0)) < int(b.get("day", 0)))
+		var t: Dictionary = (lst.back() as Dictionary).duplicate(true)
+		var msgs := []
+		for c in lst:
+			msgs.append_array(c.get("msgs", []))
+		t["msgs"] = msgs.slice(maxi(0, msgs.size() - MSGS_MAX))
+		t["pregunta"] = String((lst.back()["msgs"] as Array)[0]["t"]) if t["state"] == "nuevo" and not (lst.back()["msgs"] as Array).is_empty() else ""
+		if t["state"] != "nuevo":
+			t["id"] = ""
+		t["unread"] = 1 if t["state"] == "nuevo" else 0
+		t["mood"] = 0.0
+		out.append(t)
+	GS.social["chats"] = out
+
+
+## El presidente escribe con sus propias palabras y la persona le contesta a lo que ha dicho (ver Charla).
+## Si le estaban preguntando algo y se entiende qué responde, cuenta como esa respuesta (con sus efectos).
+## Devuelve {"t": respuesta, "out": efectos aplicados, "idx": respuesta preparada elegida o -1}
+static func escribir(t: Dictionary, texto: String) -> Dictionary:
+	texto = texto.strip_edges().substr(0, 280)
+	if texto == "" or not on():
+		return {}
+	t["msgs"].append({"me": true, "t": texto, "day": GS.day})
+	var pend := chat_def(String(t.get("id", ""))) if t.get("state", "") == "nuevo" else {}
+	var r := Charla.responder(t, texto, pend)
+	var out := []
+	var idx := int(r.get("idx", -1))
+	if idx >= 0:
+		var rp: Dictionary = pend["replies"][idx]
+		t["state"] = "respondido"
+		out.append_array(GS.apply_fx(rp.get("fx", {}).duplicate(true), "Mensaje de " + str(t["name"])))
+		GS.log_history("Mensaje de %s" % t["name"], texto)
+	elif t.get("state", "") != "nuevo":
+		t["state"] = "charla"
+	if String(r.get("t", "")) != "":
+		t["msgs"].append({"me": false, "t": String(r["t"]), "day": GS.day})
+	var fx: Dictionary = r.get("fx", {})
+	if not fx.is_empty():
+		out.append_array(GS.apply_fx(fx, "Mensaje a " + str(t["name"])))
+	if String(r.get("news", "")) != "":
+		GS.push_news(String(r["news"]), 2)
+	t["unread"] = 0
+	_al_dia(t)
+	GS.queue_changed.emit()
+	return {"t": String(r.get("t", "")), "out": out, "idx": idx}
 
 
 static func chat_def(id: String) -> Dictionary:
@@ -296,9 +409,11 @@ static func answer_chat(chat: Dictionary, idx: int) -> Array:
 		return []
 	var rp: Dictionary = reps[idx]
 	chat["state"] = "respondido"
+	chat["unread"] = 0
 	chat["msgs"].append({"me": true, "t": _fmt(str(rp["t"])), "day": GS.day})
 	if str(rp.get("back", "")) != "":
 		chat["msgs"].append({"me": false, "t": _fmt(str(rp["back"])), "day": GS.day})
+	_al_dia(chat)
 	var out := GS.apply_fx(rp.get("fx", {}).duplicate(true), "Mensaje de " + str(chat["name"]))
 	GS.log_history("Mensaje de %s" % chat["name"], _fmt(str(rp["t"])))
 	GS.queue_changed.emit()

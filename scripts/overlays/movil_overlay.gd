@@ -20,6 +20,11 @@ var chat_open: Dictionary = {}
 var sel_trend := 0
 var sel_tone := "sincero"
 var last_result: Dictionary = {}
+## «Nuevo mensaje»: la lista de contactos a los que se puede escribir
+var contactos := false
+## Mientras la otra persona «escribe...», su respuesta (el último mensaje) aún no se enseña
+var escribiendo := false
+var entrada: LineEdit
 
 
 func build() -> void:
@@ -76,6 +81,7 @@ func build() -> void:
 		b.pressed.connect(func():
 			Sfx.play("click", -8.0, 1.4)
 			chat_open = {}
+			contactos = false
 			_show(id))
 		bar.add_child(b)
 		tab_btns[id] = b
@@ -95,7 +101,7 @@ func build() -> void:
 	help.size = Vector2(520, 600)
 	root.add_child(help)
 	help.add_child(UI.lbl("EL MÓVIL DEL PRESIDENTE", UI.f_sans_b, 15, UI.GOLD))
-	var ht := UI.lbl("En Pío se ve lo que piensa la calle de cada noticia. Publicar sobre lo que es tendencia puede darle apoyos... o un disgusto: el tono importa más que el tema. En Mensajes le escriben sus ministros, su madre, la oposición o algún líder extranjero; si los deja en visto, a veces lo pagará.", UI.f_sans, 18, UI.DIM)
+	var ht := UI.lbl("En Pío se ve lo que piensa la calle de cada noticia. Publicar sobre lo que es tendencia puede darle apoyos... o un disgusto: el tono importa más que el tema. En Mensajes le escriben sus ministros, su madre, la oposición o algún líder extranjero; si los deja en visto, a veces lo pagará. También puede escribirles usted, con sus propias palabras: le contestarán a lo que diga. Cuidado con lo que pone por escrito.", UI.f_sans, 18, UI.DIM)
 	ht.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ht.custom_minimum_size = Vector2(500, 0)
 	help.add_child(ht)
@@ -107,8 +113,9 @@ func build() -> void:
 
 
 func on_escape() -> void:
-	if not chat_open.is_empty():
+	if not chat_open.is_empty() or contactos:
 		chat_open = {}
+		contactos = false
 		_show("mensajes")
 		return
 	close()
@@ -129,10 +136,22 @@ func _show(id: String) -> void:
 			b.text = "Mensajes (%d)" % n if n > 0 else "Mensajes"
 	for c in content.get_children():
 		c.queue_free()
+	entrada = null
+	var en_chat := id == "mensajes" and not chat_open.is_empty()
 	var scroll := ScrollContainer.new()
-	scroll.size = content.size
+	scroll.size = content.size - Vector2(0, 66 if en_chat else 0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	content.add_child(scroll)
+	if en_chat:
+		_barra_escribir(chat_open)
+		# al abrir una conversación, lo último abajo del todo (como en cualquier móvil)
+		var sc := scroll
+		get_tree().process_frame.connect(func():
+			if is_instance_valid(sc):
+				sc.scroll_vertical = int(sc.get_v_scroll_bar().max_value), CONNECT_ONE_SHOT)
+		get_tree().create_timer(0.05).timeout.connect(func():
+			if is_instance_valid(sc):
+				sc.scroll_vertical = int(sc.get_v_scroll_bar().max_value))
 	var v := UI.vbox(10)
 	v.custom_minimum_size = Vector2(content.size.x - 24, 0)
 	var mc := MarginContainer.new()
@@ -148,10 +167,12 @@ func _show(id: String) -> void:
 		"publicar":
 			_publish(v)
 		"mensajes":
-			if chat_open.is_empty():
-				_chats(v)
-			else:
+			if not chat_open.is_empty():
 				_chat(v, chat_open)
+			elif contactos:
+				_contactos(v)
+			else:
+				_chats(v)
 
 
 func _header(v: VBoxContainer, title: String, sub: String = "") -> void:
@@ -348,26 +369,38 @@ func _result_card(v: VBoxContainer, post: Dictionary) -> void:
 
 # ------------------------------------------------------------------ mensajes
 
+func _retrato(who: String, sz: float) -> Control:
+	var pcx := Control.new()
+	pcx.custom_minimum_size = Vector2(sz, sz)
+	pcx.clip_contents = true
+	pcx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mp := Portrait.new()
+	mp.position = Vector2(-sz * 0.11, -sz * 0.07)
+	mp.size = Vector2(sz * 1.22, sz * 1.46)
+	mp.track_mouse = false
+	mp.breathe = false
+	pcx.add_child(mp)
+	mp.setup(DB.character(who).get("look", {}), false)
+	return pcx
+
+
 func _chats(v: VBoxContainer) -> void:
 	_header(v, "Mensajes", "Conversaciones privadas")
+	var nuevo := UI.btn("✎  Nuevo mensaje", "normal", 16)
+	nuevo.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	nuevo.tooltip_text = "Escriba a quien quiera: su madre, su equipo, la oposición o un líder extranjero"
+	nuevo.pressed.connect(func():
+		contactos = true
+		_show("mensajes"))
+	v.add_child(nuevo)
 	var chats: Array = GS.social.get("chats", [])
-	if chats.is_empty():
-		v.add_child(UI.lbl("No tiene mensajes. Disfrútelo mientras dure.", UI.f_sans, 17, UI.DIM))
-		return
+	var hay := false
 	for c in chats:
+		if (c["msgs"] as Array).is_empty():
+			continue
+		hay = true
 		var h := UI.hbox(12)
-		var pcx := Control.new()
-		pcx.custom_minimum_size = Vector2(56, 56)
-		pcx.clip_contents = true
-		pcx.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var mp := Portrait.new()
-		mp.position = Vector2(-6, -4)
-		mp.size = Vector2(68, 82)
-		mp.track_mouse = false
-		mp.breathe = false
-		pcx.add_child(mp)
-		mp.setup(DB.character(str(c["who"])).get("look", {}), false)
-		h.add_child(pcx)
+		h.add_child(_retrato(str(c["who"]), 56))
 		var tv := UI.vbox(2)
 		tv.custom_minimum_size = Vector2(330, 0)
 		tv.add_child(UI.lbl(str(c["name"]), UI.f_sans_b, 17, Color.WHITE))
@@ -376,41 +409,77 @@ func _chats(v: VBoxContainer) -> void:
 		tv.add_child(prev)
 		h.add_child(tv)
 		var st: String = c["state"]
-		var badge := UI.lbl({"nuevo": "NUEVO", "respondido": "", "visto": "VISTO"}[st], UI.f_sans_b, 13, BLUE if st == "nuevo" else Color(1, 1, 1, 0.35))
+		var sin_leer := st == "nuevo" or int(c.get("unread", 0)) > 0
+		var badge := UI.lbl("NUEVO" if sin_leer else ("VISTO" if st == "visto" else ""), UI.f_sans_b, 13, BLUE if sin_leer else Color(1, 1, 1, 0.35))
 		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(badge)
 		var chat: Dictionary = c
 		v.add_child(Widgets.click_card(h, func():
 			chat_open = chat
 			Sfx.play("click", -8.0, 1.3)
-			_show("mensajes"), 10, Color("151d2b") if st != "nuevo" else Color("17263d"), Color(1, 1, 1, 0.06)))
+			_show("mensajes"), 10, Color("151d2b") if not sin_leer else Color("17263d"), Color(1, 1, 1, 0.06)))
+	if not hay:
+		v.add_child(UI.lbl("No tiene mensajes. Disfrútelo mientras dure.", UI.f_sans, 17, UI.DIM))
+
+
+## «Nuevo mensaje»: a quién se le puede escribir
+func _contactos(v: VBoxContainer) -> void:
+	var back := UI.btn("← Mensajes", "ghost", 16)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	back.pressed.connect(func():
+		contactos = false
+		_show("mensajes"))
+	v.add_child(back)
+	v.add_child(UI.lbl("Nuevo mensaje", UI.f_sans_b, 22, Color.WHITE))
+	var sub := UI.lbl("Escríbales con sus propias palabras: le contestarán a lo que diga.", UI.f_sans, 14, Color(1, 1, 1, 0.5))
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub.custom_minimum_size = Vector2(480, 0)
+	v.add_child(sub)
+	for who in Redes.Charla.contactos():
+		var ch := DB.character(String(who))
+		var h := UI.hbox(12)
+		h.add_child(_retrato(String(who), 46))
+		var tv := UI.vbox(0)
+		tv.custom_minimum_size = Vector2(380, 0)
+		tv.add_child(UI.lbl(str(ch.get("name", "?")), UI.f_sans_b, 16, Color.WHITE))
+		tv.add_child(UI.lbl(str(ch.get("role", "")), UI.f_sans, 13, Color(1, 1, 1, 0.5)))
+		h.add_child(tv)
+		var w: String = who
+		v.add_child(Widgets.click_card(h, func():
+			Sfx.play("click", -8.0, 1.3)
+			contactos = false
+			chat_open = Redes.hilo(w)
+			_show("mensajes"), 8, Color("151d2b"), Color(1, 1, 1, 0.06)))
 
 
 func _chat(v: VBoxContainer, c: Dictionary) -> void:
+	c["unread"] = 0
 	var back := UI.btn("← Mensajes", "ghost", 16)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	back.pressed.connect(func():
 		chat_open = {}
 		_show("mensajes"))
 	v.add_child(back)
+	var top := UI.hbox(12)
+	top.add_child(_retrato(str(c["who"]), 52))
 	var hh := UI.vbox(0)
 	hh.add_child(UI.lbl(str(c["name"]), UI.f_sans_b, 22, Color.WHITE))
-	hh.add_child(UI.lbl(str(c.get("role", "")), UI.f_sans, 14, Color(1, 1, 1, 0.5)))
-	v.add_child(hh)
-	for m in c["msgs"]:
-		var row := HBoxContainer.new()
-		var bubble := PanelContainer.new()
-		bubble.add_theme_stylebox_override("panel", UI.sb(BUBBLE_ME if m["me"] else BUBBLE_THEM, 16, Color(0, 0, 0, 0), 0, 0, 12))
-		var t := UI.lbl(str(m["t"]), UI.f_sans, 17, Color.WHITE)
-		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		t.custom_minimum_size = Vector2(360, 0)
-		bubble.add_child(t)
-		if m["me"]:
-			row.add_child(UI.spacer(0, 0, true))
-		row.add_child(bubble)
-		v.add_child(row)
-	if c["state"] == "nuevo":
-		v.add_child(UI.lbl("RESPONDER", UI.f_sans_b, 13, BLUE))
+	hh.add_child(UI.lbl("escribiendo..." if escribiendo else str(c.get("role", "")), UI.f_sans, 14, BLUE if escribiendo else Color(1, 1, 1, 0.5)))
+	top.add_child(hh)
+	v.add_child(top)
+	var msgs: Array = c["msgs"]
+	var hasta := msgs.size() - (1 if escribiendo and not msgs.is_empty() and not msgs.back()["me"] else 0)
+	if msgs.is_empty():
+		var hint := UI.lbl("Escriba lo que quiera abajo. Por ejemplo: «¿Qué tal?», «¿Cómo va el paro?» o «¿Qué me aconsejas?».", UI.f_sans, 15, Color(1, 1, 1, 0.45))
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hint.custom_minimum_size = Vector2(480, 0)
+		v.add_child(hint)
+	for i in hasta:
+		v.add_child(_burbuja(str(msgs[i]["t"]), bool(msgs[i]["me"])))
+	if escribiendo:
+		v.add_child(_burbuja("• • •", false))
+	if c["state"] == "nuevo" and not escribiendo:
+		v.add_child(UI.lbl("RESPUESTAS RÁPIDAS  ·  o escriba la suya abajo", UI.f_sans_b, 13, BLUE))
 		var d := Redes.chat_def(str(c["id"]))
 		var reps: Array = d.get("replies", [])
 		for i in reps.size():
@@ -429,8 +498,83 @@ func _chat(v: VBoxContainer, c: Dictionary) -> void:
 				Redes.answer_chat(c, idx)
 				_side()
 				_show("mensajes"), 10, Color("1b2a40"), Color(BLUE, 0.4)))
-	elif c["state"] == "visto":
+	elif c["state"] == "visto" and not escribiendo and not msgs.is_empty() and not msgs.back()["me"]:
 		v.add_child(UI.lbl("Lo dejó en visto.", UI.f_sans, 14, Color(1, 1, 1, 0.4)))
+
+
+func _burbuja(texto: String, mio: bool) -> Control:
+	var row := HBoxContainer.new()
+	var bubble := PanelContainer.new()
+	bubble.add_theme_stylebox_override("panel", UI.sb(BUBBLE_ME if mio else BUBBLE_THEM, 16, Color(0, 0, 0, 0), 0, 0, 12))
+	var t := UI.lbl(texto, UI.f_sans, 17, Color.WHITE)
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.custom_minimum_size = Vector2(minf(360.0, 30.0 + texto.length() * 9.0), 0)
+	bubble.add_child(t)
+	if mio:
+		row.add_child(UI.spacer(0, 0, true))
+	row.add_child(bubble)
+	return row
+
+
+## Abajo de la conversación: escribir con sus propias palabras
+func _barra_escribir(c: Dictionary) -> void:
+	var bar := UI.hbox(8)
+	bar.position = Vector2(18, content.size.y - 58)
+	bar.size = Vector2(content.size.x - 36, 50)
+	content.add_child(bar)
+	var le := LineEdit.new()
+	le.placeholder_text = "Escriba un mensaje..."
+	le.max_length = 280
+	le.custom_minimum_size = Vector2(content.size.x - 36 - 104, 48)
+	le.add_theme_font_override("font", UI.f_sans)
+	le.add_theme_font_size_override("font_size", 17)
+	le.add_theme_color_override("font_color", Color.WHITE)
+	le.add_theme_color_override("font_placeholder_color", Color(1, 1, 1, 0.4))
+	var st := UI.sb(Color("1b2433"), 22, Color(1, 1, 1, 0.14), 1)
+	st.content_margin_left = 16
+	st.content_margin_right = 16
+	le.add_theme_stylebox_override("normal", st)
+	var sf := st.duplicate()
+	sf.border_color = Color(BLUE, 0.7)
+	le.add_theme_stylebox_override("focus", sf)
+	le.editable = not escribiendo
+	bar.add_child(le)
+	entrada = le
+	var send := UI.btn("Enviar", "normal", 16)
+	send.custom_minimum_size = Vector2(96, 48)
+	send.disabled = escribiendo
+	bar.add_child(send)
+	var enviar := func():
+		var txt := le.text.strip_edges()
+		if txt == "" or escribiendo:
+			return
+		enviar_texto(c, txt)
+	le.text_submitted.connect(func(_t): enviar.call())
+	send.pressed.connect(enviar)
+	if not escribiendo:
+		le.call_deferred("grab_focus")
+
+
+## Manda lo que ha escrito; la respuesta aparece tras un momento de «escribiendo...»
+func enviar_texto(c: Dictionary, txt: String) -> void:
+	Sfx.play("whoosh", -10.0, 1.6)
+	var r := Redes.escribir(c, txt)
+	if r.is_empty():
+		return
+	_side()
+	if String(r.get("t", "")) == "":
+		_show("mensajes")
+		return
+	escribiendo = true
+	_show("mensajes")
+	var espera := clampf(0.7 + String(r["t"]).length() / 90.0, 0.9, 2.4)
+	get_tree().create_timer(espera).timeout.connect(func():
+		if not is_instance_valid(self) or closing:
+			return
+		escribiendo = false
+		Sfx.play("notify", -12.0, 1.5)
+		if chat_open == c:
+			_show("mensajes"))
 
 
 # ------------------------------------------------------------------ la cuenta del presidente (izquierda)

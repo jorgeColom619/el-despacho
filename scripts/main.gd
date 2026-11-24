@@ -144,6 +144,13 @@ func _ready() -> void:
 			_capture_later(cpath, cwait)
 	if "--nograin" in args:
 		grain.visible = false
+	if "--charlatest" in args:
+		GS.no_save = true
+		var CT = load("res://scripts/charlatest.gd")
+		var ct = CT.new()
+		add_child(ct)
+		ct.run()
+		return
 	if "--interptest" in args:
 		GS.no_save = true
 		var IT = load("res://scripts/interptest.gd")
@@ -721,16 +728,27 @@ func _debug_start() -> void:
 				open_overlay("call", {"item": GS.calls[0]})
 			else:
 				open_overlay("advisor", {"item": GS.visitors.back()})
-		"movil", "movilpub", "movilchat", "moviltrend":
+		"movil", "movilpub", "movilchat", "moviltrend", "movilcharla", "movilcontactos", "movillista":
 			for h in ["El Congreso aprueba la Ley de Vivienda Asequible", "ÚLTIMA HORA: Incendio forestal en la Sierra Oeste", "El presidente se impone a Gonzalo Arriaga en la sesión de control", "Huelga de controladores aéreos en Santa Aurora", "Valdoria firma un acuerdo comercial con Norland"]:
 				GS.push_news(h, 3)
 			for cid in ["madre_comer", "com_dibujo", "jefa_agenda"]:
 				GS.Redes.new_chat(cid)
-			var mtab: String = {"movil": "inicio", "movilpub": "publicar", "movilchat": "mensajes", "moviltrend": "tendencias"}[debug_open]
+			var mtab: String = {"movil": "inicio", "movilpub": "publicar", "movilchat": "mensajes", "moviltrend": "tendencias"}.get(debug_open, "mensajes")
 			open_overlay("movil", {"tab": mtab})
 			if debug_open == "movilchat":
 				current_overlay.chat_open = GS.social["chats"][0]
 				current_overlay._show("mensajes")
+			elif debug_open == "movilcontactos":
+				current_overlay.contactos = true
+				current_overlay._show("mensajes")
+			elif debug_open == "movilcharla":
+				# conversación escrita con la madre: contesta con sus palabras a la pregunta y sigue la charla
+				var ovm = current_overlay
+				var hm: Dictionary = GS.Redes.hilo("madre")
+				ovm.chat_open = hm
+				ovm._show("mensajes")
+				get_tree().create_timer(0.6).timeout.connect(func(): ovm.enviar_texto(hm, "Sí, mamá, me he comido un bocadillo entre reuniones"))
+				get_tree().create_timer(3.4).timeout.connect(func(): ovm.enviar_texto(hm, "Estoy agotado, ¿qué me aconsejas?"))
 		"custom", "custom2":
 			GS.spawn(DB.event("banco_quiebra"))
 			open_overlay("advisor", {"item": GS.visitors.back()})

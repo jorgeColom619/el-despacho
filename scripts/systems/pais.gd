@@ -33,6 +33,7 @@ const DATOS := {
 	"res://scripts/data/scenarios_data.gd": ["SCENARIOS", "TRAMAS"],
 	"res://scripts/data/social_data.gd": ["FAMOUS", "REACT", "AMBIENT", "FILLER_TRENDS", "FILLER_TRENDS_MEME", "POST_TEXT", "POST_RESULT", "REPLIES_GOOD", "REPLIES_BAD", "CHATS", "CHATS2"],
 	"res://scripts/data/reto_data.gd": ["RULES", "CLASH"],
+	"res://scripts/data/charla_data.gd": ["PERSONAS", "CONSEJOS"],
 	"res://scripts/autoload/db.gd": ["DOMESTIC", "SUMMITS", "BILLS", "RIDERS", "LETTERS", "CRIMES", "BID_NOTES"],
 }
 ## Listas de las que el juego elige al azar (cartas, preguntas, ataques, mensajes, protestas...): en otro país se
