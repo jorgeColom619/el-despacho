@@ -46,6 +46,9 @@ func run(days: int) -> void:
 	GS.open_request.connect(_on_req)
 	GS.game_over.connect(func(d):
 		_result["end"] = d["reason"]
+		# los regímenes sin elecciones también ganan: el Partido o la familia le confirman
+		if String(d["reason"]) in ["consolidado", "transicion", "limite"]:
+			_result["won"] = true
 		_result["end_day"] = GS.day
 		if not quiet:
 			print(">>> FIN: ", d["reason"], " día ", GS.day))

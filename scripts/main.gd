@@ -744,7 +744,8 @@ func _debug_start() -> void:
 			GS.day = GS.term_days
 			open_overlay("election", {})
 		_:
-			open_overlay(debug_open, {})
+			# TAB=regimen: abre esa pestaña (ordenador del despacho)
+			open_overlay(debug_open, {"tab": OS.get_environment("TAB")} if OS.get_environment("TAB") != "" else {})
 
 
 func _capture_later(path: String, frames: int) -> void:

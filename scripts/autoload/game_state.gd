@@ -95,6 +95,8 @@ var decree_next_day := 0
 var inflation := 2.0
 ## Mercado mundial: precios de los recursos, cortes de suministro y embargos (ver systems/mercado.gd)
 var mercado := {}
+## Régimen político: lealtad del pilar del poder, amaño, censura, poderes usados (ver systems/regimen.gd)
+var regimen := {}
 var policy_rate := 2.5
 ## Pacto de coalición vigente {party, since, law, veto, item, item_from, seat_due, due} ({} si no hay)
 var coalition := {}
@@ -156,6 +158,7 @@ const Plantillas := preload("res://scripts/systems/plantillas.gd")
 const Casino := preload("res://scripts/systems/casino.gd")
 const Gobierno := preload("res://scripts/systems/gobierno.gd")
 const Mercado := preload("res://scripts/systems/mercado.gd")
+const Regimen := preload("res://scripts/systems/regimen.gd")
 ## El Gran Casino: invitaciones, el dinero público perdido o escondido y lo que vuelve (ver casino.gd)
 var casino := {}
 
@@ -256,8 +259,11 @@ func new_game(opts: Dictionary) -> void:
 			rel = 90.0
 		if p == "CR":
 			rel = 50.0
+		# en los regímenes de partido, los grupos de la cámara son «de la casa»
+		rel = maxf(rel, float(Pais.ficha().get("rel_min", 0.0)))
 		parties[p] = {"seats": seats[p], "rel": rel}
 	mercado = Mercado.nuevo(rng)
+	regimen = Regimen.nuevo()
 	countries = {}
 	for c in W.COUNTRIES.keys():
 		countries[c] = {"rel": W.COUNTRIES[c]["rel"], "cd": {}}
@@ -921,6 +927,8 @@ func _monthly(dd: Dictionary) -> void:
 	Gobierno.monthly()
 	# el mercado mundial: precios, sacudidas y cortes de suministro
 	Mercado.monthly(dd)
+	# el régimen: lealtad de quien sostiene al presidente, golpes, elecciones de mitad de mandato
+	Regimen.monthly()
 	# La corrupción se diluye con el tiempo... salvo que alguien tire del hilo (ver escándalos)
 	corruption = maxf(0.0, corruption * (0.93 if flags.has("transparencia") else 0.95) - 0.4)
 	# Ciclo económico: paseo aleatorio que tiende a volver a la normalidad
@@ -1136,6 +1144,9 @@ func _eligible(type: String) -> Array:
 		if ev["type"] != type or ev.get("chain_only", false):
 			continue
 		if ev.get("meme", false) and mode != "meme":
+			continue
+		# con poca libertad de prensa (o con censura), muchos escándalos no llegan a publicarse
+		if (ev.get("scandal", false) or ev.get("cond", {}).get("gt", {}).has("corr")) and rng.randf() > Regimen.prensa():
 			continue
 		var id: String = ev["id"]
 		if ev.get("once", false) and used.has(id):
@@ -1525,7 +1536,7 @@ func label_of(k: String) -> String:
 		"corr":
 			return "Corrupción"
 		"approval":
-			return "Aprobación"
+			return Regimen.etiqueta()
 	if W.COUNTRIES.has(k):
 		return W.COUNTRIES[k]["name"]
 	if W.PARTIES.has(k):
@@ -1647,6 +1658,10 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				inflation = clampf(inflation + float(v), -2.0, 18.0)
 			"mercado":
 				Mercado.fx(v)
+			"regimen":
+				Regimen.fx(v)
+			"rel_democracias":
+				out.append_array(apply_fx({"rel": Regimen.rel_democracias(float(v))}, source, show))
 			"reshuffle":
 				var keys := ministers.keys()
 				keys.erase("jefa")
@@ -1933,7 +1948,9 @@ func _check_end() -> void:
 	if game_ended:
 		return
 	if approval < 15.0:
-		low_approval_days += 1
+		# tras una represión, la calle tarda más en volver
+		if not (Regimen.calma() and day % 2 == 0):
+			low_approval_days += 1
 		if low_approval_days == 30:
 			toast.emit("La calle exige su dimisión. Recupere apoyo o caerá.", "bad", "alerta")
 			spawn({"id": "crisis_disturbios_x", "type": "crisis", "crisis": "disturbios", "title": "Revuelta popular", "text": "Protestas masivas exigen la dimisión del presidente.", "gen": true})
@@ -1945,12 +1962,12 @@ func _check_end() -> void:
 	if debt_ratio() > bankruptcy_limit():
 		end_game("bancarrota")
 		return
-	if meters["estabilidad"] < [11.0, 15.0, 19.0][difficulty] and day > mocion_until and day > 60:
+	if meters["estabilidad"] < [11.0, 15.0, 19.0][difficulty] and day > mocion_until and day > 60 and Regimen.hay_mocion():
 		mocion_until = day + 150
 		open_request.emit("vote", {"mode": "mocion"})
 		return
 	var left := term_days - day
-	if left == 60 and not campaign:
+	if left == 60 and not campaign and Regimen.elecciones() != "ninguna":
 		campaign = true
 		flags["campana"] = day
 		campaign_acts = 3
@@ -1960,10 +1977,13 @@ func _check_end() -> void:
 		Promesas.judge()
 		Sfx.music("music_campaign")
 		open_request.emit("campaign", {"intro": true})
-	if left == 14 and not debate_done:
+	if left == 14 and not debate_done and Regimen.elecciones() != "ninguna":
 		debate_done = true
 		convocatoria("debate")
 	if left <= 0:
+		# sin elecciones (o con el límite de mandatos), decide el régimen
+		if Regimen.fin_de_mandato():
+			return
 		active = false
 		open_request.emit("election", {})
 
@@ -1972,6 +1992,8 @@ func _check_end() -> void:
 func after_election(res: Dictionary) -> void:
 	if res.get("won", false):
 		terms_won += 1
+	if Regimen.tras_elecciones(res):
+		return
 	if mode == "infinito" and res.get("won", false):
 		_new_term(res)
 	else:
@@ -2076,7 +2098,7 @@ func vote_base() -> float:
 			angry += maxf(0.0, 32.0 - float(fac[f])) * 0.08
 	# la campaña ayuda, pero con rendimientos decrecientes (como mucho unos 8 puntos)
 	var camp: float = campaign_bonus if campaign_bonus <= 0.0 else 8.0 * tanh(campaign_bonus / 8.0)
-	return approval * 0.62 + 1.0 + camp + ELECTION_BIAS[difficulty] - change + econ - angry
+	return approval * 0.62 + 1.0 + camp + ELECTION_BIAS[difficulty] - change + econ - angry + Regimen.bonus_eleccion()
 
 
 func compute_election() -> Dictionary:
@@ -2293,7 +2315,7 @@ const SAVE_KEYS := ["day", "pres", "difficulty", "term_days", "meters", "fac", "
 	"parties", "countries", "treaties", "policies", "mods", "flags", "history", "news_feed", "month_log", "inbox", "visitors", "alerts", "scheduled", "cooldowns", "used", "timers",
 	"ministers", "corruption", "fortune", "stat_hist", "uid_counter", "speech_until", "weather", "celebrate_until", "low_approval_days", "mocion_until", "campaign_bonus", "campaign",
 	"debate_done", "last_law", "tutorial", "budget_year_done", "budget_passed_year", "budget_retry_day", "decree_pending", "decree_next_day", "inflation", "policy_rate", "coalition", "reforms", "wear", "region_bonus", "campaign_acts", "acts_done", "laws_term", "cycle", "scandals", "unlocks", "mode", "scenario", "tramas", "term_index", "term_start", "terms_won", "opo_override", "seen_terms",
-	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino", "pais", "mercado"]
+	"promises", "counters", "memo", "cast", "memo_used", "social", "daily", "law_log", "law_seen", "casino", "pais", "mercado", "regimen"]
 
 
 func has_save() -> bool:
@@ -2351,6 +2373,7 @@ func load_game() -> bool:
 	usar_pais(String(d.get("pais", "valdoria")))
 	# partidas de antes del mercado mundial: se crea al primer uso
 	mercado = {}
+	regimen = {}
 	unlocks = {}
 	mode = "clasico"
 	term_index = 1

@@ -212,6 +212,10 @@ func _cycle_pais(d: int) -> void:
 	var nm := name_edit.text.strip_edges()
 	if nm == "" or nm == antes["pres_m"] or nm == antes["pres_f"]:
 		name_edit.text = PD.PAISES[pais]["pres_f" if look["g"] == "f" else "pres_m"]
+	# el tono de piel del retrato, dentro de los habituales del país
+	var piel: Array = PD.PAISES[pais].get("skin", [0, 5])
+	if int(look["skin"]) < int(piel[0]) or int(look["skin"]) > int(piel[1]):
+		look["skin"] = int(piel[0])
 	for c in party_box.get_children():
 		c.queue_free()
 	party_cards.clear()
@@ -331,8 +335,12 @@ func _style(b: Button, on: bool, col: Color = UI.GOLD) -> void:
 func _refresh() -> void:
 	var f: Dictionary = PD.PAISES[pais]
 	pais_name.text = String(f["full"])
-	pais_info.text = "%s · Capital: %s" % [f["regime"], f["cap"]]
-	pais_info.tooltip_text = String(f["desc"])
+	var rd: Dictionary = GS.Regimen.def(pais)
+	var el: String = {"libres": "elecciones libres", "controladas": "elecciones controladas", "ninguna": "sin elecciones"}[String(rd["elecciones"])]
+	pais_info.text = "%s · %s · Capital: %s" % [f["regime"], el, f["cap"]]
+	pais_info.tooltip_text = String(f["desc"]) + "
+
+" + String(rd["desc"])
 	portrait.setup(Perfil.apply_outfit(look), true)
 	portrait.mood = 0.35
 	labels["g"].text = "Masculino" if look["g"] == "m" else "Femenino"

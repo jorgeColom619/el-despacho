@@ -15,7 +15,7 @@ const W := preload("res://scripts/data/world_data.gd")
 
 ## Variables con textos de cada script de datos (las que se adaptan al país)
 const DATOS := {
-	"res://scripts/data/world_data.gd": ["COUNTRY_NAME", "CAPITAL", "METER_INFO", "FACTION_INFO", "BUDGET", "TAXES", "PARTIES", "PLAYER_PARTIES", "CHARACTERS", "TRAITS", "CABINET", "REFORMS", "COUNTRIES", "PERSONALITIES", "REGIONS", "LAWS", "OUTLETS", "NAMES_M", "NAMES_F", "SURNAMES", "COMPANIES", "PROJECTS", "TOPICS", "CRISES"],
+	"res://scripts/data/world_data.gd": ["COUNTRY_NAME", "CAPITAL", "SEATS", "METER_INFO", "FACTION_INFO", "BUDGET", "TAXES", "PARTIES", "PLAYER_PARTIES", "CHARACTERS", "TRAITS", "CABINET", "REFORMS", "COUNTRIES", "PERSONALITIES", "REGIONS", "LAWS", "OUTLETS", "NAMES_M", "NAMES_F", "SURNAMES", "COMPANIES", "PROJECTS", "TOPICS", "CRISES"],
 	"res://scripts/data/events_data.gd": ["EVENTS"],
 	"res://scripts/data/events_extra.gd": ["EVENTS"],
 	"res://scripts/data/events_meme.gd": ["EVENTS", "BILLS", "RIDERS", "LETTERS", "CRIMES", "SPEECH", "QUESTIONS"],
@@ -96,6 +96,11 @@ static func mapa() -> String:
 	return String(ficha()["map"])
 
 
+## Tonos de piel de la gente del país [mínimo, máximo]
+static func piel() -> Array:
+	return ficha().get("skin", [0, 5])
+
+
 static func es_valdoria() -> bool:
 	return actual == "valdoria"
 
@@ -155,16 +160,27 @@ static func tabla(p: String) -> Dictionary:
 	for a in APELLIDOS_SUELTOS:
 		if apellidos.has(a):
 			out[a] = apellidos[a]
-	# el país elegido era extranjero en los textos: se intercambia con Valdoria
-	if p == "norland":
+	# el país elegido era extranjero en los textos: se intercambia con Valdoria (nombre, nombre oficial, líder)
+	var orig: Dictionary = _base.get("res://scripts/data/world_data.gd:COUNTRIES", {}).get(p, {})
+	if not orig.is_empty():
 		var ai: Dictionary = v["ai"]
-		out["Estados Federados de Norland"] = ai["full"]
-		out["Norland"] = v["name"]
-		out["Harrison Kade"] = ai["leader"]
-		out["Kade"] = String(ai["leader"]).get_slice(" ", 1)
+		out[String(orig["full"])] = ai["full"]
+		out[String(orig["name"])] = v["name"]
+		out[String(orig["leader"])] = ai["leader"]
+		out[String(orig["leader"]).get_slice(" ", 1)] = String(ai["leader"]).get_slice(" ", 1)
 		for i in 4:
 			out[String(f["gent"][i])] = v["gent"][i]
 			out[String(f["gent"][i]).capitalize()] = String(v["gent"][i]).capitalize()
+	# la cámara: en Kharovia, el Parlamento; en Tsaing, el Congreso Nacional del Pueblo...
+	var cam := String(f.get("camara", "Congreso"))
+	if cam != "Congreso":
+		out["Congreso"] = cam
+	# el nombre de la moneda («un euro», «mil euros»)
+	var mo: Array = f.get("moneda", ["euro", "euros", "m"])
+	if String(mo[0]) != "euro":
+		out["un euro"] = ("una " if mo[2] == "f" else "un ") + String(mo[0])
+		out["euros"] = mo[1]
+		out["euro"] = mo[0]
 	# moneda: «200 M€» pasa a «200 M$» (también con la M delante, que la frontera de palabra no deja pasar)
 	if String(f.get("currency", "€")) != "€":
 		out["M€"] = "M" + String(f["currency"])
@@ -175,6 +191,8 @@ static func tabla(p: String) -> Dictionary:
 static func _articulado(full: String) -> String:
 	if full.begins_with("Estados"):
 		return "los " + full
+	if full.begins_with("Emirato"):
+		return "el " + full
 	return "la " + full
 
 
@@ -271,6 +289,19 @@ static func _mundo(p: String) -> void:
 		W.NAMES_M = f["names_m"].duplicate()
 		W.NAMES_F = f["names_f"].duplicate()
 		W.SURNAMES = f["surnames"].duplicate()
+	# escaños de partida, descripción de los partidos elegibles y tonos de piel del país
+	if f.has("seats"):
+		W.SEATS = f["seats"].duplicate(true)
+	for k in f.get("player_desc", {}).keys():
+		if W.PLAYER_PARTIES.has(k):
+			W.PLAYER_PARTIES[k]["desc"] = f["player_desc"][k]
+	if f.has("skin"):
+		var lo := int(f["skin"][0])
+		var n := int(f["skin"][1]) - lo + 1
+		for k in W.CHARACTERS.keys():
+			var lk: Dictionary = W.CHARACTERS[k].get("look", {})
+			if lk.has("skin"):
+				lk["skin"] = lo + int(lk["skin"]) % n
 	if p == "valdoria":
 		return
 	# el país elegido deja de ser extranjero; Valdoria pasa a serlo
@@ -299,8 +330,11 @@ const TEMAS_VALDORIA := [
 static func _apartar(p: String) -> void:
 	apartados = {"eventos": {}, "tramas": [], "escenarios": [], "cumbres": []}
 	var f: Dictionary = ficha(p)
-	var ids: Array = f.get("excl_ids", [])
-	var nombres: Array = f.get("excl_names", [])
+	var ids: Array = f.get("excl_ids", []).duplicate()
+	var nombres: Array = f.get("excl_names", []).duplicate()
+	# los textos que hablan de la gente del país elegido como extranjera («periodistas kharovianos presos») tampoco
+	if p != "valdoria":
+		nombres.append_array(f["gent"])
 	if ids.is_empty() and nombres.is_empty():
 		return
 	# eventos que nombran (en el texto original) un país o un lugar apartado, y los que encadenan con ellos

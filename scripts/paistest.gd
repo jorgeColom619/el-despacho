@@ -60,6 +60,12 @@ func _prohibidas() -> Array:
 		out.append(v["parties"][k]["leader"])
 	for k in v["cast"].keys():
 		out.append(v["cast"][k])
+	# la cámara, si tiene otro nombre (sin contar la propia cámara ni los partidos que llevan la palabra)
+	if String(PD.PAISES[Pais.actual].get("camara", "Congreso")) != "Congreso":
+		out.append("Congreso")
+	# la moneda, por su nombre
+	if String(PD.PAISES[Pais.actual].get("moneda", ["euro"])[0]) != "euro":
+		out.append("euros")
 	# la moneda, si el país tiene otra
 	if String(PD.PAISES[Pais.actual].get("currency", "€")) != "€":
 		out.append("€")
@@ -68,7 +74,7 @@ func _prohibidas() -> Array:
 
 func _muestras(val, out: Array) -> void:
 	if val is String:
-		if val.length() > 40 and (val.contains("Valdoria") or val.contains("Norland") or val.contains("Fairhaven") or val.contains("norland")):
+		if val.length() > 40 and (val.contains("Valdoria") or val.contains(W.COUNTRY_NAME) or val.contains(W.CAPITAL) or val.contains("Parlamento") or val.contains("Consejo")):
 			out.append(val.substr(0, 220))
 	elif val is Array:
 		for x in val:
@@ -80,6 +86,10 @@ func _muestras(val, out: Array) -> void:
 
 func _buscar(val, prohibidas: Array, donde: String, out: Array) -> void:
 	if val is String:
+		if "Congreso" in val:
+			val = val.replace(String(PD.PAISES[Pais.actual].get("camara", "Congreso")), "")
+			for k in PD.PAISES[Pais.actual]["parties"].keys():
+				val = val.replace(String(PD.PAISES[Pais.actual]["parties"][k]["name"]), "")
 		for w in prohibidas:
 			# las erratas del teleprompter cambian a propósito el gentilicio por el del rival
 			if String(w) in val and not (w == "Puerto Alba" and donde.ends_with("TOPICS")) and not donde.begins_with("conversaciones_data.gd:TELEPROMPTER_SWAPS"):

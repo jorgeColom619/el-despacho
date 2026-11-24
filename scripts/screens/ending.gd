@@ -11,6 +11,9 @@ const Reto := preload("res://scripts/systems/reto.gd")
 var main: Node
 var data: Dictionary = {}
 
+## Finales que cuentan como victoria
+const GOOD := ["reelegido", "consolidado", "transicion", "limite"]
+
 const HEADS := {
 	"reelegido": ["¡%s REVALIDA LA PRESIDENCIA!", "Los {gent_pl} le dan otros cuatro años para culminar su proyecto."],
 	"derrota": ["%s PIERDE LAS ELECCIONES", "El presidente reconoce la derrota y felicita a su rival: «El pueblo ha hablado»."],
@@ -18,8 +21,14 @@ const HEADS := {
 	"censura": ["CAE EL GOBIERNO DE %s", "El Congreso aprueba la moción de censura. La oposición toma el poder."],
 	"confianza": ["%s PIERDE LA CONFIANZA DEL CONGRESO", "El Congreso niega la confianza al Gobierno y el presidente presenta su dimisión."],
 	"golpe": ["GOLPE DE ESTADO: DETENIDO %s", "Una junta militar toma el control del país y suspende la Constitución."],
-	"bancarrota": ["VALDORIA, EN QUIEBRA: DIMITE %s", "El país suspende pagos. El Fondo Monetario Global toma el control de las cuentas."],
+	"bancarrota": ["{pais}, EN QUIEBRA: DIMITE %s", "El país suspende pagos. El Fondo Monetario Global toma el control de las cuentas."],
 	"casino": ["%s DIMITE POR EL ESCÁNDALO DEL CASINO", "El presidente abandona el Palacio tras confirmarse que se jugó dinero público en el Gran Casino de {cap}."],
+	"purgado": ["%s, PURGADO POR EL PARTIDO", "El Congreso del Partido le aparta de todos sus cargos por «graves errores». Su nombre desaparece de los periódicos y de las fotos oficiales."],
+	"golpe_palacio": ["GOLPE DE PALACIO: %s, DEPUESTO POR SU FAMILIA", "Un primo del soberano toma el trono con el apoyo de los clérigos y la guardia real. El depuesto parte al exilio."],
+	"contragolpe": ["CONTRAGOLPE EN {cap}: CAE %s", "Otro grupo de generales toma el palacio. La Junta cambia de cara; el país, no."],
+	"consolidado": ["%s CONSOLIDA SU PODER", "La cúpula del régimen le renueva la confianza. Nadie discute ya quién manda en {cap}."],
+	"transicion": ["%s ENTRA EN LA HISTORIA", "Quien convocó las primeras elecciones libres las gana. {pais} es, por fin, una democracia."],
+	"limite": ["%s SE DESPIDE TRAS DOS MANDATOS", "La Constitución no permite un tercero. Deja el cargo con la cabeza alta y el país en manos de su sucesor."],
 }
 
 
@@ -32,7 +41,7 @@ func _ready() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
 	var reason: String = data.get("reason", "derrota")
-	var good := reason == "reelegido"
+	var good := reason in GOOD
 	Sfx.music("", 0.5)
 	Sfx.play("sting_win" if good else "sting_lose", -2.0)
 	get_tree().create_timer(4.0).timeout.connect(func(): Sfx.music("music_menu", 2.0))
@@ -56,7 +65,7 @@ func _ready() -> void:
 	if GS.mode == "infinito" and GS.terms_won > 0 and reason != "reelegido":
 		var yrs := int(floor(float(GS.day) / 365.0))
 		h = ["FIN DE UNA ERA: %s DEJA EL PODER TRAS " + str(yrs) + " AÑOS", "Tras %d legislaturas, el presidente se despide del Palacio. %s" % [GS.term_index, h[1]]]
-	var hl := UI.lbl(h[0] % GS.pres["name"].to_upper(), UI.f_serif_k, 50, ink, HORIZONTAL_ALIGNMENT_CENTER)
+	var hl := UI.lbl((GS.fmt(h[0]) % GS.pres["name"]).to_upper(), UI.f_serif_k, 50, ink, HORIZONTAL_ALIGNMENT_CENTER)
 	hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hl.custom_minimum_size = Vector2(840, 0)
 	pv.add_child(hl)
@@ -181,7 +190,7 @@ func _score(reason: String) -> float:
 	var ps := Promesas.score()
 	s += float(ps[0]) * 3.0 - float(int(ps[1]) - int(ps[0])) * 2.0
 	match reason:
-		"reelegido":
+		"reelegido", "consolidado", "transicion", "limite":
 			s += 30.0
 		"derrota":
 			s += 8.0

@@ -279,7 +279,7 @@ func _draw() -> void:
 	draw_rect(plate.grow(-3), Color(BRASS, 0.35), false, 1.0)
 	for c in [plate.position + Vector2(5, 5), plate.position + Vector2(plate.size.x - 5, 5), plate.position + Vector2(5, plate.size.y - 5), plate.end - Vector2(5, 5)]:
 		draw_circle(c, 1.6, BRASS_L)
-	draw_string(UI.f_serif, Vector2(ax + 6, 22), "Aprobación", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, PARCH_DIM)
+	draw_string(UI.f_serif, Vector2(ax + 6, 22), GS.Regimen.etiqueta(), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, PARCH_DIM)
 	draw_string(UI.f_num, Vector2(ax + 4, 51), UI.num(ap, 0) + "%", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, apc.lightened(0.1))
 	var hist: Array = GS.stat_hist.get("approval", [])
 	if hist.size() >= 1:

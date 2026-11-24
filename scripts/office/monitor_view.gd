@@ -25,7 +25,7 @@ func _draw() -> void:
 	draw_string(UI.f_sans, Vector2(52, 15), "Sistema de Gestión Presidencial", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.6))
 	if not GS.active:
 		return
-	draw_string(UI.f_sans_b, Vector2(10, 38), "APROBACIÓN", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.6))
+	draw_string(UI.f_sans_b, Vector2(10, 38), GS.Regimen.etiqueta().to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.6))
 	draw_string(UI.f_cond_b, Vector2(10, 72), UI.num(GS.approval, 0) + "%", HORIZONTAL_ALIGNMENT_LEFT, -1, 34, UI.color_for(GS.approval))
 	var hist: Array = GS.stat_hist.get("approval", [])
 	var series := hist.slice(maxi(0, hist.size() - 12))

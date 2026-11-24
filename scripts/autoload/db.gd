@@ -229,7 +229,8 @@ func rand_look(g: String = "") -> Dictionary:
 	var hc := randi_range(0, 4)
 	if age == 2 and randf() < 0.6:
 		hc = randi_range(5, 6)
-	var look := {"g": g, "skin": randi_range(0, 5), "hair": (styles_m if g == "m" else styles_f).pick_random(), "hc": hc,
+	var piel: Array = Pais.piel()
+	var look := {"g": g, "skin": randi_range(int(piel[0]), int(piel[1])), "hair": (styles_m if g == "m" else styles_f).pick_random(), "hc": hc,
 		"glasses": randi_range(0, 2) if randf() < 0.35 else 0, "suit": suits.pick_random(), "shirt": ["f4f4f4", "e8eef5", "f3ece2"].pick_random(),
 		"tie": ties.pick_random() if g == "m" else "", "age": age, "eyes": ["3b2a20", "2a1c14", "4d6a80", "5a4632", "3f5f3a"].pick_random()}
 	if g == "m" and randf() < 0.35:

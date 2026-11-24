@@ -33,12 +33,10 @@ func _init() -> void:
 	if solo == "" or solo == "mundo":
 		gen_world()
 		print("Mundo: %d ms" % (Time.get_ticks_msec() - t0))
-	if solo == "" or solo == "valdoria":
-		gen_valdoria()
-		print("Valdoria: %d ms" % (Time.get_ticks_msec() - t0))
-	if solo == "" or solo == "norland":
-		gen_norland()
-		print("Norland: %d ms" % (Time.get_ticks_msec() - t0))
+	for pais in ["valdoria", "norland", "kharovia", "tsaing", "qadar", "sarvenia", "aldora"]:
+		if solo == "" or solo == pais or (solo == "nuevos" and not pais in ["valdoria", "norland"]):
+			call("gen_" + pais)
+			print("%s: %d ms" % [pais, Time.get_ticks_msec() - t0])
 	quit()
 
 
@@ -195,6 +193,51 @@ func gen_norland() -> void:
 		[5, 470, 420, 1.1], [5, 380, 330, 0.8], [6, 190, 400, 1.0], [6, 250, 520, 0.9], [7, 390, 190, 1.0], [8, 95, 690, 1.0]]
 	gen_regions("norland", body, isles, seeds, false, true)
 
+
+
+func gen_kharovia() -> void:
+	# estepas enormes; la capital al oeste, cerca de la frontera con la Unión (id 9); islas al sureste
+	var body := [[500, 400, 400, 250], [300, 360, 200, 180], [720, 330, 230, 200], [520, 560, 280, 140]]
+	var isles := [[900, 640, 40, 24], [950, 600, 22, 14], [860, 700, 18, 12]]
+	var seeds := [[1, 330, 380, 0.6], [2, 480, 300, 1.0], [3, 600, 170, 1.0], [4, 380, 520, 1.0], [5, 600, 450, 1.2], [5, 520, 560, 0.9],
+		[6, 820, 300, 1.1], [7, 780, 480, 1.0], [8, 900, 640, 1.0]]
+	gen_regions("kharovia", body, isles, seeds, true, false)
+
+
+func gen_tsaing() -> void:
+	# gigante con costa al este: la capital en el norte, los puertos y el delta en la costa, montañas al oeste
+	var body := [[460, 380, 380, 270], [290, 300, 200, 190], [590, 500, 260, 190], [540, 220, 290, 150]]
+	var isles := [[930, 470, 30, 55], [950, 360, 18, 28], [920, 600, 20, 14]]
+	var seeds := [[1, 560, 260, 0.6], [2, 700, 320, 1.0], [3, 740, 450, 1.0], [4, 620, 600, 1.0], [5, 480, 400, 1.2], [6, 260, 350, 1.2],
+		[7, 330, 560, 1.0], [8, 930, 470, 1.0]]
+	gen_regions("tsaing", body, isles, seeds, true, true)
+
+
+func gen_qadar() -> void:
+	# península del desierto: la capital y el petróleo en la costa este, montañas al suroeste, islas de perlas
+	var body := [[500, 420, 340, 230], [640, 300, 220, 160], [380, 520, 220, 150]]
+	var isles := [[930, 180, 30, 20], [960, 240, 18, 12], [900, 130, 16, 10]]
+	var seeds := [[1, 700, 330, 0.6], [2, 760, 420, 1.0], [3, 600, 230, 1.0], [4, 560, 560, 1.0], [5, 420, 400, 1.3], [6, 330, 540, 1.0],
+		[7, 520, 380, 0.9], [8, 930, 180, 1.0]]
+	gen_regions("qadar", body, isles, seeds, true, true)
+
+
+func gen_sarvenia() -> void:
+	# país de montaña: el río Seco nace al este (Alto Seco), la Unión al norte (id 10)
+	var body := [[480, 400, 360, 260], [360, 300, 200, 180], [600, 520, 220, 160]]
+	var isles := [[160, 640, 36, 22], [210, 690, 20, 12], [120, 600, 16, 10]]
+	var seeds := [[1, 470, 380, 0.6], [2, 640, 330, 1.0], [3, 380, 260, 1.0], [4, 520, 520, 1.1], [5, 300, 470, 1.0], [6, 660, 520, 1.0],
+		[7, 560, 200, 1.0], [8, 160, 640, 1.0]]
+	gen_regions("sarvenia", body, isles, seeds, false, true)
+
+
+func gen_aldora() -> void:
+	# la capital en la costa del estrecho (al norte), minas en el interior, sabana y el lago al sur
+	var body := [[500, 420, 380, 260], [340, 360, 220, 200], [640, 300, 240, 160], [560, 600, 240, 120]]
+	var isles := [[930, 600, 34, 22], [960, 540, 18, 12], [915, 680, 16, 10]]
+	var seeds := [[1, 560, 220, 0.6], [2, 420, 400, 1.0], [3, 720, 250, 1.0], [4, 700, 450, 1.0], [5, 520, 480, 1.2], [6, 300, 300, 1.0],
+		[7, 560, 640, 1.0], [8, 930, 600, 1.0]]
+	gen_regions("aldora", body, isles, seeds, true, false)
 
 ## Mapa de regiones de un país (art/maps/<nombre>_ids.png y <nombre>.json): elipses de tierra, islas y semillas de
 ## cada región [id, x, y, peso]; tierra extranjera al oeste (id 9) y/o al norte (id 10)

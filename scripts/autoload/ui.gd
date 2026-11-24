@@ -153,6 +153,9 @@ func _load_fonts() -> void:
 	var playfair := _font("res://fonts/PlayfairDisplay.ttf")
 	var inter := _font("res://fonts/Inter.ttf")
 	var oswald := _font("res://fonts/Oswald.ttf")
+	# los símbolos que faltan en una fuente (₽, ₣, ₦...) se toman de Inter
+	playfair.fallbacks = [inter]
+	oswald.fallbacks = [inter]
 	f_serif = _var(playfair, 400)
 	f_serif_b = _var(playfair, 700)
 	f_serif_k = _var(playfair, 900)
@@ -162,7 +165,9 @@ func _load_fonts() -> void:
 	f_cond = _var(oswald, 500)
 	f_cond_b = _var(oswald, 700)
 	f_mono = _font("res://fonts/ShareTechMono.ttf")
+	f_mono.fallbacks = [inter]
 	f_type = _font("res://fonts/SpecialElite.ttf")
+	f_type.fallbacks = [inter]
 	f_hand = _var(_font("res://fonts/Caveat.ttf"), 600)
 	f_goth = _font("res://fonts/UnifrakturMaguntia.ttf")
 	f_sign = _font("res://fonts/MrsSaintDelafield.ttf")

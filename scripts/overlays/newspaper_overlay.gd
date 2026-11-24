@@ -305,7 +305,7 @@ func _poll_box() -> Control:
 			var hgt := float(hist[i]) / 100.0 * 100.0
 			ch.draw_rect(Rect2(i * (bw + 8), 110 - hgt, bw, hgt), Color(0.15, 0.15, 0.17) if i < n - 1 else Color("8e2a22"))
 		ch.draw_line(Vector2(0, 110), Vector2(420, 110), INK, 1.5)
-		ch.draw_string(UI.f_serif_b, Vector2(0, 128), "Aprobación del Gobierno: %s%%" % UI.num(GS.approval, 0), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, INK))
+		ch.draw_string(UI.f_serif_b, Vector2(0, 128), GS.Regimen.etiqueta() + " del Gobierno: %s%%" % UI.num(GS.approval, 0), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, INK))
 	box.add_child(ch)
 	return box
 

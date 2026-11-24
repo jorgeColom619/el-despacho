@@ -19,7 +19,7 @@ imposible a la vez, con el mismo reloj. Los países que no lleva nadie los juega
 |---|---|---|
 | 1. Ficha de país e identidad | Los datos fijos de Valdoria pasan a una ficha por país. Valdoria y Norland jugables. | **Hecha** |
 | 2. Recursos y mercado mundial | Gas, petróleo, alimentos, industria, tecnología y minerales con precios. Cortes de suministro, embargos, agua del río. | **Hecha** |
-| 3. Regímenes | Marco común y después Kharovia, Tsaing, Qadar, Sarvenia y Aldora. | Pendiente |
+| 3. Regímenes | Marco común y los siete países jugables: Kharovia, Tsaing, Qadar, Sarvenia y Aldora con su régimen. | **Hecha** |
 | 4. Multijugador por IP directa | UPnP automático, varios jugadores (probado con dos), reloj común, IA para los libres, diplomacia entre jugadores. | Pendiente |
 | 5. Contenido propio | Eventos, tramas y escenarios escritos para cada país. | Pendiente |
 
@@ -122,4 +122,38 @@ godot --path . -- --shot=newgame --pais=norland --capt=captura.png
 ```
 godot --headless --path . -- --paistest --mercadotest
 MERCADO=corte godot --path . -- --shot=office --open=mercado
+```
+
+## Fase 3: cómo funciona
+
+- Los siete países son jugables. Cada ficha (`paises_data.gd`) tiene su régimen, su cámara (Congreso,
+  Parlamento, Congreso Nacional del Pueblo, Consejo Consultivo, Consejo Nacional), su moneda (€, $, ₽, ¥, £,
+  ₣, ₦), sus regiones y su mapa, sus grupos de la cámara, su gente y, en los regímenes de partido, sus escaños
+  de partida y la relación mínima con los grupos «de la casa».
+- `scripts/data/regimenes_data.gd`: siete regímenes con las mismas piezas (elecciones libres, controladas o
+  ninguna; libertad de prensa; moción de censura sí o no; límite de mandatos; elecciones de mitad de mandato;
+  el pilar que sostiene al presidente; poderes propios).
+- `scripts/systems/regimen.gd`:
+  - **Lealtad del pilar** (0-100: oligarcas, Politburó, familia real, generales; en Aldora, la paciencia del
+    ejército). Cada mes se mueve con la economía, el apoyo popular y lo propio de cada pilar (el crecimiento
+    en Tsaing, la estabilidad y el heredero en Qadar, la moral militar en Sarvenia). Por debajo de 30, aviso
+    (cuatro salidas); por debajo de 15, golpe, purga, golpe de palacio o contragolpe.
+  - **Sin elecciones** (Tsaing, Qadar, Sarvenia): al acabar el mandato decide el Partido, la familia o la Junta
+    según el apoyo popular y la lealtad. Final «consolidado» o caída.
+  - **Elecciones controladas** (Kharovia): +6 puntos de serie y más si se preparan. Un amaño grande se nota:
+    protestas y condena exterior.
+  - **Norland:** sin moción de censura, elecciones de mitad de mandato a los dos años y máximo dos mandatos.
+  - **Prensa:** con menos libertad (o con censura) salen menos escándalos.
+  - **Represión:** calma la calle (la revuelta tarda el doble) a cambio de prestigio y relaciones.
+  - **Transición democrática** (Sarvenia): elecciones libres al final; si las gana, el mejor final.
+- Pestaña «Régimen» en el ordenador del despacho: cómo funciona el poder, la lealtad y los poderes.
+- La aprobación se llama según el régimen (Aprobación, Legitimidad, Apoyo popular).
+- Finales nuevos: purgado, golpe de palacio, contragolpe, consolidado, transición, límite de mandatos.
+
+Pendiente (fase 5): en Qadar el jugador sigue siendo «presidente» en los textos; parte del contenido heredado
+de Valdoria (aceite y vino, la siesta, la Comisión de la Unión) no encaja del todo en otros países.
+
+```
+godot --headless --path . -- --autotest=1460 --runs=8 --strategy=random --difficulty=2 --pais=qadar
+TAB=regimen godot --path . -- --shot=office --pais=qadar --open=dashboard
 ```

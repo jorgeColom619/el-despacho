@@ -39,7 +39,7 @@ func build() -> void:
 	nav.position = SCREEN.position + Vector2(20, 80)
 	nav.size = Vector2(230, 700)
 	root.add_child(nav)
-	for spec in [["resumen", "Resumen", "grafico"], ["sociedad", "Sociedad", "aprobacion"], ["leyes", "Agenda legislativa", "ley"], ["congreso", "Congreso", "mazo"], ["agenda", "Agenda y registro", "calendario"], ["promesas", "Promesas", "pluma"], ["gabinete", "Gabinete", "empresarios"]]:
+	for spec in [["resumen", "Resumen", "grafico"], ["sociedad", "Sociedad", "aprobacion"], ["leyes", "Agenda legislativa", "ley"], ["congreso", String(GS.Pais.ficha().get("camara", "Congreso")), "mazo"], ["agenda", "Agenda y registro", "calendario"], ["promesas", "Promesas", "pluma"], ["gabinete", "Gabinete", "empresarios"], ["regimen", "Régimen", "bandera"]]:
 		var b := UI.btn("  " + spec[1], "ghost", 19)
 		b.icon = UI.icon(spec[2], 36)
 		b.add_theme_constant_override("icon_max_width", 22)
@@ -96,6 +96,8 @@ func _show(id: String) -> void:
 			_gabinete(v)
 		"promesas":
 			_promesas(v)
+		"regimen":
+			_regimen(v)
 
 
 func _locked(v: VBoxContainer, key: String) -> void:
@@ -130,7 +132,7 @@ func _resumen(v: VBoxContainer) -> void:
 	chart.custom_minimum_size = Vector2(820, 290)
 	chart.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chart.draw.connect(func():
-		chart.draw_string(UI.f_sans_b, Vector2(0, 16), "APROBACIÓN DEL GOBIERNO", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UI.DIM)
+		chart.draw_string(UI.f_sans_b, Vector2(0, 16), (GS.Regimen.etiqueta() + " del Gobierno").to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UI.DIM)
 		chart.draw_string(UI.f_cond_b, Vector2(0, 66), UI.num(GS.approval, 0) + "%", HORIZONTAL_ALIGNMENT_LEFT, -1, 54, UI.color_for(GS.approval))
 		var r := Rect2(150, 30, 660, 240)
 		for i in 5:
@@ -558,3 +560,73 @@ func _gabinete(v: VBoxContainer) -> void:
 		if main != null:
 			main.call_deferred("open_overlay", "cabinet", {}))
 	v.add_child(b)
+
+
+## Régimen: cómo funciona el poder en este país, quién le sostiene y qué poderes propios tiene
+func _regimen(v: VBoxContainer) -> void:
+	var R = GS.Regimen
+	var d: Dictionary = R.def()
+	v.add_child(UI.lbl(String(d["name"]), UI.f_serif_b, 34, UI.CREAM))
+	var desc := UI.lbl(String(d["desc"]), UI.f_sans, 18, UI.TEXT)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(1300, 0)
+	v.add_child(desc)
+	var elec: String = {"libres": "Libres", "controladas": "Controladas por el poder", "ninguna": "No hay"}[R.elecciones()]
+	var info := "Elecciones: %s   ·   Libertad de prensa: %d/100%s   ·   Moción de censura: %s" % [elec, int(roundf(R.prensa() * 100.0)), " (censura activa)" if R.censura() else "", "sí" if R.hay_mocion() else "no"]
+	if int(d.get("limite", 0)) > 0:
+		info += "   ·   Mandatos: %d de %d" % [GS.term_index, int(d["limite"])]
+	if bool(d.get("mitad", false)):
+		info += "   ·   Elecciones de mitad de mandato: %s" % ("celebradas" if GS.regimen.get("mitad", false) else "a los dos años")
+	if R.elecciones() == "controladas":
+		info += "   ·   Ventaja preparada para las elecciones: +%d puntos" % int(R.bonus_eleccion())
+	var il := UI.lbl(info, UI.f_sans_m, 16, UI.GOLD_L)
+	il.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	il.custom_minimum_size = Vector2(1300, 0)
+	v.add_child(il)
+	if R.tiene_pilar():
+		v.add_child(Widgets.section(String(d["pilar_name"])))
+		var l: float = R.lealtad()
+		var col := Color(0.45, 0.8, 0.5) if l >= 50.0 else (Color(0.95, 0.75, 0.3) if l >= 30.0 else Color(0.9, 0.35, 0.3))
+		var h := UI.hbox(16)
+		h.add_child(Widgets.bar(l, 600.0, 18.0, col))
+		h.add_child(UI.lbl("%d/100" % int(l), UI.f_cond_b, 26, col))
+		var warn := "Firme" if l >= 50.0 else ("Hay descontento" if l >= 30.0 else "PELIGRO: pueden echarle")
+		h.add_child(UI.lbl(warn, UI.f_sans_b, 17, col))
+		v.add_child(h)
+		var why := UI.lbl("Sube con la economía, el apoyo popular y los favores; baja con el desorden y los gestos que los inquietan. Por debajo de 15, %s." % {"purgado": "el Partido le purgará", "golpe_palacio": "la familia le apartará del trono", "contragolpe": "otros generales darán un contragolpe", "golpe": "habrá golpe de Estado"}[R.final_caida()], UI.f_sans, 15, UI.DIM)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		why.custom_minimum_size = Vector2(1300, 0)
+		v.add_child(why)
+	var acts: Array = R.acciones()
+	if acts.is_empty():
+		v.add_child(Widgets.section("Poderes"))
+		v.add_child(UI.lbl("En esta democracia no hay atajos: las leyes pasan por el Congreso y el poder se gana en las urnas.", UI.f_sans, 17, UI.DIM))
+		return
+	v.add_child(Widgets.section("Poderes del régimen"))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 16)
+	v.add_child(grid)
+	for a in acts:
+		var wait: int = R.espera(a["id"])
+		var cv := UI.vbox(4)
+		cv.custom_minimum_size = Vector2(620, 96)
+		cv.add_child(UI.lbl(String(a["name"]), UI.f_sans_b, 20, UI.TEXT if wait <= 0 else UI.DIM))
+		var dl := UI.lbl(String(a["desc"]), UI.f_sans, 15, UI.DIM)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		dl.custom_minimum_size = Vector2(600, 0)
+		cv.add_child(dl)
+		var foot := "Disponible" if wait <= 0 else ("Ya usado" if wait > 3000 else "Disponible en %d días" % wait)
+		cv.add_child(UI.lbl(foot, UI.f_sans_m, 14, UI.GOLD_L if wait <= 0 else UI.DIM))
+		var aid: String = a["id"]
+		var card := Widgets.click_card(cv, func():
+			if R.espera(aid) > 0:
+				return
+			Sfx.play("stamp", -6.0)
+			R.usar(aid)
+			_show("regimen"), 14)
+		if wait > 0:
+			card.set_meta("enabled", false)
+			card.modulate.a = 0.55
+		grid.add_child(card)
