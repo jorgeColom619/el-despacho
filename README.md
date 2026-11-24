@@ -431,6 +431,8 @@ qué respondes; si no, insisten. Lo que pones por escrito tiene consecuencias: u
 turbio a una periodista puede salir en los periódicos. Funciona sin internet, con reglas
 (`scripts/systems/charla.gd` y `scripts/data/charla_data.gd`).
 
+![Conversación con la madre escrita con sus propias palabras](docs/capturas/movil-charla.jpg)
+
 ### Reto del día
 
 La misma partida para todos cada día (presidente, partido, escenario y tres promesas obligatorias) con dos reglas
@@ -445,6 +447,9 @@ efectos ocultos), delegar, bromas, insultos y órdenes turbias, y el tono. Está
 adelante a través de un servidor propio (ver `scripts/systems/interprete.gd`).
 
 ## Comercio y negociación (5.1)
+
+| ![Mesa de negociación: Kharovia exige un pago con la amenaza de cortar el gas](docs/capturas/mesa-negociacion.jpg) | ![Comercio y recursos: producción, métodos y obras](docs/capturas/comercio.jpg) |
+|---|---|
 
 ### Comercio y recursos
 

@@ -607,6 +607,7 @@ static func _motivo(c: String, e: Dictionary) -> String:
 static func aceptar(c: String) -> void:
 	var ms := mesa(c)
 	if not abierta(c) or String(ms["autor"]) != "ellos":
+		GS.toast.emit("Esa propuesta de %s ya no está sobre la mesa." % nombre(c), "info", "acuerdo")
 		return
 	var prop: Dictionary = ms["prop"]
 	_hist(c, "yo", "acepta", "Aceptamos.")
@@ -619,6 +620,7 @@ static func aceptar(c: String) -> void:
 static func rechazar(c: String, txt := "") -> void:
 	var ms := mesa(c)
 	if not abierta(c) or String(ms["autor"]) != "ellos":
+		GS.toast.emit("Esa propuesta de %s ya no está sobre la mesa." % nombre(c), "info", "acuerdo")
 		return
 	var prop: Dictionary = ms["prop"]
 	ms["estado"] = "rechazada"

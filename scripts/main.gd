@@ -148,6 +148,9 @@ func _ready() -> void:
 			_capture_later(cpath, cwait)
 	if "--nograin" in args:
 		grain.visible = false
+	# para capturas limpias: sin los avisos de la esquina
+	if "--sintoasts" in args:
+		toasts.visible = false
 	if "--negotest" in args:
 		GS.no_save = false
 		var NT = load("res://scripts/negotest.gd")

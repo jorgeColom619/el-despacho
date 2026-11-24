@@ -56,6 +56,22 @@ func build() -> void:
 		borrador = _borrador_inicial()
 	_conversacion()
 	_derecha()
+	# en línea: si el otro jugador contesta o escribe mientras la mesa está abierta, se ve al momento
+	Red.nego.connect(_de_la_red)
+	Red.mensaje.connect(_mensaje_red)
+
+
+func _mensaje_red(de: String, _t: String) -> void:
+	_de_la_red(de, "texto")
+
+
+func _de_la_red(de: String, _tipo: String) -> void:
+	if de != con or closing or not is_inside_tree():
+		return
+	N.mesa(con)["nuevo"] = false
+	Sfx.play("notify", -10.0, 1.3)
+	_conversacion()
+	_derecha()
 
 
 func on_escape() -> void:

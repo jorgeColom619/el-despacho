@@ -681,6 +681,9 @@ func _se_fue(c: String) -> void:
 		if String(jugadores[id]["pais"]) == c:
 			jugadores.erase(id)
 			break
+	# su producción ya no cuenta para el precio mundial (la lleva la IA)
+	if not GS.mercado.is_empty():
+		GS.mercado.get("jug", {}).erase(c)
 	if GS.active:
 		GS.toast.emit("El jugador de %s se ha desconectado: su país pasa a la IA." % W.COUNTRIES.get(c, {}).get("name", c), "warn", "alerta")
 	sala_cambiada.emit()

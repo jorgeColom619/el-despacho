@@ -357,6 +357,51 @@ func _suite() -> void:
 	o._action("kharovia", "sanciones")
 	print("OK mundo")
 	await _close_current()
+	# comercio y recursos: producción (subir, cambiar de método, ampliar), mercado y contratos
+	o = await _open("comercio", {"tab": "produccion"})
+	GS.Mercado.fijar_objetivo("industria", float(GS.Mercado.prod("industria")["obj"]) + 0.5)
+	GS.Mercado.cambiar_metodo("alimentos", String((GS.Mercado.R.METODOS["alimentos"] as Dictionary).keys()[1]))
+	GS.Mercado.ampliar("tecnologia")
+	o._show()
+	await _wait(0.2)
+	for tb in ["mercado", "contratos"]:
+		o.tab = tb
+		o._show()
+		await _wait(0.2)
+	print("OK comercio")
+	await _close_current()
+	# mesa de negociación: escribir, proponer (con amenaza), y aceptar la contraoferta si la hay
+	var mc: String = "kharovia" if GS.countries.has("kharovia") else String(GS.countries.keys()[0])
+	o = await _open("mesa", {"con": mc})
+	o.entrada.text = "Buenas. ¿Hablamos de gas?"
+	o.entrada.text_submitted.emit(o.entrada.text)
+	await _wait(1.8)
+	o.borrador = {"da": [{"tipo": "dinero", "m": 300.0}], "pide": [{"tipo": "venta", "r": "gas", "vol": 1.0, "precio": 95.0, "meses": 12}], "amenaza": {"k": "aranceles"}}
+	o._derecha()
+	var antes: int = (GS.Negociacion.mesa(mc)["hist"] as Array).size()
+	GS.Negociacion.proponer(mc, o.borrador.duplicate(true), "Prueba")
+	o._espera(antes + 1)
+	await _wait(1.8)
+	if GS.Negociacion.abierta(mc) and String(GS.Negociacion.mesa(mc)["autor"]) == "ellos":
+		GS.Negociacion.aceptar(mc)
+		o._conversacion()
+		o._derecha()
+	await _wait(0.3)
+	print("OK mesa (%s: %s)" % [mc, GS.Negociacion.mesa(mc)["estado"]])
+	await _close_current()
+	# el móvil: una conversación nueva con la madre, escrita con sus palabras
+	o = await _open("movil", {"tab": "mensajes"})
+	o.contactos = true
+	o._show("mensajes")
+	await _wait(0.2)
+	var hm: Dictionary = GS.Redes.hilo("madre")
+	o.chat_open = hm
+	o._show("mensajes")
+	o.enviar_texto(hm, "Hola mamá, ¿qué tal estás?")
+	await _wait(2.8)
+	var ult: Dictionary = (hm["msgs"] as Array).back()
+	print("OK móvil (responde: %s)" % ("sí" if not ult["me"] else "NO"))
+	await _close_current()
 	# prensa (en 3D: se da la palabra a un periodista y las respuestas salen en el atril), entrevista, discurso, debate
 	for mode in ["rueda", "entrevista"]:
 		o = await _open("press", {"mode": mode})
