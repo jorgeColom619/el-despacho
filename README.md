@@ -33,6 +33,7 @@ cargo en el Congreso.
 - [El despacho](#el-despacho)
 - [Minijuegos](#minijuegos)
 - [Sistemas de la versión 3.0](#sistemas-de-la-versión-30)
+- [Comercio y negociación (5.1)](#comercio-y-negociación-51)
 - [Tienda del Palacio y logros](#tienda-del-palacio-y-logros)
 - [Consejos](#consejos)
 - [Opciones y gráficos](#opciones-y-gráficos)
@@ -423,6 +424,13 @@ gente de cada noticia, las tendencias y tus publicaciones, que según el tema y 
 incendio. Y los **mensajes privados**: tu madre, la Jefa de Gabinete, los ministros, la oposición, la periodista,
 líderes extranjeros y tu jefe de comunicación. Si los dejas en visto, a veces se paga.
 
+Desde la 5.1 hay **una conversación por persona** y se puede **escribir con tus propias palabras** (o con
+*Nuevo mensaje*, a quien quieras): cada uno contesta a lo que dices a su manera (la madre, los ministros con sus
+datos, la oposición con retintín, la periodista apuntándolo todo). Si te habían preguntado algo, el juego entiende
+qué respondes; si no, insisten. Lo que pones por escrito tiene consecuencias: un insulto a la oposición o algo
+turbio a una periodista puede salir en los periódicos. Funciona sin internet, con reglas
+(`scripts/systems/charla.gd` y `scripts/data/charla_data.gd`).
+
 ### Reto del día
 
 La misma partida para todos cada día (presidente, partido, escenario y tres promesas obligatorias) con dos reglas
@@ -435,6 +443,37 @@ En las visitas y en las llamadas puedes escribir lo que dirías. El juego lo ent
 segunda», un «vale» a lo que te recomiendan, pedir tiempo o un informe (vuelve en unos días y con el informe ves los
 efectos ocultos), delegar, bromas, insultos y órdenes turbias, y el tono. Está preparado para conectar una IA más
 adelante a través de un servidor propio (ver `scripts/systems/interprete.gd`).
+
+## Comercio y negociación (5.1)
+
+### Comercio y recursos
+
+En el mapa del mundo, **Comercio y recursos**. Cada país produce y consume gas, petróleo, alimentos, industria,
+tecnología y minerales; lo que sobra se vende y lo que falta se compra. Tú decides:
+
+- **Cuánto** produces de cada cosa. Sube o baja poco a poco (un punto al mes).
+- **Cómo**: cada recurso tiene varios métodos con su coste, su capacidad y sus efectos (fracking, plataformas en alta
+  mar, arenas bituminosas, campo familiar, agricultura intensiva o ecológica, invernaderos y desaladoras, fábricas
+  robotizadas, zonas francas, minería artesanal o responsable...). Algunos tienen accidentes.
+- **Hasta dónde**: la capacidad se amplía con obras que tardan meses, con un techo según los yacimientos y la tierra.
+
+El precio mundial de cada recurso sale de lo que produce el mundo: si un país recorta, sube; si produce de más, baja.
+Los grandes exportadores del ordenador reaccionan. Todo se mide frente a un año normal: sin tocar nada, la economía
+va como antes.
+
+### Mesa de negociación
+
+En el mapa del mundo, **Negociar en la mesa** con cualquier país. Una propuesta es lo que ofreces y lo que pides:
+contratos de venta (recurso, cantidad, precio y meses), pagos únicos o mensuales, tratados (comercial, energético,
+de inversión, de defensa, de no agresión), reabrir un suministro, levantar sanciones o un embargo, compromisos de
+producción (el cártel) y promesas con tus palabras. Se puede acompañar de una **amenaza** (cortar el suministro,
+sanciones, embargo, aranceles, expulsar al embajador o tropas en la frontera): si la rechazan, decides si la cumples,
+y echarse atrás hunde tu **credibilidad**.
+
+El ordenador valora cada propuesta con lo que necesita, el precio del mercado, la relación, su carácter y su poder, y
+acepta, rechaza explicando por qué o hace una contraoferta. También propone él: venderte lo que te falta, comprarte lo
+que te sobra, tratados... o exigencias con amenaza. En la partida en línea, las propuestas van al otro jugador, que
+decide. Ver `scripts/systems/negociacion.gd` y `docs/PLAN_MULTIJUGADOR.md`.
 
 ## Tienda del Palacio y logros
 
@@ -483,6 +522,9 @@ Desde el menú principal o el menú de pausa:
 - El proyecto usa **Forward+** por defecto. Al arrancar, si no hay aceleración gráfica (máquina virtual, controlador
   básico de Windows, llvmpipe...), cambia solo al motor **Compatible** y se reinicia una vez. El motor elegido se
   guarda en `override.cfg`, junto a `project.godot` (o junto al ejecutable exportado).
+- En **Mac** arranca con el motor **Compatible** (`rendering_method.macos` en `project.godot`): con el avanzado
+  algunos Mac se quedaban en negro. Y en todos los sistemas, si con el menú a la vista la imagen sale lisa y oscura,
+  el juego cambia al compatible y se reinicia (`Sfx.vigilar_pantalla()`).
 - **Alta** y **Ultra** necesitan el motor avanzado y una tarjeta gráfica: añaden iluminación global (SDFGI),
   oclusión ambiental, reflejos, niebla volumétrica y rayos de luz. **Baja** reduce la resolución 3D y quita sombras,
   partículas y luces secundarias. En automático: Alta con Forward+, Media con el motor compatible y Baja sin tarjeta
@@ -666,6 +708,11 @@ de gestos. Después, vuelve a importar el proyecto (`godot --headless --path . -
 
 ## Historial de versiones
 
+- **5.1**: **negociar de verdad**. Mesa de negociación con propuestas cláusula a cláusula (contratos con precio,
+  pagos, tratados, producción, promesas), contraofertas, amenazas y credibilidad, con el ordenador y entre jugadores.
+  Comercio y recursos: cuánto produce el país, cómo (métodos con efectos y accidentes) y obras para ampliar; precios
+  que salen de lo que produce el mundo. Móvil con una conversación por persona y respuestas con tus propias palabras.
+  En Mac, motor compatible por defecto (se quedaba en negro) y red de seguridad contra la pantalla en negro.
 - **4.1**: **el Gran Casino**. Invitaciones de cuatro anfitriones, una noche de ruleta, blackjack y tragaperras en un
   salón 3D con dinero público, la jugada arreglada, el crédito, el fotógrafo, las cuentas en la caja (y cómo tapar el
   agujero), los favores que vuelven, el escándalo, un final nuevo y tres logros. Música de jazz de salón y sonidos

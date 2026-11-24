@@ -22,6 +22,7 @@ imposible a la vez, con el mismo reloj. Los países que no lleva nadie los juega
 | 3. Regímenes | Marco común y los siete países jugables: Kharovia, Tsaing, Qadar, Sarvenia y Aldora con su régimen. | **Hecha** |
 | 4. Multijugador por IP directa | UPnP automático, varios jugadores (probado con dos), reloj común, IA para los libres, diplomacia entre jugadores. | **Hecha** |
 | 5. Contenido propio | Eventos, tramas y escenarios escritos para cada país. | **Primera tanda hecha** |
+| 6. Negociar de verdad (5.1) | Mesa de negociación con cláusulas, contraofertas y amenazas; producción, métodos, obras y contratos; precios por oferta. | **Hecha** |
 
 ## Los países
 
@@ -210,3 +211,67 @@ adelante, códigos de invitación por WebRTC para no depender del puerto.
 - La placa del despacho y la barra dicen la sede de cada país (Diwán del Emir, Junta de Gobierno...).
 
 Siguiente: más eventos propios, tramas y escenarios por país, y limpiar lo heredado que no encaja.
+
+
+## Fase 6 (5.1): negociar de verdad y gestionar los recursos
+
+Antes, entre jugadores había mensajes y tres tratados que se firmaban con un clic. Ahora:
+
+### Producción y comercio (`systems/mercado.gd`, `data/recursos_data.gd`)
+
+- Cada país tiene **consumo** (`CONSUMO`), **producción de partida** (consumo + saldo del perfil) y **techo** por
+  recurso (`TECHO`: yacimientos y tierra; industria y tecnología, hasta la producción + 5).
+- El país que se gobierna decide en *Comercio y recursos* (`overlays/comercio_overlay.gd`):
+  - **producción** objetivo (sube 1 al mes, baja 2),
+  - **método** (`METODOS`): coste por unidad, multiplicador del techo, prima de precio, efectos en medidores y
+    grupos por unidad (frente al método de partida), riesgo de accidentes, insumos de otros recursos y vaivén,
+  - **obras** para ampliar la capacidad (`OBRAS`: coste y meses).
+- **Dinero al mes** por recurso (`saldo_de`): contratos a su precio + lo que sobra (o falta) al del mercado − lo de
+  un año normal − el coste de producir de más o con otro método. Una unidad a precio 100 son 400 M al mes, igual en
+  todos los ordenadores. Sin tocar nada da lo mismo que la fórmula de antes.
+- **Precio mundial**: tiende a `equilibrio(r) = 100 × (1 − 2 × desvío / oferta del mundo)`, con el desvío de la
+  producción de todos (el jugador, los países de la IA y los otros jugadores). Los grandes exportadores de la IA
+  recortan si el precio baja de 85 y bombean si pasa de 125. En línea, cada jugador manda sus desvíos al anfitrión
+  (`Red.enviar_produccion`), que calcula el precio y lo reparte.
+- **Contratos** (`GS.mercado["contratos"]`): venta a precio fijo o pagos mensuales, con fecha de fin. Mejoran poco a
+  poco la relación. Firmar una venta acaba con el corte de ese recurso entre los dos; cortar a quien se le vende por
+  contrato lo rompe (en los dos ordenadores).
+- El corte del agua del río Seco quita dos unidades de alimentos (antes, con la fórmula vieja, casi no se notaba).
+
+### Mesa de negociación (`systems/negociacion.gd`, `overlays/mesa_overlay.gd`)
+
+- Una mesa por país en `GS.diplo["mesas"]`: historial (mensajes, propuestas, respuestas), la propuesta que hay sobre
+  la mesa, quién la puso, versión y fecha de caducidad. `GS.diplo["cred"]`: credibilidad de nuestras amenazas.
+- Propuesta = `{da, pide, amenaza}` desde el punto de vista de cada ordenador (al mandarla se dan la vuelta). Cláusulas:
+  venta, dinero, dinero_mes, tratado, reabrir, levantar, produccion y compromiso.
+- **IA**: `evaluar()` suma lo que vale cada cláusula para ese país (lo que necesita y le sobra, el precio del mercado,
+  sus contratos), la relación, su carácter (umbral), su poder frente al nuestro y el peso de la amenaza (daño ×
+  credibilidad × carácter; a un agresivo más fuerte le crece). Acepta, contraoferta (quita lo que nunca firmaría,
+  ajusta cantidades, mueve el precio y, si no basta, pide una compensación) o rechaza con el motivo. Cada carácter
+  aguanta unas cuantas contraofertas. `pronostico()` es lo que cree Exteriores.
+- **Amenazas**: si rechazan, llega al despacho «¿la cumple?»: cumplirla (`cumplir()`, las mismas acciones del mapa más
+  aranceles y tropas) sube la credibilidad; echarse atrás la hunde. La IA cumple las suyas según su carácter.
+- **La IA propone** cada mes (a veces): vender lo que nos falta, comprar lo que nos sobra, tratados entre amigos y, los
+  duros con un arma, exigencias con amenaza. Llegan como visita de Exteriores (abrir la mesa, aceptar, rechazar o
+  dejarlo para más tarde).
+- **Entre jugadores**: `Red.accion(país, "nego", {...})` con propuesta, acepta, rechaza, retira y rompe (contrato);
+  los mensajes de texto también quedan en la mesa. Cada ordenador ejecuta su mitad del trato con su punto de vista; los
+  contratos llevan el mismo id en los dos.
+
+### Pruebas
+
+```
+godot --headless --path . -- --negotest [--pais=qadar]      # economía y mesa con la IA
+godot --headless --path . -- --charlatest                    # el móvil: charla y una conversación por persona
+godot --headless --path . -- --redtest=anfitrion --pais=kharovia
+godot --headless --path . -- --redtest=invitado --pais=valdoria
+COMERCIO=demo godot --path . -- --shot=office --open=comercio      # o comerciomercado / comerciocontratos
+MESA=kharovia godot --path . -- --shot=office --open=mesacontra    # o mesaoferta (una exigencia con amenaza)
+```
+
+El `redtest` ahora negocia: el anfitrión propone un contrato con un pago y una amenaza, el invitado contraoferta, el
+anfitrión acepta (los dos acaban con el mismo contrato visto desde cada lado); luego una exigencia que el invitado
+rechaza y el anfitrión cumple la amenaza. El invitado sube su producción y el anfitrión la tiene en cuenta en el precio.
+
+Equilibrio (730 días, dificultad normal, Valdoria): sin tocar el comercio, 80 partidas «casual» dan 13 % de victorias,
+aprobación final 40,8 y deuda del 98 % (en la 5.0: 16 %, 40,9 y 101 %); 40 partidas «player», 100 % en las dos.
