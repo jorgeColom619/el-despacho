@@ -12,6 +12,7 @@ const G := preload("res://scripts/data/generadores_data.gd")
 const C := preload("res://scripts/data/conversaciones_data.gd")
 const E_V3A := preload("res://scripts/data/events_v3a.gd")
 const E_V3B := preload("res://scripts/data/events_v3b.gd")
+const E_PAISES := preload("res://scripts/data/events_paises.gd")
 const Promesas := preload("res://scripts/systems/promesas.gd")
 const Memoria := preload("res://scripts/systems/memoria.gd")
 const Pais := preload("res://scripts/systems/pais.gd")
@@ -134,7 +135,7 @@ func reconstruir() -> void:
 	events_by_id = {}
 	all_events = []
 	var fuera: Dictionary = Pais.apartados.get("eventos", {})
-	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS, E_MEME.EVENTS, E_V3A.EVENTS, E_V3B.EVENTS]:
+	for list in [E.EVENTS, E_TRAMAS.EVENTS, E_EXTRA.EVENTS, E_MEME.EVENTS, E_V3A.EVENTS, E_V3B.EVENTS, E_PAISES.EVENTS]:
 		for e in list:
 			if events_by_id.has(e["id"]):
 				push_warning("Evento duplicado: " + e["id"])

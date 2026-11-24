@@ -88,6 +88,7 @@ func _buscar(val, prohibidas: Array, donde: String, out: Array) -> void:
 	if val is String:
 		if "Congreso" in val:
 			val = val.replace(String(PD.PAISES[Pais.actual].get("camara", "Congreso")), "")
+			val = val.replace("Congreso del Partido", "")
 			for k in PD.PAISES[Pais.actual]["parties"].keys():
 				val = val.replace(String(PD.PAISES[Pais.actual]["parties"][k]["name"]), "")
 		for w in prohibidas:

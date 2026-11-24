@@ -23,7 +23,7 @@ const PAISES := {
 		"currency": "€", "moneda": ["euro", "euros", "m"],
 		"pres_m": "Alejandro Ríos", "pres_f": "Alejandra Ríos",
 		"desc": "Democracia parlamentaria del sur, socia de la Unión Continental. Turismo, campo y un Congreso de siete partidos donde siempre falta un voto.",
-		"regime": "Democracia parlamentaria", "regimen": "parlamentaria", "camara": "Congreso",
+		"regime": "Democracia parlamentaria", "regimen": "parlamentaria", "camara": "Congreso", "sede": "PRESIDENCIA DE LA REPÚBLICA",
 		"world_id": 1, "map": "valdoria", "flag": "valdoria",
 		"regions": {1: "Santa Aurora", 2: "Ferrosa", 3: "Marvella", 4: "Puerto Alba", 5: "Vallegrande", 6: "Altamira", 7: "Rioseco", 8: "Islas Cordales"},
 		"parties": {
@@ -51,7 +51,7 @@ const PAISES := {
 		"currency": "$", "moneda": ["dólar", "dólares", "m"],
 		"pres_m": "Alexander Reed", "pres_f": "Alexandra Reed",
 		"desc": "La superpotencia occidental: república federal, la mayor economía y el ejército más fuerte del mundo. Sus aliados esperan protección y su opinión pública, resultados.",
-		"regime": "República federal presidencial", "regimen": "presidencial", "camara": "Congreso",
+		"regime": "República federal presidencial", "regimen": "presidencial", "camara": "Congreso", "sede": "PRESIDENCIA DE LOS ESTADOS FEDERADOS",
 		"world_id": 7, "map": "norland", "flag": "norland",
 		"regions": {1: "Fairhaven", 2: "Ironwood", 3: "New Bristol", 4: "Port Calloway", 5: "Greenfield", 6: "Redrock", 7: "Lakeshore", 8: "Islas Pacíficas"},
 		"parties": {
@@ -88,7 +88,7 @@ const PAISES := {
 		"currency": "₽", "moneda": ["rublo", "rublos", "m"],
 		"pres_m": "Mijaíl Petrov", "pres_f": "Ekaterina Petrova",
 		"desc": "Federación inmensa de estepas y gasoductos. Hay elecciones, pero el poder las controla: los oligarcas y los servicios de seguridad deciden más que el Parlamento.",
-		"regime": "Autoritarismo electoral", "regimen": "autoritaria", "camara": "Parlamento",
+		"regime": "Autoritarismo electoral", "regimen": "autoritaria", "camara": "Parlamento", "sede": "PRESIDENCIA DE LA FEDERACIÓN",
 		"world_id": 5, "map": "kharovia", "flag": "kharovia",
 		"regions": {1: "Velgorod", 2: "Kamensk", 3: "Severoport", 4: "Zarechye", 5: "Belaya Step", 6: "Tobrinsk", 7: "Krasnodol", 8: "Islas Belomor"},
 		"parties": {
@@ -135,7 +135,7 @@ const PAISES := {
 		"currency": "¥", "moneda": ["yuan", "yuanes", "m"],
 		"pres_m": "Lin Tao", "pres_f": "Lin Mei",
 		"desc": "La fábrica del mundo: mil millones de personas y un solo partido. No hay elecciones; el Partido mide al presidente por el crecimiento y el orden.",
-		"regime": "Partido único", "regimen": "partido_unico", "camara": "Congreso Nacional del Pueblo",
+		"regime": "Partido único", "regimen": "partido_unico", "camara": "Congreso Nacional del Pueblo", "sede": "PRESIDENCIA DE LA REPÚBLICA", "trato": "Camarada presidente",
 		"world_id": 6, "map": "tsaing", "flag": "tsaing",
 		"regions": {1: "Lingdu", 2: "Shenmao", 3: "Puerto Kaiyang", 4: "Delta del Jade", 5: "Llanura Amarilla", 6: "Montes Qilan", 7: "Yunshan", 8: "Islas Penglai"},
 		"parties": {
@@ -182,7 +182,7 @@ const PAISES := {
 		"currency": "£", "moneda": ["libra", "libras", "f"],
 		"pres_m": "Nasser al-Hamdan", "pres_f": "Noor al-Hamdan",
 		"desc": "Emirato del golfo: petróleo, un fondo soberano gigante y una familia real que lo controla todo. No hay elecciones; el Consejo Consultivo solo aconseja.",
-		"regime": "Emirato (monarquía absoluta)", "regimen": "monarquia", "camara": "Consejo Consultivo",
+		"regime": "Emirato (monarquía absoluta)", "regimen": "monarquia", "camara": "Consejo Consultivo", "sede": "DIWÁN DEL EMIR", "trato": "Alteza",
 		"world_id": 8, "map": "qadar", "flag": "qadar",
 		"regions": {1: "Al-Qasr", 2: "Ras Hamad", 3: "Puerto Zahra", 4: "Wadi Sahil", 5: "Al-Badiya", 6: "Jebel Nahr", 7: "Oasis de Liwan", 8: "Islas Durrat"},
 		"parties": {
@@ -229,7 +229,7 @@ const PAISES := {
 		"currency": "₣", "moneda": ["franco", "francos", "m"],
 		"pres_m": "Andrés Valcárcel", "pres_f": "Andrea Valcárcel",
 		"desc": "Pequeña república gobernada por una junta militar desde el golpe. Ejército fuerte, economía débil y el nacimiento del río Seco, del que bebe Valdoria.",
-		"regime": "Junta militar", "regimen": "junta", "camara": "Consejo Nacional",
+		"regime": "Junta militar", "regimen": "junta", "camara": "Consejo Nacional", "sede": "JUNTA DE GOBIERNO", "trato": "Mi general",
 		"world_id": 2, "map": "sarvenia", "flag": "sarvenia",
 		"regions": {1: "Altaverde", 2: "Alto Seco", 3: "Sierra Parda", 4: "Llanos de Toral", 5: "Puerto Bermejo", 6: "Valle Hondo", 7: "Frontera Norte", 8: "Islas Gaviotas"},
 		"parties": {
@@ -272,7 +272,7 @@ const PAISES := {
 		"currency": "₦", "moneda": ["naira", "nairas", "f"],
 		"pres_m": "Daniel Kibet", "pres_f": "Grace Kibet",
 		"desc": "País joven y pobre al sur del estrecho: minerales para baterías, una democracia reciente y un ejército que vigila. Si el desorden crece, los cuarteles se impacientan.",
-		"regime": "Democracia frágil", "regimen": "fragil", "camara": "Parlamento",
+		"regime": "Democracia frágil", "regimen": "fragil", "camara": "Parlamento", "sede": "PRESIDENCIA DE LA REPÚBLICA",
 		"world_id": 3, "map": "aldora", "flag": "aldora",
 		"regions": {1: "Bandari", 2: "Kivara", 3: "Costa del Estrecho", 4: "Delta del Tamu", 5: "Sabana Alta", 6: "Montes Ruvu", 7: "Lago Tamu", 8: "Islas Zanji"},
 		"parties": {

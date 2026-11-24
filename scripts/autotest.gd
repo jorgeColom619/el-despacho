@@ -118,6 +118,11 @@ func _play(days: int) -> Dictionary:
 	if not quiet:
 		_report()
 		print("Eventos distintos vistos: %d" % events_seen.size())
+		var propios := []
+		for k in events_seen.keys():
+			if DB.events_by_id.get(k, {}).has("pais"):
+				propios.append(k)
+		print("Eventos propios del país: %s" % [propios])
 		print("Leyes: ", GS.policies, "  Tratados: ", GS.treaties.size(), "  Corrupción: ", snappedf(GS.corruption, 0.1))
 		print("Recuerdos con decisión: %d · hechos anotados: %d" % [int(_result.get("memo", 0)), GS.memo.size()])
 		var pr := {}

@@ -214,13 +214,14 @@ func _draw() -> void:
 		_brass_divider(x)
 	# --- sello y fecha
 	draw_texture_rect(_seal, Rect2(12, 4, 56, 56), false)
-	draw_string(UI.f_sans_b, Vector2(74, 22), "PRESIDENCIA DE LA REPÚBLICA", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, BRASS)
+	draw_string(UI.f_sans_b, Vector2(74, 22), String(GS.Pais.ficha().get("sede", "PRESIDENCIA DE LA REPÚBLICA")), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, BRASS)
 	draw_string(UI.f_num, Vector2(74, 48), UI.date_long(GS.day), HORIZONTAL_ALIGNMENT_LEFT, 300, 19, PARCH)
 	# progreso del día
 	draw_rect(Rect2(388, 45, 172, 2), Color(0, 0, 0, 0.35))
 	draw_rect(Rect2(388, 45, 172 * GS.day_progress(), 2), BRASS)
 	var left := GS.term_days - GS.day
-	var etxt := ("Elecciones en %d días" % left) if left > 0 else "Jornada electoral"
+	var sin_urnas: bool = GS.Regimen.elecciones() == "ninguna"
+	var etxt := ((("Revisión del mandato en %d días" if sin_urnas else "Elecciones en %d días") % left) if left > 0 else ("Día de la decisión" if sin_urnas else "Jornada electoral"))
 	if GS.mode == "infinito":
 		etxt = "%s legislatura · %s" % [GS.ordinal(GS.term_index).capitalize(), etxt.to_lower()]
 	draw_string(UI.f_num_r, Vector2(388, 58), etxt, HORIZONTAL_ALIGNMENT_LEFT, 205, 11, BRASS_L if left < 60 else PARCH_DIM)

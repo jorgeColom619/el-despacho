@@ -21,7 +21,7 @@ imposible a la vez, con el mismo reloj. Los países que no lleva nadie los juega
 | 2. Recursos y mercado mundial | Gas, petróleo, alimentos, industria, tecnología y minerales con precios. Cortes de suministro, embargos, agua del río. | **Hecha** |
 | 3. Regímenes | Marco común y los siete países jugables: Kharovia, Tsaing, Qadar, Sarvenia y Aldora con su régimen. | **Hecha** |
 | 4. Multijugador por IP directa | UPnP automático, varios jugadores (probado con dos), reloj común, IA para los libres, diplomacia entre jugadores. | **Hecha** |
-| 5. Contenido propio | Eventos, tramas y escenarios escritos para cada país. | Pendiente |
+| 5. Contenido propio | Eventos, tramas y escenarios escritos para cada país. | **Primera tanda hecha** |
 
 ## Los países
 
@@ -150,8 +150,8 @@ MERCADO=corte godot --path . -- --shot=office --open=mercado
 - La aprobación se llama según el régimen (Aprobación, Legitimidad, Apoyo popular).
 - Finales nuevos: purgado, golpe de palacio, contragolpe, consolidado, transición, límite de mandatos.
 
-Pendiente (fase 5): en Qadar el jugador sigue siendo «presidente» en los textos; parte del contenido heredado
-de Valdoria (aceite y vino, la siesta, la Comisión de la Unión) no encaja del todo en otros países.
+Parte del contenido heredado de Valdoria (aceite y vino, la siesta, la Comisión de la Unión) aún no encaja del
+todo en otros países: es lo siguiente de la fase 5.
 
 ```
 godot --headless --path . -- --autotest=1460 --runs=8 --strategy=random --difficulty=2 --pais=qadar
@@ -194,3 +194,19 @@ godot --path . -- --shot=office --open=jugador    # la ficha de otro jugador en 
 
 Pendiente: probar UPnP en un router de verdad (en esta máquina virtual no hay router con UPnP) y, más
 adelante, códigos de invitación por WebRTC para no depender del puerto.
+
+## Fase 5 (primera tanda): cómo funciona
+
+- `scripts/data/events_paises.gd`: 36 eventos propios, seis por país (Norland, Kharovia, Tsaing, Qadar, Sarvenia,
+  Aldora). La clave `"pais"` hace que solo salgan allí. Van ligados a su régimen y a sus recursos: los
+  gobernadores y las armas en Norland; el gasoducto, la periodista y los oligarcas en Kharovia; la burbuja
+  inmobiliaria y el objetivo de crecimiento en Tsaing; el petróleo barato, el primo díscolo y el Mundial en
+  Qadar; la presa del río Seco, los estudiantes y los coroneles en Sarvenia; el litio, la sequía y el cuartel
+  rebelde en Aldora.
+- Condiciones nuevas para los eventos: `"lealtad"` (del pilar del poder) y `"precio_<recurso>"`.
+- Cómo le llaman: «Alteza» en Qadar, «Mi general» en Sarvenia, «Camarada presidente» en Tsaing.
+- Donde no hay elecciones, la bienvenida habla de ganarse la confianza del Partido, de la familia real o de la
+  Junta, y la barra de arriba dice «Revisión del mandato» en vez de «Elecciones».
+- La placa del despacho y la barra dicen la sede de cada país (Diwán del Emir, Junta de Gobierno...).
+
+Siguiente: más eventos propios, tramas y escenarios por país, y limpiar lo heredado que no encaja.

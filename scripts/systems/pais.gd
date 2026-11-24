@@ -12,6 +12,7 @@ extends RefCounted
 
 const PD := preload("res://scripts/data/paises_data.gd")
 const W := preload("res://scripts/data/world_data.gd")
+const RD := preload("res://scripts/data/regimenes_data.gd")
 
 ## Variables con textos de cada script de datos (las que se adaptan al país)
 const DATOS := {
@@ -171,6 +172,21 @@ static func tabla(p: String) -> Dictionary:
 		for i in 4:
 			out[String(f["gent"][i])] = v["gent"][i]
 			out[String(f["gent"][i]).capitalize()] = String(v["gent"][i]).capitalize()
+	# cómo le llaman sus asesores: «Alteza», «Mi general»...
+	if f.has("trato"):
+		var tr := String(f["trato"])
+		var tv := tr if tr == "Alteza" else tr.left(1).to_lower() + tr.substr(1)
+		out["Presidente,"] = tr + ","
+		out[", presidente"] = ", " + tv
+		out["Señor presidente"] = tr
+	# sin elecciones no hay reelección que ganar; y la aprobación se llama de otra manera
+	var rg: Dictionary = RD.REGIMENES.get(String(f.get("regimen", "parlamentaria")), {})
+	if String(rg.get("elecciones", "libres")) == "ninguna":
+		var rev := String(rg.get("revision", "la cúpula del régimen"))
+		var de_rev := ("del " + rev.substr(3)) if rev.begins_with("el ") else "de " + rev
+		out["ganar la reelección"] = "ganarse la confianza " + de_rev
+	if String(rg.get("aprobacion", "Aprobación")) != "Aprobación":
+		out["APROBACIÓN"] = String(rg["aprobacion"]).to_upper()
 	# la cámara: en Kharovia, el Parlamento; en Tsaing, el Congreso Nacional del Pueblo...
 	var cam := String(f.get("camara", "Congreso"))
 	if cam != "Congreso":
@@ -240,7 +256,10 @@ static func sustituir(s: String, re: RegEx, cambios: Dictionary) -> String:
 		# borde de palabra; en los hashtags (#FeriaDeFerrosa) también cuenta el paso de minúscula a mayúscula
 		var hashtag_antes := _letra(antes) and antes == antes.to_lower() and m.get_string().left(1) == m.get_string().left(1).to_upper()
 		var hashtag_despues := _letra(despues) and despues == despues.to_upper() and not despues.is_valid_int()
-		if (_letra(antes) and not hashtag_antes) or (_letra(despues) and not hashtag_despues):
+		# (solo en los lados de la clave que son letra: «, presidente» empieza por coma)
+		var borde_a := _letra(m.get_string().left(1))
+		var borde_b := _letra(m.get_string().right(1))
+		if (borde_a and _letra(antes) and not hashtag_antes) or (borde_b and _letra(despues) and not hashtag_despues):
 			continue
 		out += s.substr(pos, a - pos) + String(cambios[m.get_string()])
 		pos = b

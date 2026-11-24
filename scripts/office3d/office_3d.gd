@@ -810,7 +810,7 @@ func _desk_objects() -> void:
 	plb.cube(Vector3(0, -0.017, 0), Vector3(0.38, 0.026, 0.06), Kit.wood("ebano"), Vector3.ZERO, 1.0, 0.006, 2)
 	plb.cube(Vector3(0, 0.012, 0), Vector3(0.36, 0.05, 0.006), gold, Vector3(-0.2, 0, 0), 1.0, 0.0025)
 	plb.commit(plate)
-	Kit.label(plate, "PRESIDENCIA DE LA REPÚBLICA", UI.f_serif_b, 22, Color("2a1d0e"), Vector3(0, 0.017, 0.0045), Vector3(-0.2, 0, 0), 0.0006)
+	Kit.label(plate, String(GS.Pais.ficha().get("sede", "PRESIDENCIA DE LA REPÚBLICA")), UI.f_serif_b, 22, Color("2a1d0e"), Vector3(0, 0.017, 0.0045), Vector3(-0.2, 0, 0), 0.0006)
 	Kit.label(plate, GS.pres.get("name", ""), UI.f_serif_b, 30, Color("2a1d0e"), Vector3(0, 0.004, 0.0062), Vector3(-0.2, 0, 0), 0.0006)
 	Kit.label(plate, "Presidencia", UI.f_serif, 20, Color("2a1d0e"), Vector3(0, 0.012, -0.0045), Vector3(0.2, PI, 0), 0.0006)
 	# --- escribanía de latón con dos tinteros (fija)

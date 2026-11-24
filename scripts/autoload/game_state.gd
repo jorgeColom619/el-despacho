@@ -1025,8 +1025,12 @@ func value_of(key: String) -> float:
 			return unemployment()
 		"crecimiento":
 			return growth()
+		"lealtad":
+			return Regimen.lealtad()
 		"left":
 			return float(term_days - day)
+	if key.begins_with("precio_"):
+		return float(mercado.get("precios", {}).get(key.substr(7), 100.0))
 	if key.begins_with("tax_"):
 		return float(taxes.get(key.substr(4), 0.0))
 	if key.begins_with("rel_"):
@@ -1151,6 +1155,9 @@ func _eligible(type: String) -> Array:
 		if ev["type"] != type or ev.get("chain_only", false):
 			continue
 		if ev.get("meme", false) and mode != "meme":
+			continue
+		# los eventos propios de un país solo salen en ese país
+		if ev.has("pais") and String(ev["pais"]) != pais:
 			continue
 		# en línea, los países que lleva otro jugador no llaman ni negocian como la IA
 		if Red.en_partida() and Red.es_humano(String(ev.get("who", ""))):

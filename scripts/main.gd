@@ -563,7 +563,8 @@ func _debug_start() -> void:
 			GS.spawn(DB.event("doc_contrato_cazas"))
 			open_overlay("doc", {})
 		"advisor":
-			GS.spawn(DB.event("banco_quiebra"))
+			# EVENTO=qad_mundial: abre ese asunto (por defecto, la quiebra de un banco)
+			GS.spawn(DB.event(OS.get_environment("EVENTO") if OS.get_environment("EVENTO") != "" else "banco_quiebra"))
 			open_overlay("advisor", {"item": GS.visitors[0]})
 		"call":
 			GS.spawn(DB.event("call_kade_acero"))
