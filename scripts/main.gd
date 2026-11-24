@@ -121,6 +121,7 @@ func _ready() -> void:
 			at.run(int(a.substr(11)) if a.length() > 11 else 730)
 			return
 	GS.open_request.connect(_on_request)
+	Red.empezar_partida.connect(start_new)
 	GS.deltas.connect(_on_deltas)
 	GS.game_over.connect(_on_game_over)
 	GS.result_text.connect(func(t): GS.toast.emit(t, "info", "info"))
@@ -149,6 +150,17 @@ func _ready() -> void:
 		var it = IT.new()
 		add_child(it)
 		it.run()
+		return
+	var es_redtest := false
+	for a in args:
+		if a.begins_with("--redtest"):
+			es_redtest = true
+	if es_redtest:
+		GS.no_save = true
+		var RT = load("res://scripts/redtest.gd")
+		var rt = RT.new()
+		add_child(rt)
+		rt.run(self)
 		return
 	if "--paistest" in args:
 		GS.no_save = true
@@ -195,6 +207,9 @@ func transition(callable: Callable) -> void:
 
 func show_menu() -> void:
 	GS.active = false
+	# volver al menú cierra la partida en línea (si la había)
+	if Red.activo():
+		Red.salir()
 	_clear_overlays()
 	Sfx.loop_stop("room")
 	Sfx.loop_stop("ring")
@@ -225,6 +240,14 @@ func _on_achievement(id: String) -> void:
 	Sfx.play("success", -2.0)
 
 
+## Partida en línea: la sala para crear o unirse a una partida de «Países rivales»
+func show_multi() -> void:
+	var MS = load("res://scripts/screens/multi_screen.gd")
+	var s = MS.new()
+	s.main = self
+	transition(func(): change_screen(s))
+
+
 func show_new_game() -> void:
 	var NG = load("res://scripts/screens/new_game.gd")
 	var n = NG.new()
@@ -235,6 +258,7 @@ func show_new_game() -> void:
 func start_new(opts: Dictionary) -> void:
 	transition(func():
 		GS.new_game(opts)
+		Red.preparar_mundo()
 		_show_office()
 		GS.set_speed(0)
 		open_overlay("newspaper", {"intro": true})
@@ -497,6 +521,9 @@ func _debug_start() -> void:
 		elif debug_shot == "opciones":
 			screen.call_deferred("_open_settings")
 		return
+	if debug_shot == "multi":
+		show_multi()
+		return
 	if debug_shot == "shop":
 		show_shop()
 		return
@@ -740,6 +767,16 @@ func _debug_start() -> void:
 			open_overlay("world", {})
 			if current_overlay != null and current_overlay.has_method("_mercado"):
 				current_overlay.call_deferred("_mercado")
+		"jugador":
+			# simula otro jugador (Kharovia) para ver su ficha en el mapa del mundo
+			Red.modo = "anfitrion"
+			Red.en_juego = true
+			Red.jugadores = {1: {"name": GS.pres["name"], "pais": GS.pais, "party": "MP", "look": {}}, 2: {"name": "Ana Torres", "pais": "kharovia", "party": "AR", "look": {}}}
+			Red.chat = [{"pais": "kharovia", "texto": "Buenas. ¿Hablamos del precio del gas antes del invierno?", "dia": GS.day, "mio": false}]
+			Red.preparar_mundo()
+			open_overlay("world", {})
+			if current_overlay != null:
+				current_overlay.call_deferred("_select", "kharovia")
 		"election":
 			GS.day = GS.term_days
 			open_overlay("election", {})

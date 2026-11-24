@@ -45,6 +45,7 @@ func _ready() -> void:
 	menu_box = UI.vbox(6)
 	left.add_child(menu_box)
 	_item("Nueva legislatura", func(): main.show_new_game())
+	_item("Partida en línea", func(): main.show_multi())
 	_item("Reto del día", _open_daily)
 	if GS.has_save():
 		_item("Continuar partida", func(): main.continue_game())

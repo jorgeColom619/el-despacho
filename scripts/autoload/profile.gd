@@ -47,10 +47,13 @@ func save_profile() -> void:
 	var d := {"laureles": laureles, "lingotes": lingotes, "owned": owned, "equipped": equipped, "achievements": achievements, "stats": stats, "receipts": receipts,
 		"recent_events": recent_events, "recent_tramas": recent_tramas, "current_events": current_events, "current_tramas": current_tramas,
 		"seen": seen, "game_index": game_index}
-	var f := FileAccess.open(PATH, FileAccess.WRITE)
+	# primero a un archivo aparte y luego se cambia de nombre: si el ordenador se apaga a mitad, el perfil no se pierde
+	var tmp := PATH + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
 		f.close()
+		DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(PATH))
 
 
 func load_profile() -> void:

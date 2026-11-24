@@ -20,7 +20,7 @@ imposible a la vez, con el mismo reloj. Los países que no lleva nadie los juega
 | 1. Ficha de país e identidad | Los datos fijos de Valdoria pasan a una ficha por país. Valdoria y Norland jugables. | **Hecha** |
 | 2. Recursos y mercado mundial | Gas, petróleo, alimentos, industria, tecnología y minerales con precios. Cortes de suministro, embargos, agua del río. | **Hecha** |
 | 3. Regímenes | Marco común y los siete países jugables: Kharovia, Tsaing, Qadar, Sarvenia y Aldora con su régimen. | **Hecha** |
-| 4. Multijugador por IP directa | UPnP automático, varios jugadores (probado con dos), reloj común, IA para los libres, diplomacia entre jugadores. | Pendiente |
+| 4. Multijugador por IP directa | UPnP automático, varios jugadores (probado con dos), reloj común, IA para los libres, diplomacia entre jugadores. | **Hecha** |
 | 5. Contenido propio | Eventos, tramas y escenarios escritos para cada país. | Pendiente |
 
 ## Los países
@@ -157,3 +157,40 @@ de Valdoria (aceite y vino, la siesta, la Comisión de la Unión) no encaja del 
 godot --headless --path . -- --autotest=1460 --runs=8 --strategy=random --difficulty=2 --pais=qadar
 TAB=regimen godot --path . -- --shot=office --pais=qadar --open=dashboard
 ```
+
+## Fase 4: cómo funciona
+
+- Menú principal → **Partida en línea** (`scripts/screens/multi_screen.gd`). Cada jugador elige nombre, país y
+  partido. Uno pulsa **Crear partida**: el juego abre el puerto 24570 (UDP) en el router por UPnP y enseña la IP
+  pública que hay que pasar a los demás. Los demás la escriben y pulsan **Unirse** (también vale `IP:puerto`).
+  Si el router no deja abrir el puerto, el aviso explica las salidas: la IP de la red de casa, abrir el puerto
+  a mano o usar Tailscale, ZeroTier o Radmin VPN. El anfitrión elige dificultad, duración y modo y pulsa
+  **Empezar** (hacen falta al menos dos jugadores, cada uno con un país distinto; hasta siete).
+- `scripts/autoload/red.gd` (ENet, autoload `Red`):
+  - **Reloj del mundo:** lo lleva el anfitrión; todos avanzan al mismo día. Con alguien en una ventana, el mundo
+    va al 25 %; con todos, se para. La velocidad (y la pausa) la cambia cualquiera y vale para todos.
+  - **Mercado:** el anfitrión manda cada mes los precios; son los mismos para todos.
+  - **Otros jugadores** ocupan el sitio de su país: su nombre como líder, sin eventos ni llamadas de la IA de
+    ese país, y sus cortes de suministro los decide el jugador (no la IA).
+  - **Entre jugadores** (mapa del mundo, al seleccionar su país): mensajes, propuestas de tratado (comercial,
+    defensa, energía; el otro lo recibe como un asunto en el despacho y decide), visita, ayuda (le llega el
+    dinero), sanciones (le bajan la economía), expulsar al embajador, embargo, y el arma propia: cortarle lo que
+    le vendemos si lo necesita (el gas de Kharovia, el agua del río Seco de Sarvenia a Valdoria...) y reabrirlo.
+    Quien sufre un corte puede pedir que se reabra, buscar otros proveedores o responder con sanciones.
+  - **Noticias:** los titulares importantes de cada país llegan a los demás como noticia internacional.
+  - **Final:** cuando un jugador cae (o gana), los demás se enteran; la portada final enseña cómo les fue.
+  - **Desconexiones:** si se va un jugador, su país pasa a la IA; si se va el anfitrión, cada uno sigue en
+    solitario.
+  - En línea la partida no se guarda.
+- Prueba automática con dos copias del juego en el mismo ordenador (conecta, empieza, mensajes, tratado,
+  sanciones y corte; los dos deben acabar en el mismo día con los mismos precios):
+
+```
+godot --headless --path . -- --redtest=anfitrion --pais=kharovia
+godot --headless --path . -- --redtest=invitado --pais=valdoria
+godot --path . -- --shot=multi                    # la sala
+godot --path . -- --shot=office --open=jugador    # la ficha de otro jugador en el mapa del mundo
+```
+
+Pendiente: probar UPnP en un router de verdad (en esta máquina virtual no hay router con UPnP) y, más
+adelante, códigos de invitación por WebRTC para no depender del puerto.

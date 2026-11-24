@@ -190,7 +190,7 @@ func _select(c: String) -> void:
 	tv.add_child(UI.lbl(cd["full"], UI.f_serif_b, 26, UI.CREAM))
 	tv.add_child(UI.lbl("%s %s" % [cd["title"], cd["leader"]], UI.f_sans_m, 17, UI.GOLD))
 	var pers: Dictionary = W.PERSONALITIES[GS.country_pers(c)]
-	tv.add_child(UI.lbl("Carácter: %s · Poder: %d" % [pers["name"], int(cd["power"])], UI.f_sans, 15, UI.DIM))
+	tv.add_child(UI.lbl(("Lo lleva otro jugador · Poder: %d" % int(cd["power"])) if Red.es_humano(c) else "Carácter: %s · Poder: %d" % [pers["name"], int(cd["power"])], UI.f_sans, 15, UI.DIM))
 	top.add_child(tv)
 	panel.add_child(top)
 	var d := UI.lbl(cd["desc"], UI.f_sans, 16, UI.TEXT)
@@ -237,8 +237,12 @@ func _select(c: String) -> void:
 		for tt in tl:
 			flow.add_child(Widgets.chip("acuerdo", tt, UI.GOLD_L, 14))
 		panel.add_child(flow)
-	panel.add_child(Widgets.section("Negociar por teléfono"))
-	var topics: Array = W.TOPICS.get(c, [])
+	var humano := Red.es_humano(c)
+	if humano:
+		_panel_jugador(c)
+	else:
+		panel.add_child(Widgets.section("Negociar por teléfono"))
+	var topics: Array = [] if humano else W.TOPICS.get(c, [])
 	for t2 in topics:
 		var cdn: int = int(GS.countries[c]["cd"].get(t2["id"], 0)) - GS.day
 		var b := UI.btn("  " + t2["name"] + ("" if cdn <= 0 else "  (en %d días)" % cdn), "normal", 17)
@@ -258,7 +262,7 @@ func _select(c: String) -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	panel.add_child(grid)
-	for a in [["visita", "Visita de Estado", UI.eur("−80 M€ · −5 CP · Relación ▲")], ["ayuda", "Ayuda al desarrollo", UI.eur("−600 M€ · Relación ▲▲")], ["sanciones", "Sanciones económicas", "Relación ▼▼▼ · Economía ▼"], ["embajador", "Expulsar al embajador", "Relación ▼▼ · Firmeza"], ["embargo", "Embargo comercial", "Relación ▼▼▼ · Comercio cortado un año"]]:
+	for a in [["visita", "Visita de Estado", UI.eur("−80 M€ · −5 CP · Relación ▲")], ["ayuda", "Ayuda al desarrollo", UI.eur("−600 M€ · Relación ▲▲")], ["sanciones", "Sanciones económicas", "Relación ▼▼▼ · Economía ▼"], ["embajador", "Expulsar al embajador", "Relación ▼▼ · Firmeza"], ["embargo", "Embargo comercial", "Relación ▼▼▼ · Comercio cortado un año"]] + _acciones_jugador(c):
 		var ad: String = a[0]
 		var cdl: int = int(GS.countries[c]["cd"].get(ad, 0)) - GS.day
 		if ad == "embargo" and Mercado.embargado(c):
@@ -272,6 +276,75 @@ func _select(c: String) -> void:
 			card.set_meta("enabled", false)
 			card.modulate.a = 0.5
 		grid.add_child(card)
+
+
+## País de otro jugador: mensajes y propuestas de tratado (en vez de negociar con la IA por teléfono)
+func _panel_jugador(c: String) -> void:
+	panel.add_child(UI.lbl("Lo gobierna %s, otro jugador." % Red.nombre_de(c), UI.f_sans_b, 16, Color(0.55, 0.85, 1.0)))
+	panel.add_child(Widgets.section("Mensajes"))
+	var ultimos := []
+	for m in Red.chat:
+		if String(m["pais"]) == c:
+			ultimos.append(m)
+	for m in ultimos.slice(maxi(0, ultimos.size() - 4)):
+		var quien := "Usted" if m["mio"] else Red.nombre_de(c)
+		var ml := UI.lbl("%s: %s" % [quien, m["texto"]], UI.f_sans, 15, UI.GOLD_L if m["mio"] else UI.TEXT)
+		ml.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ml.custom_minimum_size = Vector2(540, 0)
+		panel.add_child(ml)
+	var mh := UI.hbox(8)
+	var me := LineEdit.new()
+	me.placeholder_text = "Escriba un mensaje..."
+	me.max_length = 240
+	me.custom_minimum_size = Vector2(420, 40)
+	var enviar := func():
+		var t := me.text.strip_edges()
+		if t == "":
+			return
+		Red.accion(c, "mensaje", {"texto": t})
+		Sfx.play("click", -4.0)
+		_select(c)
+	me.text_submitted.connect(func(_t): enviar.call())
+	mh.add_child(me)
+	var mb := UI.btn("Enviar", "normal", 16)
+	mb.pressed.connect(enviar)
+	mh.add_child(mb)
+	panel.add_child(mh)
+	panel.add_child(Widgets.section("Proponer un tratado"))
+	var tf := HFlowContainer.new()
+	tf.add_theme_constant_override("h_separation", 8)
+	tf.add_theme_constant_override("v_separation", 8)
+	for tk in Red.TRATADOS.keys():
+		var ya := false
+		for t in GS.treaties:
+			if t["c"] == c and t["type"] == tk:
+				ya = true
+		var tb := UI.btn(String(Red.TRATADOS[tk]["name"]) + (" ✓" if ya else ""), "normal", 15)
+		tb.tooltip_text = String(Red.TRATADOS[tk]["desc"])
+		tb.disabled = ya
+		var tid: String = tk
+		tb.pressed.connect(func():
+			Sfx.play("click", -4.0)
+			Red.proponer(c, tid)
+			tb.disabled = true)
+		tf.add_child(tb)
+	panel.add_child(tf)
+
+
+## Armas propias contra otro jugador: cortarle lo que le vendemos (si lo necesita) o reabrírselo
+func _acciones_jugador(c: String) -> Array:
+	if not Red.es_humano(c):
+		return []
+	if Red.cortes_propios.has(c):
+		return [["reabrir", "Reabrir el suministro", "Relación ▲ · Vuelve a comprarnos"]]
+	var r: String = R.ARMAS.get(GS.pais, "")
+	if r == "":
+		return []
+	var necesita := c == "valdoria" if r == "agua" else int(R.PERFILES.get(c, {}).get(r, 0)) < 0
+	if not necesita:
+		return []
+	var nm := "el agua del río Seco" if r == "agua" else "el " + String(R.RECURSOS[r]["name"]).to_lower()
+	return [["corte", "Cortarle " + nm, "Le encarece un 60 % · Relación ▼▼"]]
 
 
 ## Panel del mercado mundial: precio de cada recurso, lo que compramos o vendemos y lo que nos cuesta o nos da
@@ -357,9 +430,24 @@ func _action(c: String, a: String) -> void:
 		"embargo":
 			fx = Mercado.embargar(c)
 			GS.push_news("%s decreta un embargo comercial contra %s" % [W.COUNTRY_NAME, nm], 3)
-	GS.countries[c]["cd"][a] = GS.day + (120 if a == "visita" else (365 if a == "embargo" else 180))
+		"corte":
+			var r: String = R.ARMAS.get(GS.pais, "")
+			fx = {"rel": {c: -20}, "prestigio": -1}
+			Red.accion(c, "corte", {"recurso": r})
+			GS.push_news("%s corta %s a %s" % [W.COUNTRY_NAME, "el agua del río Seco" if r == "agua" else "el suministro de " + String(R.RECURSOS[r]["name"]).to_lower(), nm], 3)
+		"reabrir":
+			fx = {"rel": {c: 6}}
+			Red.accion(c, "reabrir", {"recurso": String(Red.cortes_propios.get(c, ""))})
+			GS.push_news("%s reabre el suministro a %s" % [W.COUNTRY_NAME, nm], 2)
+	if a == "reabrir":
+		GS.countries[c]["cd"].erase("corte")
+	else:
+		GS.countries[c]["cd"][a] = GS.day + (120 if a == "visita" else (365 if a == "embargo" else 180))
+	# si el país lo lleva otro jugador, se entera (y le afecta a él)
+	if Red.es_humano(c) and a in ["visita", "ayuda", "sanciones", "embajador", "embargo"]:
+		Red.accion(c, a, {"dinero": 600} if a == "ayuda" else {})
 	GS.apply_fx(fx, "Diplomacia")
 	GS.remember(a, {"who": c})
-	GS.log_history("Diplomacia: " + nm, {"visita": "Visita de Estado", "ayuda": "Ayuda al desarrollo", "sanciones": "Sanciones", "embajador": "Expulsión del embajador", "embargo": "Embargo comercial"}[a])
+	GS.log_history("Diplomacia: " + nm, {"visita": "Visita de Estado", "ayuda": "Ayuda al desarrollo", "sanciones": "Sanciones", "embajador": "Expulsión del embajador", "embargo": "Embargo comercial", "corte": "Corte de suministro", "reabrir": "Reapertura del suministro"}.get(a, a))
 	Sfx.play("stamp", -6.0)
 	_select(c)

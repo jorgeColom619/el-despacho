@@ -526,10 +526,12 @@ func _process(delta: float) -> void:
 		return
 	if holds > 0 or speed == 0:
 		return
-	_acc += delta * SPEED_MULT[speed]
-	while _acc >= DAY_SEC and holds == 0 and active and not game_ended:
-		_acc -= DAY_SEC
-		advance_day()
+	# en una partida en línea, los días los marca el reloj del mundo (Red)
+	if not Red.en_partida():
+		_acc += delta * SPEED_MULT[speed]
+		while _acc >= DAY_SEC and holds == 0 and active and not game_ended:
+			_acc -= DAY_SEC
+			advance_day()
 	# Llamadas: el teléfono deja de sonar si nadie contesta
 	if calls.size() > 0:
 		ringing_time += delta
@@ -609,6 +611,10 @@ func release() -> void:
 
 
 func set_speed(s: int) -> void:
+	# en línea, la velocidad es la misma para todos: la decide el anfitrión
+	if Red.en_partida() and not Red.desde_red():
+		Red.pedir_velocidad(clampi(s, 0, 3))
+		return
 	speed = clampi(s, 0, 3)
 	speed_changed.emit(speed)
 
@@ -927,6 +933,7 @@ func _monthly(dd: Dictionary) -> void:
 	Gobierno.monthly()
 	# el mercado mundial: precios, sacudidas y cortes de suministro
 	Mercado.monthly(dd)
+	Red.mes()
 	# el régimen: lealtad de quien sostiene al presidente, golpes, elecciones de mitad de mandato
 	Regimen.monthly()
 	# La corrupción se diluye con el tiempo... salvo que alguien tire del hilo (ver escándalos)
@@ -1144,6 +1151,9 @@ func _eligible(type: String) -> Array:
 		if ev["type"] != type or ev.get("chain_only", false):
 			continue
 		if ev.get("meme", false) and mode != "meme":
+			continue
+		# en línea, los países que lleva otro jugador no llaman ni negocian como la IA
+		if Red.en_partida() and Red.es_humano(String(ev.get("who", ""))):
 			continue
 		# con poca libertad de prensa (o con censura), muchos escándalos no llegan a publicarse
 		if (ev.get("scandal", false) or ev.get("cond", {}).get("gt", {}).has("corr")) and rng.randf() > Regimen.prensa():
@@ -1660,6 +1670,8 @@ func apply_fx(fx: Dictionary, source: String = "", show: bool = true) -> Array:
 				Mercado.fx(v)
 			"regimen":
 				Regimen.fx(v)
+			"red":
+				Red.fx(v)
 			"rel_democracias":
 				out.append_array(apply_fx({"rel": Regimen.rel_democracias(float(v))}, source, show))
 			"reshuffle":
@@ -1774,6 +1786,8 @@ func _fire_minister(key: String) -> void:
 
 
 func push_news(text: String, importance: int = 1) -> void:
+	if importance >= 3 and Red.en_partida():
+		Red.compartir_noticia(text)
 	news_feed.push_front({"t": text, "day": day, "imp": importance})
 	if news_feed.size() > 40:
 		news_feed.resize(40)
@@ -2074,6 +2088,7 @@ func opo_name() -> String:
 func end_game(reason: String) -> void:
 	if game_ended:
 		return
+	Red.fin_propio(reason)
 	if mode == "infinito":
 		Perfil.record_years(float(day) / 365.0)
 	game_ended = true

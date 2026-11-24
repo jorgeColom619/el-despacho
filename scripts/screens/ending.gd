@@ -73,6 +73,19 @@ func _ready() -> void:
 	sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sl.custom_minimum_size = Vector2(840, 0)
 	pv.add_child(sl)
+	# partida en línea: cómo les va a los demás jugadores
+	if Red.activo() and Red.jugadores.size() > 1:
+		var otros := []
+		for id in Red.jugadores.keys():
+			var jp := String(Red.jugadores[id]["pais"])
+			if jp == GS.pais:
+				continue
+			var res := String(Red.FINALES.get(Red.resultados.get(jp, ""), "sigue en el poder"))
+			otros.append("%s (%s): %s" % [Red.jugadores[id]["name"], W.COUNTRIES.get(jp, {}).get("name", jp), res])
+		var ol := UI.lbl("Los demás jugadores · " + " · ".join(otros), UI.f_sans_b, 16, Color(ink, 0.8), HORIZONTAL_ALIGNMENT_CENTER)
+		ol.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ol.custom_minimum_size = Vector2(840, 0)
+		pv.add_child(ol)
 	var pf := Control.new()
 	pf.custom_minimum_size = Vector2(840, 420)
 	pf.clip_contents = true

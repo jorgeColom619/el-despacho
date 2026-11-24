@@ -123,7 +123,9 @@ static func _fin_cortes() -> void:
 	var m := _m()
 	for r in m["cortes"].keys():
 		var c: Dictionary = m["cortes"][r]
-		if GS.day >= int(c["until"]) or float(GS.countries.get(String(c["who"]), {}).get("rel", 0.0)) > 10.0:
+		# los cortes de otro jugador solo acaban cuando él reabre (o al cabo de un año)
+		var humano := Red.es_humano(String(c["who"]))
+		if GS.day >= int(c["until"]) or (not humano and float(GS.countries.get(String(c["who"]), {}).get("rel", 0.0)) > 10.0):
 			m["cortes"].erase(r)
 			GS.push_news(_txt_fin(r, String(c["who"])), 2)
 	for c2 in m["embargos"].keys():
@@ -144,7 +146,8 @@ static func _amenazas(dd: Dictionary) -> void:
 	if GS.day < 60 or GS._is_queued("corte_suministro"):
 		return
 	for c in R.ARMAS.keys():
-		if not GS.countries.has(c):
+		# los países de otros jugadores cortan cuando lo decide su jugador, no la IA
+		if not GS.countries.has(c) or Red.es_humano(c):
 			continue
 		var r: String = R.ARMAS[c]
 		if m["cortes"].has(r):
@@ -180,6 +183,9 @@ static func cortar(c: String, r: String) -> void:
 	var nm := String(cd["name"])
 	# con su artículo: «el Emir Faisal al-Rashid», «la Presidenta Amina Seko»
 	var lider := "%s %s %s" % ["la" if String(cd["title"]).ends_with("a") else "el", cd["title"], cd["leader"]]
+	if Red.es_humano(c):
+		_corte_humano(c, r, nm, lider)
+		return
 	if r == "agua":
 		GS.push_news("%s cierra las compuertas del río Seco: la cuenca se queda sin agua" % nm, 3)
 		GS.spawn({"id": "corte_suministro", "type": "advisor", "who": "exteriores", "gen": true,
@@ -205,6 +211,35 @@ static func cortar(c: String, r: String) -> void:
 		"default": 1})
 
 
+## Corte decidido por otro jugador: dura hasta que lo reabra (o un año); se le puede pedir que lo reabra
+static func _corte_humano(c: String, r: String, nm: String, lider: String) -> void:
+	_m()["cortes"][r]["until"] = GS.day + 365
+	var agua := r == "agua"
+	var rn := "el agua del río Seco" if agua else "el suministro de " + String(R.RECURSOS[r]["name"]).to_lower()
+	GS.push_news("%s corta %s a %s" % [nm, rn, W.COUNTRY_NAME], 3)
+	GS.spawn({"id": "corte_suministro", "type": "advisor", "who": "exteriores" if agua else "economia", "gen": true,
+		"title": "%s nos corta el agua" % nm if agua else ("%s nos corta el %s" % [nm, String(R.RECURSOS[r]["name"]).to_lower()] if r in ["gas", "petroleo"] else "%s corta las ventas de %s" % [nm, String(R.RECURSOS[r]["name"]).to_lower()]),
+		"text": "Presidente, %s ha decidido cortarnos %s. No es un error de los técnicos: es una decisión política, y la ha tomado en persona. Lo que compremos fuera nos costará un %d %% más mientras dure." % [lider, rn, int(PRIMA_CORTE * 100.0)],
+		"choices": [
+			{"t": "Pedirle que reabra el grifo.", "fx": {"rel": {c: 4}, "mercado": {"pedir": r, "a": c}}, "rec": "exteriores"},
+			{"t": "Buscar otros proveedores, cueste lo que cueste." if not agua else "Plan de choque: pozos, trasvases y desaladoras.", "fx": {"money": -1500, "mercado": {"diversificar": r}} if not agua else {"money": -1800, "ambiente": -2, "mercado": {"fin_corte": "agua"}}, "rec": "economia"},
+			{"t": "Aguantar: ahorro y racionamiento.", "fx": {"estabilidad": -2, "trabajadores": -2, "empresarios": -2}},
+			{"t": "Responder con sanciones.", "fx": {"rel": {c: -15}, "prestigio": 2, "militares": 1, "mercado": {"sancionar": c}}}],
+		"default": 1})
+
+
+## Embargo de otro jugador contra nosotros: si nos vendía algo que necesitamos, toca buscarlo fuera (más caro)
+static func embargo_recibido(c: String) -> Dictionary:
+	var m := _m()
+	var econ := -1.0
+	var su: Dictionary = R.PERFILES.get(c, {})
+	for r in su.keys():
+		if int(su[r]) >= 3 and perfil(r) < 0.0 and not m["cortes"].has(r):
+			m["cortes"][r] = {"who": c, "until": GS.day + 365, "prima": PRIMA_OTROS}
+			econ -= 0.5
+	return {"rel": {c: -30}, "economia": econ}
+
+
 ## Efectos de las decisiones: {"fin_corte": recurso} o {"diversificar": recurso}
 static func fx(v: Dictionary) -> void:
 	var m := _m()
@@ -218,6 +253,11 @@ static func fx(v: Dictionary) -> void:
 		var r2 := String(v["diversificar"])
 		if m["cortes"].has(r2):
 			m["cortes"][r2]["prima"] = PRIMA_OTROS
+	# contra otro jugador: pedirle que reabra, o devolverle las sanciones
+	if v.has("pedir"):
+		Red.accion(String(v.get("a", "")), "pide_reabrir", {"recurso": String(v["pedir"])})
+	if v.has("sancionar"):
+		Red.accion(String(v["sancionar"]), "sanciones")
 
 
 ## Embargo comercial nuestro a un país: deja de comprarnos y de vendernos. Le duele a él (y a su relación), pero

@@ -22,6 +22,7 @@ DB="*res://scripts/autoload/db.gd"
 GS="*res://scripts/autoload/game_state.gd"
 Payments="*res://scripts/autoload/payments.gd"
 Perfil="*res://scripts/autoload/profile.gd"
+Red="*res://scripts/autoload/red.gd"
 
 [display]
 
