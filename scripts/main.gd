@@ -221,6 +221,11 @@ func show_menu() -> void:
 	change_screen(m)
 	office = null
 	Sfx.music("music_menu")
+	# si la pantalla sale en negro con el motor avanzado (algunos Mac), cambia al compatible y reinicia
+	Sfx.vigilar_pantalla()
+	if bool(Sfx.settings.get("aviso_motor", false)):
+		Sfx.set_setting("aviso_motor", false)
+		toasts.push("La imagen no se veía con el motor gráfico avanzado: ahora se usa el compatible (se puede cambiar en Opciones).", "info", "info")
 
 
 func show_shop() -> void:

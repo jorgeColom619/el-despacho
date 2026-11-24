@@ -9,7 +9,7 @@ var _music_a: AudioStreamPlayer
 var _music_b: AudioStreamPlayer
 var _music_on_a := true
 var current_music := ""
-var settings := {"master": 0.85, "music": 0.55, "sfx": 0.9, "fullscreen": false, "grain": true, "text_speed": 1.0, "view3d": true, "stage3d": true, "mouse_sens": 1.0, "gfx": "auto", "engine": "auto"}
+var settings := {"master": 0.85, "music": 0.55, "sfx": 0.9, "fullscreen": false, "grain": true, "text_speed": 1.0, "view3d": true, "stage3d": true, "mouse_sens": 1.0, "gfx": "auto", "engine": "auto", "aviso_motor": false}
 
 
 func _ready() -> void:
@@ -206,30 +206,53 @@ func wanted_renderer() -> String:
 			return "forward_plus"
 		"compatible":
 			return "gl_compatibility"
+	# En Mac, el compatible: con el avanzado (Metal o MoltenVK) algunos Mac se quedaban con la pantalla en negro
+	# y solo sonaba la música. project.godot ya arranca así en Mac (rendering_method.macos).
+	if OS.has_feature("macos"):
+		return "gl_compatibility"
 	return "gl_compatibility" if software_renderer() else "forward_plus"
 
 
-## Escribe override.cfg con el motor gráfico elegido (se aplica al arrancar el juego)
+## false si la última vez no se pudo guardar override.cfg (p. ej., la app de Mac sin mover a Aplicaciones)
+var override_ok := true
+
+
+## Escribe override.cfg con el motor gráfico elegido (se aplica al arrancar el juego). Lleva también la clave
+## «.macos», que en Mac manda sobre la normal (project.godot pone el compatible por defecto ahí).
 func write_renderer_override(method: String) -> bool:
 	var path := ProjectSettings.globalize_path("res://override.cfg")
 	if OS.has_feature("template"):
 		path = OS.get_executable_path().get_base_dir().path_join("override.cfg")
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
+		override_ok = false
 		return false
-	f.store_string("; Motor gráfico elegido en Opciones de El Despacho\n[rendering]\n\nrenderer/rendering_method=\"%s\"\n" % method)
+	f.store_string("; Motor gráfico elegido en Opciones de El Despacho\n[rendering]\n\nrenderer/rendering_method=\"%s\"\nrenderer/rendering_method.macos=\"%s\"\n" % [method, method])
 	f.close()
+	override_ok = true
 	return true
 
 
-## Reinicia el juego (para cambiar de motor gráfico)
+## Reinicia el juego (para cambiar de motor gráfico). El motor va también en la orden de arranque, así funciona
+## aunque no se haya podido guardar override.cfg.
 func restart_game() -> void:
-	var args := OS.get_cmdline_args()
-	if not "--" in args:
-		args.append("--")
-	if not "--gfx-restarted" in args:
-		args.append("--gfx-restarted")
-	OS.set_restart_on_exit(true, args)
+	var engine_args := []
+	var raw := OS.get_cmdline_args()
+	var i := 0
+	while i < raw.size():
+		var a := String(raw[i])
+		if a == "--" or a == "++":
+			break
+		if a == "--rendering-method" or a == "--rendering-driver":
+			i += 2
+			continue
+		engine_args.append(a)
+		i += 1
+	engine_args.append_array(["--rendering-method", wanted_renderer()])
+	var user := Array(OS.get_cmdline_user_args())
+	if not "--gfx-restarted" in user:
+		user.append("--gfx-restarted")
+	OS.set_restart_on_exit(true, engine_args + ["--"] + user)
 	get_tree().quit()
 
 
@@ -246,6 +269,65 @@ func _check_renderer() -> void:
 		return
 	if write_renderer_override(want):
 		restart_game()
+
+
+var _vigilada := false
+
+
+## Red de seguridad para la pantalla en negro: con el menú ya a la vista, mira dos veces lo que se ha dibujado.
+## Si sale una imagen lisa y oscura (el motor avanzado no pinta nada aunque el juego siga y suene la música, como
+## pasaba en algunos Mac), cambia al motor compatible, lo guarda y reinicia. Una sola vez por arranque.
+func vigilar_pantalla() -> void:
+	if _vigilada or DisplayServer.get_name() == "headless":
+		return
+	_vigilada = true
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
+		return
+	var user := OS.get_cmdline_user_args()
+	var debug := "--gfx-guard-debug" in user
+	for a in user:
+		if (a.begins_with("--shot") or a.begins_with("--capt") or a.begins_with("--autotest") or a in ["--no-gfx-guard", "--uitest", "--check"]) and not debug:
+			return
+	var oscuras := 0
+	for intento in 2:
+		await get_tree().create_timer(2.5 if intento == 0 else 1.2).timeout
+		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
+			return
+		await RenderingServer.frame_post_draw
+		var r := _medir_imagen()
+		if debug:
+			print("Vigilancia de pantalla: luz máxima %.3f, contraste %.3f" % [r[0], r[1]])
+		if r[0] >= 0.0 and r[0] < 0.16 and r[1] < 0.04:
+			oscuras += 1
+	if oscuras < 2:
+		return
+	print("La pantalla sale en negro con el motor %s: se cambia al compatible" % RenderingServer.get_current_rendering_method())
+	settings["engine"] = "compatible"
+	settings["aviso_motor"] = true
+	save_settings()
+	write_renderer_override("gl_compatibility")
+	if not debug:
+		restart_game()
+
+
+## [luminosidad máxima, diferencia entre lo más claro y lo más oscuro] de lo que se ve (-1 si no se puede leer)
+func _medir_imagen() -> Array:
+	var tex := get_viewport().get_texture()
+	if tex == null:
+		return [-1.0, 1.0]
+	var img := tex.get_image()
+	if img == null or img.is_empty():
+		return [-1.0, 1.0]
+	var w := img.get_width()
+	var h := img.get_height()
+	var hi := 0.0
+	var lo := 1.0
+	for gy in 36:
+		for gx in 64:
+			var l := img.get_pixel(int((gx + 0.5) * w / 64.0), int((gy + 0.5) * h / 36.0)).get_luminance()
+			hi = maxf(hi, l)
+			lo = minf(lo, l)
+	return [hi, hi - lo]
 
 
 ## true si no hay aceleración gráfica (máquina virtual, controlador básico de Windows...)

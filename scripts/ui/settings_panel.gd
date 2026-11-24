@@ -24,7 +24,7 @@ func _ready() -> void:
 	_check(v, "Despacho en 3D (desactívelo en equipos lentos)", "view3d")
 	_check(v, "Minijuegos en 3D (rueda de prensa, entrevista, Congreso y negociaciones)", "stage3d")
 	_option(v, "Calidad gráfica", "gfx", [["auto", "Automática (%s)" % Sfx.gfx_preset().capitalize()], ["baja", "Baja"], ["media", "Media"], ["alta", "Alta"], ["ultra", "Ultra"]])
-	_option(v, "Motor gráfico", "engine", [["auto", "Automático"], ["avanzado", "Avanzado (Forward+)"], ["compatible", "Compatible (sin tarjeta gráfica)"]])
+	_option(v, "Motor gráfico", "engine", [["auto", "Automático (compatible en Mac)" if OS.has_feature("macos") else "Automático"], ["avanzado", "Avanzado (Forward+)"], ["compatible", "Compatible (sin tarjeta gráfica)"]])
 	var note := UI.lbl("", UI.f_sans, 15, UI.DIM)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size = Vector2(560, 0)
@@ -47,6 +47,10 @@ func _ready() -> void:
 			txt += " Calidad Alta y Ultra: iluminación global, oclusión ambiental, reflejos y rayos de luz."
 		else:
 			txt += " Las calidades Alta y Ultra necesitan el motor avanzado y una tarjeta gráfica."
+		if not Sfx.override_ok:
+			txt += " No se ha podido guardar el cambio para siempre: en Mac, mueva El Despacho a Aplicaciones y vuelva a elegirlo."
+		elif OS.has_feature("macos") and want == "forward_plus":
+			txt += " Si la pantalla se queda en negro, el juego vuelve solo al compatible."
 		note.text = txt
 		rb.visible = cur != want
 	refresh.call()
