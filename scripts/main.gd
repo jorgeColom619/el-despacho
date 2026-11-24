@@ -35,6 +35,8 @@ const OVERLAYS := {
 	"movil": "res://scripts/overlays/movil_overlay.gd",
 	"leyes": "res://scripts/overlays/laws_overlay.gd",
 	"casino": "res://scripts/overlays/casino_overlay.gd",
+	"mesa": "res://scripts/overlays/mesa_overlay.gd",
+	"comercio": "res://scripts/overlays/comercio_overlay.gd",
 }
 
 const TIPS := {
@@ -48,7 +50,9 @@ const TIPS := {
 	"speech": "Primero elija la frase. Después vigile el teleprompter: el becario lo ha llenado de erratas. Haga clic en cada palabra cambiada o que sobre antes de que el presidente llegue a ella, o la dirá en directo.",
 	"leyes": "Aquí queda todo lo que ha legislado: haga clic en una ley para ver la votación, sus efectos permanentes y lo que cuesta cada mes. En las leyes menores se revela la letra pequeña de los anexos.",
 	"budget": "Mueva los deslizadores y vigile el saldo mensual y la reacción de cada grupo. Cada año puede presentar unos Presupuestos al Congreso (gratis, pero pueden tumbarlos); para retoques pequeños, un decreto ley que luego hay que convalidar.",
-	"world": "Haga clic en un país para ver sus acciones diplomáticas. Los tratados comerciales y de inversión impulsan la economía.",
+	"world": "Haga clic en un país para ver sus acciones diplomáticas. Los tratados comerciales y de inversión impulsan la economía. «Negociar en la mesa» abre una negociación de verdad: contratos, pagos, tratados, producción... y amenazas.",
+	"mesa": "Ponga sobre la mesa lo que ofrece y lo que pide (contratos de venta con su precio, pagos, tratados, producción...) y, si quiere, una amenaza. La IA acepta, rechaza explicando por qué o contraoferta; otro jugador decide él. También puede escribirle.",
+	"comercio": "Aquí decide cuánto produce de cada recurso, cómo (cada método tiene su coste y sus efectos) y si amplía la capacidad. Lo que sobra se vende y lo que falta se compra: al precio del mercado o con contratos firmados en la mesa de negociación.",
 	"dashboard": "En «Agenda legislativa» puede presentar leyes: son la herramienta más poderosa para cambiar el país. En «Congreso» puede reunirse con los grupos para ganar socios.",
 	"debate": "Elija la réplica adecuada: datos contra cifras, empatía contra emoción, elegancia contra ataques personales y realismo contra promesas imposibles.",
 }
@@ -144,6 +148,13 @@ func _ready() -> void:
 			_capture_later(cpath, cwait)
 	if "--nograin" in args:
 		grain.visible = false
+	if "--negotest" in args:
+		GS.no_save = false
+		var NT = load("res://scripts/negotest.gd")
+		var nt = NT.new()
+		add_child(nt)
+		nt.run()
+		return
 	if "--charlatest" in args:
 		GS.no_save = true
 		var CT = load("res://scripts/charlatest.gd")
@@ -791,6 +802,37 @@ func _debug_start() -> void:
 			open_overlay("world", {})
 			if current_overlay != null and current_overlay.has_method("_mercado"):
 				current_overlay.call_deferred("_mercado")
+		"comercio", "comerciomercado", "comerciocontratos":
+			# COMERCIO=demo: algo de movimiento (obras, otro método, un contrato y meses de precios)
+			if OS.get_environment("COMERCIO") == "demo":
+				GS.Mercado.fijar_objetivo("alimentos", GS.Mercado.prod("alimentos")["cap"])
+				GS.Mercado.ampliar("gas")
+				GS.Mercado.cambiar_metodo("alimentos", "ecologica")
+				GS.Mercado.nuevo_contrato("demo-1", "kharovia" if GS.countries.has("kharovia") else "norland", "gas", 1.5, 104.0, false, 12)
+				for i in 8:
+					GS.day += 30
+					GS.Mercado.monthly(UI.date_dict(GS.day))
+			open_overlay("comercio", {"tab": {"comercio": "produccion", "comerciomercado": "mercado", "comerciocontratos": "contratos"}[debug_open]})
+		"mesa", "mesacontra", "mesaoferta":
+			# MESA=kharovia: con quién; mesacontra: le proponemos comprar gas barato y contesta; mesaoferta: nos proponen algo
+			var mc := OS.get_environment("MESA") if OS.get_environment("MESA") != "" else ("kharovia" if GS.countries.has("kharovia") else "norland")
+			if debug_open == "mesacontra":
+				GS.Negociacion.escribir(mc, "Buenas. Queremos hablar de gas antes del invierno.")
+				GS.Negociacion.proponer(mc, {"da": [{"tipo": "tratado", "k": "comercio"}], "pide": [{"tipo": "venta", "r": "gas", "vol": 2.0, "precio": 88.0, "meses": 12}], "amenaza": {}}, "Un precio razonable para los dos.")
+			elif debug_open == "mesaoferta":
+				GS.countries[mc]["rel"] = -30.0
+				GS.day = 120
+				var p0: Dictionary = GS.Negociacion._oferta_ia(mc)
+				if p0.is_empty():
+					p0 = {"da": [{"tipo": "dinero", "m": 800.0}], "pide": [], "amenaza": {"k": "corte", "r": "gas"}, "t": "Esto es lo que pedimos."}
+				var ms0: Dictionary = GS.Negociacion.mesa(mc)
+				ms0["prop"] = p0
+				ms0["autor"] = "ellos"
+				ms0["v"] = 1
+				ms0["estado"] = "abierta"
+				ms0["caduca"] = GS.day + 20
+				GS.Negociacion._hist(mc, "ellos", "propuesta", String(p0.get("t", "")), p0)
+			open_overlay("mesa", {"con": mc})
 		"jugador":
 			# simula otro jugador (Kharovia) para ver su ficha en el mapa del mundo
 			Red.modo = "anfitrion"

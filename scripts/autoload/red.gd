@@ -16,6 +16,8 @@ signal sala_cambiada
 signal estado(texto: String)
 signal empezar_partida(opts: Dictionary)
 signal mensaje(de_pais: String, texto: String)
+## Algo ha pasado en la mesa de negociación con otro jugador (propuesta, acepta, rechaza...)
+signal nego(de_pais: String, tipo: String)
 
 const PUERTO := 24570
 const MAX_JUGADORES := 7
@@ -479,6 +481,38 @@ func mes() -> void:
 func _precios(p: Dictionary) -> void:
 	if not GS.mercado.is_empty() and not p.is_empty():
 		GS.mercado["precios"] = p.duplicate()
+		# la gráfica de precios, con los del anfitrión
+		for r in p.keys():
+			var h: Array = GS.mercado.get("hist", {}).get(r, [])
+			if not h.is_empty():
+				h[h.size() - 1] = float(p[r])
+
+
+## Lo que se aleja nuestra producción de lo normal: el anfitrión lo necesita para el precio mundial
+func enviar_produccion(d: Dictionary) -> void:
+	if en_partida() and not anfitrion() and multiplayer.has_multiplayer_peer():
+		_produccion.rpc_id(1, GS.pais, d)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _produccion(de: String, d: Dictionary) -> void:
+	if anfitrion() and not GS.mercado.is_empty():
+		if not GS.mercado.has("jug"):
+			GS.mercado["jug"] = {}
+		GS.mercado["jug"][de] = d.duplicate()
+
+
+## Un país de la IA se compromete a cambiar su producción: cuenta en el precio mundial, que lleva el anfitrión
+func ia_compromiso(c: String, r: String, d: float, hasta: int) -> void:
+	if en_partida() and not anfitrion() and multiplayer.has_multiplayer_peer():
+		_ia_compromiso.rpc_id(1, c, r, d, hasta)
+	GS.Mercado.ia_compromiso(c, r, d, hasta)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _ia_compromiso(c: String, r: String, d: float, hasta: int) -> void:
+	if anfitrion():
+		GS.Mercado.ia_compromiso(c, r, d, hasta)
 
 
 # ------------------------------------------------------------------ entre jugadores
@@ -507,8 +541,19 @@ func _accion(de: String, tipo: String, extra: Dictionary) -> void:
 		"mensaje":
 			var t := String(extra.get("texto", "")).substr(0, 240)
 			chat.append({"pais": de, "texto": t, "dia": GS.day, "mio": false})
+			GS.Negociacion.texto_recibido(de, t)
 			GS.toast.emit("%s: «%s»" % [quien, t], "info", "telefono")
 			mensaje.emit(de, t)
+		"nego":
+			# mesa de negociación: propuestas, contraofertas, aceptar, rechazar, retirar, romper contratos
+			GS.Negociacion.recibir(de, extra)
+			nego.emit(de, String(extra.get("tipo", "")))
+		"aranceles":
+			GS.apply_fx({"rel": {de: -12}, "economia": -1.5, "empresarios": -1}, "Aranceles de " + nm)
+			GS.push_news("%s sube los aranceles a los productos de %s" % [nm, W.COUNTRY_NAME], 2)
+		"tropas":
+			GS.apply_fx({"rel": {de: -20}, "estabilidad": -2, "seguridad": -2, "militares": 1}, "Tropas de " + nm)
+			GS.push_news("%s moviliza tropas en la frontera con %s" % [nm, W.COUNTRY_NAME], 3)
 		"visita":
 			GS.apply_fx({"rel": {de: 8}, "prestigio": 1}, "Visita de " + nm)
 			GS.push_news("%s, de visita oficial en %s" % [quien, W.COUNTRY_NAME], 2)

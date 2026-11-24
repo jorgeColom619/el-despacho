@@ -8,6 +8,7 @@ const W := preload("res://scripts/data/world_data.gd")
 const Pais := preload("res://scripts/systems/pais.gd")
 const R := preload("res://scripts/data/recursos_data.gd")
 const Mercado := preload("res://scripts/systems/mercado.gd")
+const N := preload("res://scripts/systems/negociacion.gd")
 
 const MAP_POS := Vector2(50, 150)
 const MAP_SIZE := Vector2(1200, 675)
@@ -78,8 +79,18 @@ func build() -> void:
 	mk.custom_minimum_size = Vector2(250, 44)
 	mk.pressed.connect(func():
 		Sfx.play("click", -4.0)
-		_mercado())
+		_abrir("comercio", {"tab": "mercado"}))
 	root.add_child(mk)
+	var pr := UI.btn("  Comercio y recursos", "normal", 17)
+	pr.icon = UI.icon("fabrica", 32)
+	pr.add_theme_constant_override("icon_max_width", 18)
+	pr.position = MAP_POS + Vector2(MAP_SIZE.x - 520, MAP_SIZE.y + 8)
+	pr.custom_minimum_size = Vector2(260, 44)
+	pr.tooltip_text = "Qué produce el país, cuánto y cómo; contratos y negociaciones abiertas"
+	pr.pressed.connect(func():
+		Sfx.play("click", -4.0)
+		_abrir("comercio", {"tab": "produccion"}))
+	root.add_child(pr)
 	var close_b := close_button("Volver al despacho")
 	close_b.position = Vector2(1640, 1000)
 	root.add_child(close_b)
@@ -96,6 +107,13 @@ func build() -> void:
 
 func on_escape() -> void:
 	close()
+
+
+## Cierra el mapa y abre otra ventana (la mesa de negociación, comercio y recursos)
+func _abrir(kind: String, d: Dictionary) -> void:
+	close()
+	if main != null:
+		main.call_deferred("open_overlay", kind, d)
 
 
 func _rel_color(rel: float) -> Color:
@@ -238,6 +256,15 @@ func _select(c: String) -> void:
 			flow.add_child(Widgets.chip("acuerdo", tt, UI.GOLD_L, 14))
 		panel.add_child(flow)
 	var humano := Red.es_humano(c)
+	# la mesa de negociación: propuestas de verdad (contratos, pagos, tratados, producción) y amenazas
+	var espera := N.abierta(c) and String(N.mesa(c).get("autor", "")) == "ellos"
+	var nb := UI.btn("  Negociar en la mesa" + ("  ·  ¡tiene una propuesta esperando!" if espera else ""), "gold", 18)
+	nb.icon = UI.icon("acuerdo", 32)
+	nb.add_theme_constant_override("icon_max_width", 20)
+	nb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	nb.tooltip_text = "Contratos de venta con su precio, pagos, tratados, compromisos de producción... y amenazas"
+	nb.pressed.connect(func(): _abrir("mesa", {"con": c}))
+	panel.add_child(nb)
 	if humano:
 		_panel_jugador(c)
 	else:
@@ -278,57 +305,19 @@ func _select(c: String) -> void:
 		grid.add_child(card)
 
 
-## País de otro jugador: mensajes y propuestas de tratado (en vez de negociar con la IA por teléfono)
+## País de otro jugador: los últimos mensajes (la conversación y las propuestas, en la mesa de negociación)
 func _panel_jugador(c: String) -> void:
-	panel.add_child(UI.lbl("Lo gobierna %s, otro jugador." % Red.nombre_de(c), UI.f_sans_b, 16, Color(0.55, 0.85, 1.0)))
-	panel.add_child(Widgets.section("Mensajes"))
+	panel.add_child(UI.lbl("Lo gobierna %s, otro jugador. Escríbale y negocie con él en la mesa." % Red.nombre_de(c), UI.f_sans_b, 16, Color(0.55, 0.85, 1.0)))
 	var ultimos := []
 	for m in Red.chat:
 		if String(m["pais"]) == c:
 			ultimos.append(m)
-	for m in ultimos.slice(maxi(0, ultimos.size() - 4)):
+	for m in ultimos.slice(maxi(0, ultimos.size() - 3)):
 		var quien := "Usted" if m["mio"] else Red.nombre_de(c)
 		var ml := UI.lbl("%s: %s" % [quien, m["texto"]], UI.f_sans, 15, UI.GOLD_L if m["mio"] else UI.TEXT)
 		ml.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ml.custom_minimum_size = Vector2(540, 0)
 		panel.add_child(ml)
-	var mh := UI.hbox(8)
-	var me := LineEdit.new()
-	me.placeholder_text = "Escriba un mensaje..."
-	me.max_length = 240
-	me.custom_minimum_size = Vector2(420, 40)
-	var enviar := func():
-		var t := me.text.strip_edges()
-		if t == "":
-			return
-		Red.accion(c, "mensaje", {"texto": t})
-		Sfx.play("click", -4.0)
-		_select(c)
-	me.text_submitted.connect(func(_t): enviar.call())
-	mh.add_child(me)
-	var mb := UI.btn("Enviar", "normal", 16)
-	mb.pressed.connect(enviar)
-	mh.add_child(mb)
-	panel.add_child(mh)
-	panel.add_child(Widgets.section("Proponer un tratado"))
-	var tf := HFlowContainer.new()
-	tf.add_theme_constant_override("h_separation", 8)
-	tf.add_theme_constant_override("v_separation", 8)
-	for tk in Red.TRATADOS.keys():
-		var ya := false
-		for t in GS.treaties:
-			if t["c"] == c and t["type"] == tk:
-				ya = true
-		var tb := UI.btn(String(Red.TRATADOS[tk]["name"]) + (" ✓" if ya else ""), "normal", 15)
-		tb.tooltip_text = String(Red.TRATADOS[tk]["desc"])
-		tb.disabled = ya
-		var tid: String = tk
-		tb.pressed.connect(func():
-			Sfx.play("click", -4.0)
-			Red.proponer(c, tid)
-			tb.disabled = true)
-		tf.add_child(tb)
-	panel.add_child(tf)
 
 
 ## Armas propias contra otro jugador: cortarle lo que le vendemos (si lo necesita) o reabrírselo
@@ -433,6 +422,8 @@ func _action(c: String, a: String) -> void:
 		"corte":
 			var r: String = R.ARMAS.get(GS.pais, "")
 			fx = {"rel": {c: -20}, "prestigio": -1}
+			# si se lo vendíamos por contrato, el contrato se rompe
+			N.romper_ventas(c, r)
 			Red.accion(c, "corte", {"recurso": r})
 			GS.push_news("%s corta %s a %s" % [W.COUNTRY_NAME, "el agua del río Seco" if r == "agua" else "el suministro de " + String(R.RECURSOS[r]["name"]).to_lower(), nm], 3)
 		"reabrir":
